@@ -24,7 +24,7 @@ def TS_SINAD(x, t):
     Take a time-series for computation of the SINAD using a curve-fitting method.
     Use at least 5 periods of the fundamental carrier signal for a good estimate.
     """
-
+    
     p_opt = fit_sinusoid(t, x, 1)
     print("p_opt: ", p_opt) # fitted params.
     x_fit = sin_p(t, *p_opt)
