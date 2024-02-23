@@ -83,8 +83,15 @@ match 2:
         X = Xc + Dq
         
         YU, YM = generate_dac_output(X, QuantizerConfig, YQ_1)
-        
-    case 2:  # periodic dither
+    case 2:  # physical level calibration
+        sys.exit("Not implemented yet.")
+    case 3:  # dynamic element matching
+        sys.exit("Not implemented yet.")
+    case 4:  # noise shaping with digital calibration (INL model)
+        sys.exit("Not implemented yet.")
+    case 5:  # stochastic high-pass noise dither
+        sys.exit("Not implemented yet.")
+    case 6:  # periodic high-frequency dither
         Dp = periodic_dither(t, 49e3, 1)
         Dp_SCALE = 0.25
         Xc_SCALE = 1 - Dp_SCALE
@@ -96,6 +103,10 @@ match 2:
         
         YU = YU1 + YU2
         YM = YM1 + YM2
+    case 7:  # model predictive control (with INL model)
+        sys.exit("Not implemented yet.")
+    case 8:  # iterative learning control (with INL model, only periodic signals)
+        sys.exit("Not implemented yet.")
 
 #%% Reconstruciton (output) filter
 b, a = signal.butter(2, 2*np.pi*20e3, 'low', analog=True)
