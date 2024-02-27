@@ -70,7 +70,6 @@ t = np.arange(0, t_end, Ts)  # time vector
 
 MAXAMP = Rng/2 - Qstep # make headroom for noise dither (see below)
 OFFSET = -Qstep/2
-
 Xc = test_signal(SCALE, MAXAMP, FREQ, OFFSET, t) # Carrier signal
 
 #%% Dither for quantisation error

@@ -67,7 +67,7 @@ def FFT_SINAD(x, Fs):
         case 1:
             Pxx, f = welch_psd(x, L, Fs)
         case 2:
-            f, Pxx = signal.welch(x, window=WIN, fs=Fs) # library fcn.
+            f, Pxx = signal.welch(x, window=WIN, fs=Fs) # type: ignore # library fcn.
     
     df = np.mean(np.diff(f))
     
