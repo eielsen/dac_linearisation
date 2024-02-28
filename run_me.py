@@ -118,7 +118,7 @@ Dq = np.random.uniform(-LSb/2, LSb/2, t.size)
 # LINEARIZATION METHODS
 # TODO: Replace hard coded numbers in the if-elif statements.
 if LINEARIZATION_METHOD == LM_NONE:  # LINEARIZATION_METHOD: None / BASELINE
-    X = Ysc + Dq
+    X = Xcs + Dq
     
     YU, YM = generate_dac_output(X, QuantizerConfig, YQ_1)
 elif LINEARIZATION_METHOD == 2:  # physical level calibration
@@ -131,8 +131,8 @@ elif LINEARIZATION_METHOD == 5:  # stochastic high-pass noise dither
     sys.exit("Not implemented yet - stochastic high-pass noise dither")
 elif LINEARIZATION_METHOD == LM_DITHER_PERIODIC_HIGH_FREQ:  # periodic high-frequency dither
     Dp = periodic_dither(t, DITHER_FREQ, DITHER_TYPE)
-    X1 = SIGNAL_CARRIER_RATIO*Ysc + SIGNAL_DITHER_RATIO*Dp + Dq
-    X2 = SIGNAL_CARRIER_RATIO*Ysc - SIGNAL_DITHER_RATIO*Dp + Dq
+    X1 = SIGNAL_CARRIER_RATIO*Xcs + SIGNAL_DITHER_RATIO*Dp + Dq
+    X2 = SIGNAL_CARRIER_RATIO*Xcs - SIGNAL_DITHER_RATIO*Dp + Dq
     
     output_ideal_ch1, output_meas_ch1 = generate_dac_output(X1, QuantizerConfig, YQ_1)
     output_ideal_ch2, output_meas_ch2 = generate_dac_output(X2, QuantizerConfig, YQ_2)
