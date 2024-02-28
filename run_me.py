@@ -106,11 +106,11 @@ t_end = Ncyc/CARRIER_FREQ  # time vector duration
 t = np.arange(0, t_end, Ts)  # time vector
 
 # GENERATE CARRIER/TEST SIGNAL
-A = Rng/2 - LSb # make headroom for noise dither (see below)
-OFFSET = -LSb/2
+SIGNAL_MAXAMP = Rng/2 - LSb # make headroom for noise dither (see below)
+SIGNAL_OFFSET = -LSb/2
 
-# Ysc - Output signal carrier
-Ysc = test_signal(SIGNAL_SCALE, A, CARRIER_FREQ, OFFSET, t) # Carrier signal
+# Xsc - Input signal carrier
+Xcs = test_signal(SIGNAL_SCALE, SIGNAL_MAXAMP, CARRIER_FREQ, SIGNAL_OFFSET, t) # Carrier signal
 
 # Dq - Dither for quantisation error
 Dq = np.random.uniform(-LSb/2, LSb/2, t.size)

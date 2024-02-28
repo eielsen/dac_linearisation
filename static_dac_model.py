@@ -8,24 +8,27 @@
 """
 
 import numpy as np
-from configurations import quantiser_configurations
+try:
+    from repos.DAC_Linearisation.configurations import quantiser_configurations
+except:
+    from configurations import quantiser_configurations
 
-def generate_dac_output(X, QuantizerConfig, ML):
+def generate_dac_output(input, QuantizerConfig, measured):
     """
     Table look-up to implement a simple static non-linear DAC model
     """
     
-    Nb, Mq, Vmin, Vmax, Rng, Qstep, YQ, Qtype = quantiser_configurations(QuantizerConfig)
+    Nb, Mq, Vmin, Vmax, Rng, LSb, YQ, Qtype = quantiser_configurations(QuantizerConfig)
     
     match Qtype:
         case "midtread":
-            q = np.floor(X/Qstep + 0.5) # mid-tread
-            c = q - np.floor(Vmin/Qstep) # mid-tread
+            q = np.floor(input/LSb + 0.5) # mid-tread
+            c = q - np.floor(Vmin/LSb) # mid-tread
         case "midriser":
-            q = np.floor(X/Qstep) + 0.5 # mid-riser
-            c = q - np.floor(Vmin/Qstep) - 0.5 # mid-riser
+            q = np.floor(input/LSb) + 0.5 # mid-riser
+            c = q - np.floor(Vmin/LSb) - 0.5 # mid-riser
             
-    YU = Qstep*q # ideal levels
-    YM = ML[c.astype(int)] # measured levels
+    ideal_output = LSb*q # ideal levels
+    measured_output = measured[c.astype(int)] # measured levels
     
-    return YU, YM
+    return ideal_output, measured_output
