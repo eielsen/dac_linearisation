@@ -82,8 +82,8 @@ Nb, Mq, Vmin, Vmax, Rng, LSb, YQ, Qtype = quantiser_configurations(QuantizerConf
 ### SETUP - END ###
 
 # load measured or generated output levels
-infile_1 = CURRENT_PATH + f'generated_output_levels_{Nb}_bit_{1}_QuantizerConfig_{QuantizerConfig}.npy'
-infile_2 = CURRENT_PATH + f'generated_output_levels_{Nb}_bit_{2}_QuantizerConfig_{QuantizerConfig}.npy'
+infile_1 = CURRENT_PATH + f'generated_output_levels\\generated_output_levels_{Nb}_bit_{1}_QuantizerConfig_{QuantizerConfig}.npy'
+infile_2 = CURRENT_PATH + f'generated_output_levels\\generated_output_levels_{Nb}_bit_{2}_QuantizerConfig_{QuantizerConfig}.npy'
 
 YQ_1 = np.zeros(YQ.size)
 YQ_2 = np.zeros(YQ.size)
@@ -179,9 +179,9 @@ axs_wave[0].plot(t, X1)
 axs_wave[0].grid()
 axs_wave[1].plot(t, X2)
 axs_wave[1].grid()
-axs_wave[2].plot(t, YU)
+axs_wave[2].plot(t, output_ideal)
 axs_wave[2].grid()
-axs_wave[3].plot(t, YM)
+axs_wave[3].plot(t, output_meas)
 axs_wave[3].grid()
 axs_wave[4].plot(t, Dq)
 axs_wave[4].grid()
