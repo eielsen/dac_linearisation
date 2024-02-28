@@ -59,7 +59,7 @@ def FFT_SINAD(x, Fs, name=''):
     """
     Take a time-series for computation of the SINAD using an FFT-based method.
     Typically needs a farily long time-series (more then 100 periods of the fundamental carrier)
-    for sufficient frequecy resolution.
+    for sufficient frequency resolution.
     """
 
     L = 4 # number of averages for PSD estimation

@@ -24,6 +24,33 @@ from figures_of_merit import FFT_SINAD, TS_SINAD
 def test_signal(SCALE, A, FREQ, OFFSET, t):
     """
     Generate a test signal (carrier)
+
+    Parameters
+    ----------
+    SCALE
+        Percentage of maximum amplitude
+    A
+        Maximum amplitude
+    FREQ
+        Signal frequency in hertz
+    OFFSET
+        Signal offset
+    t
+        Time vector
+
+    Returns
+    -------
+    x
+        Sinusoidal test signal  
+    
+    Raises
+    ------
+    No error handling.
+
+    Examples
+    --------
+    TODO: Make an example
+
     """
     return (SCALE/100)*A*np.cos(2*np.pi*FREQ*t) + OFFSET
 
@@ -32,15 +59,15 @@ print(CURRENT_PATH)
 
 ### DEFINITIONS ###
 # LINEARIZATION_METHODS (LM)
-# TODO: Write names for the remaining methods (2, 4, 5)
-LM_NONE = 1     # BASELINE
-LM_NONE = 2     # PHYSICAL LEVEL CALIBRATION
-LM_DEM = 3      # DYNAMIC ELEMENT MATCHING
-LM_NONE = 4     # NOISE SHAPING WITH DIGITAL CALIBRATION (INL model)
-LM_NONE = 5     # STOCHASTIC HIGH-PASS NOISE DITHER
-LM_DITHER_PERIODIC_HIGH_FREQ = 6 # PERIODIC HIGH-FREQUENCY DITHER
-LM_MPC = 7      # MODEL PREDICTIVE CONTROL (with INL model)
-LM_ILC = 8      # ITERATIVE LEARNING CONTROL (with INL model, only periodic signals)
+class linearisation_method:
+    BASE = 1     # BASELINE
+    PHYSCAL = 2  # PHYSICAL LEVEL CALIBRATION
+    DEM = 3      # DYNAMIC ELEMENT MATCHING
+    DIGCAL = 4   # NOISE SHAPING WITH DIGITAL CALIBRATION (INL model)
+    HPNOISE = 5  # STOCHASTIC HIGH-PASS NOISE DITHER
+    HFDITHER = 6 # PERIODIC HIGH-FREQUENCY DITHER
+    MPC = 7      # MODEL PREDICTIVE CONTROL (with INL model)
+    ILC = 8      # ITERATIVE LEARNING CONTROL (with INL model, only periodic signals)
 
 # DITHER TYPES (DT)
 DT_UNIFORM_ADF_TRI_WAVE = 1    # UNIFORM ADF (TRIANGULAR WAVE)
@@ -54,7 +81,7 @@ DITHER_TYPE = DT_UNIFORM_ADF_TRI_WAVE
 
 ### SETUP - START ###
 # Choose which linearization method you want to use
-LINEARIZATION_METHOD = LM_DITHER_PERIODIC_HIGH_FREQ
+LINEARIZATION_METHOD = linearisation_method.HFDITHER
 
 ## FILTER SETTINGS
 FILTER_FREQ = 20e3
@@ -97,7 +124,7 @@ else: print("YQ_2 - No level file found.") # sys.exit
 match 1:
     case 1:  # sepcify number of samples and find number of periods
         TRANSOFF = int(1e3)
-        Nts = 1e6+TRANSOFF  # no. of time samples
+        Nts = 1e6 + TRANSOFF  # no. of time samples
         Ncyc = CARRIER_FREQ*Ts*Nts  # no. of periods for carrier
     case 2:  # sepcify number of periods
         Ncyc = 5  # no. of periods for carrier
@@ -116,33 +143,34 @@ Xcs = test_signal(SIGNAL_SCALE, SIGNAL_MAXAMP, CARRIER_FREQ, SIGNAL_OFFSET, t) #
 Dq = np.random.uniform(-LSb/2, LSb/2, t.size)
 
 # LINEARIZATION METHODS
-# TODO: Replace hard coded numbers in the if-elif statements.
-if LINEARIZATION_METHOD == LM_NONE:  # LINEARIZATION_METHOD: None / BASELINE
-    X = Xcs + Dq
-    
-    YU, YM = generate_dac_output(X, QuantizerConfig, YQ_1)
-elif LINEARIZATION_METHOD == 2:  # physical level calibration
-    sys.exit("Not implemented yet - physical level calibration")
-elif LINEARIZATION_METHOD == LM_DEM:  # DYNAMIC ELEMENT MATCHING
-    sys.exit("Not implemented yet - DEM")
-elif LINEARIZATION_METHOD == 4:  # noise shaping with digital calibration (INL model)
-    sys.exit("Not implemented yet - noise shaping with digital calibration (INL model)")
-elif LINEARIZATION_METHOD == 5:  # stochastic high-pass noise dither
-    sys.exit("Not implemented yet - stochastic high-pass noise dither")
-elif LINEARIZATION_METHOD == LM_DITHER_PERIODIC_HIGH_FREQ:  # periodic high-frequency dither
-    Dp = periodic_dither(t, DITHER_FREQ, DITHER_TYPE)
-    X1 = SIGNAL_CARRIER_RATIO*Xcs + SIGNAL_DITHER_RATIO*Dp + Dq
-    X2 = SIGNAL_CARRIER_RATIO*Xcs - SIGNAL_DITHER_RATIO*Dp + Dq
-    
-    output_ideal_ch1, output_meas_ch1 = generate_dac_output(X1, QuantizerConfig, YQ_1)
-    output_ideal_ch2, output_meas_ch2 = generate_dac_output(X2, QuantizerConfig, YQ_2)
-    
-    output_ideal = output_ideal_ch1 + output_ideal_ch2
-    output_meas = output_meas_ch1 + output_meas_ch2
-elif LINEARIZATION_METHOD == LM_MPC: # MODEL PREDICTIVE CONTROL (with INL model)
-    sys.exit("Not implemented yet - MPC")
-elif LINEARIZATION_METHOD == LM_ILC:  # ITERATIVE LEARNING CONTROL (with INL model, only periodic signals)
-    sys.exit("Not implemented yet - ILC")
+# TODO: Replace hard coded numbers
+match LINEARIZATION_METHOD:
+    case linearisation_method.BASE:  # LINEARIZATION_METHOD: None / BASELINE
+        X = Xcs + Dq
+        
+        YU, YM = generate_dac_output(X, QuantizerConfig, YQ_1)
+    case linearisation_method.PHYSCAL:  # physical level calibration
+        sys.exit("Not implemented yet - physical level calibration")
+    case linearisation_method.DEM:  # dynamic element matching (DEM)
+        sys.exit("Not implemented yet - DEM")
+    case linearisation_method.DIGCAL:  # noise shaping with digital calibration (INL model)
+        sys.exit("Not implemented yet - noise shaping with digital calibration (INL model)")
+    case linearisation_method.HPNOISE:  # stochastic high-pass noise dither
+        sys.exit("Not implemented yet - stochastic high-pass noise dither")
+    case linearisation_method.HFDITHER:  # periodic high-frequency dither
+        Dp = periodic_dither(t, DITHER_FREQ, DITHER_TYPE)
+        X1 = SIGNAL_CARRIER_RATIO*Xcs + SIGNAL_DITHER_RATIO*Dp + Dq
+        X2 = SIGNAL_CARRIER_RATIO*Xcs - SIGNAL_DITHER_RATIO*Dp + Dq
+        
+        output_ideal_ch1, output_meas_ch1 = generate_dac_output(X1, QuantizerConfig, YQ_1)
+        output_ideal_ch2, output_meas_ch2 = generate_dac_output(X2, QuantizerConfig, YQ_2)
+        
+        output_ideal = output_ideal_ch1 + output_ideal_ch2
+        output_meas = output_meas_ch1 + output_meas_ch2
+    case linearisation_method.MPC: # MODEL PREDICTIVE CONTROL (with INL model)
+        sys.exit("Not implemented yet - MPC")
+    case linearisation_method.ILC:  # ITERATIVE LEARNING CONTROL (with INL model, only periodic signals)
+        sys.exit("Not implemented yet - ILC")
 
 # FILTERING
 # Filter the output using a reconstruction (output) filter

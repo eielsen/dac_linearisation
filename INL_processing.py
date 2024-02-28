@@ -53,59 +53,76 @@ def generate_random_output_levels():
             np.save(outfile, YQn)
             break
 
-def generate_physical_level_calibration_look_up_table():
+#def generate_physical_level_calibration_look_up_table():
     """
     Least-squares minimisation of element mismatch via a look-up table (LUT)
     to be used when a secondary calibration DAC is available
     """
-    SAVE_LUT = 0
+SAVE_LUT = 0
 
-    # Quantiser model
-    Nb, Mq, Vmin, Vmax, Rng, Qstep, YQ, Qtype = quantiser_configurations(3)
+# Quantiser model
+Nb, Mq, Vmin, Vmax, Rng, Qstep, YQ, Qtype = quantiser_configurations(4)
+
+# load level measurements (or randomly generated)
+#mat = scipy.io.loadmat('measurements_and_data\PHYSCAL_level_measurements_set_1.mat'); fileset = 1    
+mat = scipy.io.loadmat('measurements_and_data/PHYSCAL_level_measurements_set_2.mat'); fileset = 2
+
+PRILVLS = mat['PRILVLS']
+SECLVLS = mat['SECLVLS']
     
-    # load level measurements (or randomly generated)
-    #mat = scipy.io.loadmat('measurements_and_data\PHYSCAL_level_measurements_set_1.mat'); fileset = 1    
-    mat = scipy.io.loadmat('measurements_and_data/PHYSCAL_level_measurements_set_2.mat'); fileset = 2
+qs = np.arange(-2**(Nb-1), 2**(Nb-1), 1) # possible quantisation steps
+qs = qs.reshape(-1, 1) # ensure column vector
+
+YQ = YQ.reshape(-1,1) # ensure column vector
+
+QQ = np.hstack([qs, np.ones(qs.shape)])
+YY = np.hstack([YQ, np.ones(qs.shape)])
+#QQ = [qs(:), ones(size(qs(:)))];
+#YY = [YQ(:), ones(size(qs(:)))];
+
+MLm = PRILVLS; # Use channel 1 as main
+MLm = MLm.reshape(-1, 1) # ensure column vector
+#MLm = MLm(:)
+
+print(QQ.shape)
+print(MLm.shape)
+
+thetam = np.linalg.lstsq(QQ, MLm, rcond=None)[0]
+#thetam = QQ\MLm
+ML = MLm - thetam[1]; # remove any remaining offset
+INL = (ML - YQ)/Qstep
+
+CLm = SECLVLS; # Use channel 2 to calibrate
+CLm = CLm.reshape(-1, 1) # ensure column vector
+#CLm = CLm(:)
+thetacq = np.linalg.lstsq(QQ, CLm, rcond=None)[0]
+#thetacq = QQ\CLm
+
+Qcal = thetacq[0] # effective quantization step for secondary channel
+CL = Qcal*qs # use ideal output for secondary channel (measurements too noisy for monotonic behavior)
+#plot(qs,CL,qs,CLm - thetac(2))
+
+#thetacv = YY\CLm;
+#CLscale = thetacq(1); % effective voltage scaling for secondary channel
+
+Nl = Mq+1 # number of output levels
+LUTcal = np.zeros(Nl) # initalise look-up table (LUT)
+err = ML - YQ # compute level errors (INL*Qstep)
+for k in range(0,Nl):
+    errc = abs(err[k] + CL)
+    LUTcal[k] = min(errc)
+
+LUTcal = LUTcal.astype(np.uint16)
+
+if SAVE_LUT:
+    outfile = "LUTcal"
+    np.savez(outfile, LUTcal, MLm, ML, CLm, CL)
     
-    PRILVLS = mat['PRILVLS']
-    SECLVLS = mat['SECLVLS']
-        
-    qs = np.arange(-2**(Nb-1), 2**(Nb-1), 1) # possible quantization steps
+plt.figure(1)
+plt.plot(YQ,LUTcal,YQ,INL/Qstep)
+# plt.xlabel('x')
+# plt.ylabel('y')
 
-    QQ = [qs(:), ones(size(qs(:)))];
-    YY = [YQ(:), ones(size(qs(:)))];
-
-    MLm = PRILVLS; # Use channel 1 as main
-    MLm = MLm(:)
-    thetam = QQ\MLm
-    ML = MLm - thetam(2); # remove any remaining offset
-    INL = (ML - YQ)/Qstep
-
-    CLm = SECLVLS; # Use channel 2 to calibrate
-    CLm = CLm(:)
-    thetacq = QQ\CLm
-
-    Qcal = thetacq(1) # effective quantization step for secondary channel
-    CL = Qcal*qs # use ideal output for secondary channel (measurements too noisy for monotonic behavior)
-    #plot(qs,CL,qs,CLm - thetac(2))
-
-    #thetacv = YY\CLm;
-    #CLscale = thetacq(1); % effective voltage scaling for secondary channel
-
-    Nl = Mq+1 # number of output levels
-    LUTcal = np.zeros(Nl) # initalise look-up table (LUT)
-    err = ML - YQ # compute level errors (INL*Qstep)
-    for k in range(0,Nl):
-        errc = abs(err[k] + CL)
-        LUTcal[k] = min(errc)
-    
-    LUTcal = LUTcal.astype(np.uint16)
-
-    if SAVE_LUT:
-        outfile = "LUTcal"
-        np.save(outfile, LUTcal, MLm, ML, CLm, CL)
-    
-
-    %plot(YQ,LUTcal,YQ,INL/Qstep)
-    %plot(YQ,CL(LUTcal),YQ,CLm(LUTcal))
-    %plot(YQ,CL(LUTcal)-CLm(LUTcal))
+    #plot(YQ,LUTcal,YQ,INL/Qstep)
+    #plot(YQ,CL(LUTcal),YQ,CLm(LUTcal))
+    #plot(YQ,CL(LUTcal)-CLm(LUTcal))
