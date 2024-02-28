@@ -21,106 +21,145 @@ from welch_psd import welch_psd
 from periodic_dither import periodic_dither
 from figures_of_merit import FFT_SINAD, TS_SINAD
 
-def test_signal(SCALE, MAXAMP, FREQ, OFFSET, t):
+def test_signal(SCALE, A, FREQ, OFFSET, t):
     """
     Generate a test signal (carrier)
     """
-    return (SCALE/100)*MAXAMP*np.cos(2*np.pi*FREQ*t) + OFFSET
+    return (SCALE/100)*A*np.cos(2*np.pi*FREQ*t) + OFFSET
 
-#%% Sampling configuration
-Fs = 1e6  # set sampling rate (over-sampling)
-Ts = 1/Fs  # sampling time
+CURRENT_PATH = ('\\').join(__file__.split('\\')[0:-1]) + '\\'
+print(CURRENT_PATH)
 
-#%% Quantiser model
-QuantizerConfig = 3
-Nb, Mq, Vmin, Vmax, Rng, Qstep, YQ, Qtype = quantiser_configurations(QuantizerConfig)
+### DEFINITIONS ###
+# LINEARIZATION_METHODS (LM)
+# TODO: Write names for the remaining methods (2, 4, 5)
+LM_NONE = 1     # BASELINE
+LM_NONE = 2     # PHYSICAL LEVEL CALIBRATION
+LM_DEM = 3      # DYNAMIC ELEMENT MATCHING
+LM_NONE = 4     # NOISE SHAPING WITH DIGITAL CALIBRATION (INL model)
+LM_NONE = 5     # STOCHASTIC HIGH-PASS NOISE DITHER
+LM_DITHER_PERIODIC_HIGH_FREQ = 6 # PERIODIC HIGH-FREQUENCY DITHER
+LM_MPC = 7      # MODEL PREDICTIVE CONTROL (with INL model)
+LM_ILC = 8      # ITERATIVE LEARNING CONTROL (with INL model, only periodic signals)
+
+# DITHER TYPES (DT)
+DT_UNIFORM_ADF_TRI_WAVE = 1    # UNIFORM ADF (TRIANGULAR WAVE)
+DT_TRIANGULAR_ADF = 2          # TRIANGULAR ADF
+DT_CAUCHY_ADF = 3              # CAUCHY_ADF (when tri_wave in ±pi/2 !)
+DT_GAUSSIAN_ADF = 4            # GAUSSIAN_ADF
+
+### DITHER ###
+DITHER_FREQ = 49e3
+DITHER_TYPE = DT_UNIFORM_ADF_TRI_WAVE
+
+### SETUP - START ###
+# Choose which linearization method you want to use
+LINEARIZATION_METHOD = LM_DITHER_PERIODIC_HIGH_FREQ
+
+## FILTER SETTINGS
+FILTER_FREQ = 20e3
+FILTER_ORDER = 2
+# 'low', 'high, 'band', 'stop'
+# 'lowpass', 'highpass', 'bandpass', 'bandstop'
+FILTER_PASS_TYPE = 'low' 
+
+## SAMPLING SETTINGS
+SAMPLE_FREQ = 1e6   # Sampling rate (over-sampling)
+Fs = SAMPLE_FREQ
+Ts = 1/Fs           # Sampling time/interval
+
+## TEST SIGNAL (to be recovered)
+SIGNAL_SCALE = 100 # Test Signal Scaling [%]
+CARRIER_FREQ = 99e0 # [Hz]
+
+SIGNAL_CARRIER_RATIO = 0.75 # Carrier scaling
+SIGNAL_DITHER_RATIO = 1 - SIGNAL_CARRIER_RATIO # Scaling dither with respect to the carrier scaling
+
+## Quantiser model
+QuantizerConfig = 5
+Nb, Mq, Vmin, Vmax, Rng, LSb, YQ, Qtype = quantiser_configurations(QuantizerConfig)
+
+### SETUP - END ###
 
 # load measured or generated output levels
-infile_1 = "generated_output_levels_{0}_bit_{1}.npy".format(Nb, 1)
-infile_2 = "generated_output_levels_{0}_bit_{1}.npy".format(Nb, 2)
+infile_1 = CURRENT_PATH + f'generated_output_levels_{Nb}_bit_{1}_QuantizerConfig_{QuantizerConfig}.npy'
+infile_2 = CURRENT_PATH + f'generated_output_levels_{Nb}_bit_{2}_QuantizerConfig_{QuantizerConfig}.npy'
 
 YQ_1 = np.zeros(YQ.size)
 YQ_2 = np.zeros(YQ.size)
 
-if exists(infile_1):
-    YQ_1 = np.load(infile_1)
-else:
-    sys.exit("No level file found.")
+if exists(infile_1): YQ_1 = np.load(infile_1)
+else: print("YQ_1 - No level file found.") # sys.exit
+if exists(infile_2): YQ_2 = np.load(infile_2)
+else: print("YQ_2 - No level file found.") # sys.exit
 
-if exists(infile_2):
-    YQ_2 = np.load(infile_2)
-else:
-    sys.exit("No level file found.")
-
-#%%  Test signal (to be recovered)
-
-SCALE = 100 # Test Signal Scaling
-FREQ = 99 # Test Signal Frequency
-
+# TODO: Make variables and constants to describe and chose what to do here.
 match 1:
     case 1:  # sepcify number of samples and find number of periods
         TRANSOFF = int(1e3)
         Nts = 1e6+TRANSOFF  # no. of time samples
-        NP = FREQ*Ts*Nts  # no. of periods for carrier
+        Ncyc = CARRIER_FREQ*Ts*Nts  # no. of periods for carrier
     case 2:  # sepcify number of periods
-        NP = 5  # no. of periods for carrier
+        Ncyc = 5  # no. of periods for carrier
 
-t_end = NP/FREQ  # time vector duration
+t_end = Ncyc/CARRIER_FREQ  # time vector duration
 t = np.arange(0, t_end, Ts)  # time vector
 
-MAXAMP = Rng/2 - Qstep # make headroom for noise dither (see below)
-OFFSET = -Qstep/2
+# GENERATE CARRIER/TEST SIGNAL
+A = Rng/2 - LSb # make headroom for noise dither (see below)
+OFFSET = -LSb/2
 
-Xc = test_signal(SCALE, MAXAMP, FREQ, OFFSET, t) # Carrier signal
+# Ysc - Output signal carrier
+Ysc = test_signal(SIGNAL_SCALE, A, CARRIER_FREQ, OFFSET, t) # Carrier signal
 
-#%% Dither for quantisation error
+# Dq - Dither for quantisation error
+Dq = np.random.uniform(-LSb/2, LSb/2, t.size)
 
-Dq = np.random.uniform(-Qstep/2, Qstep/2, t.size)
+# LINEARIZATION METHODS
+# TODO: Replace hard coded numbers in the if-elif statements.
+if LINEARIZATION_METHOD == LM_NONE:  # LINEARIZATION_METHOD: None / BASELINE
+    X = Ysc + Dq
+    
+    YU, YM = generate_dac_output(X, QuantizerConfig, YQ_1)
+elif LINEARIZATION_METHOD == 2:  # physical level calibration
+    sys.exit("Not implemented yet - physical level calibration")
+elif LINEARIZATION_METHOD == LM_DEM:  # DYNAMIC ELEMENT MATCHING
+    sys.exit("Not implemented yet - DEM")
+elif LINEARIZATION_METHOD == 4:  # noise shaping with digital calibration (INL model)
+    sys.exit("Not implemented yet - noise shaping with digital calibration (INL model)")
+elif LINEARIZATION_METHOD == 5:  # stochastic high-pass noise dither
+    sys.exit("Not implemented yet - stochastic high-pass noise dither")
+elif LINEARIZATION_METHOD == LM_DITHER_PERIODIC_HIGH_FREQ:  # periodic high-frequency dither
+    Dp = periodic_dither(t, DITHER_FREQ, DITHER_TYPE)
+    X1 = SIGNAL_CARRIER_RATIO*Ysc + SIGNAL_DITHER_RATIO*Dp + Dq
+    X2 = SIGNAL_CARRIER_RATIO*Ysc - SIGNAL_DITHER_RATIO*Dp + Dq
+    
+    output_ideal_ch1, output_meas_ch1 = generate_dac_output(X1, QuantizerConfig, YQ_1)
+    output_ideal_ch2, output_meas_ch2 = generate_dac_output(X2, QuantizerConfig, YQ_2)
+    
+    output_ideal = output_ideal_ch1 + output_ideal_ch2
+    output_meas = output_meas_ch1 + output_meas_ch2
+elif LINEARIZATION_METHOD == LM_MPC: # MODEL PREDICTIVE CONTROL (with INL model)
+    sys.exit("Not implemented yet - MPC")
+elif LINEARIZATION_METHOD == LM_ILC:  # ITERATIVE LEARNING CONTROL (with INL model, only periodic signals)
+    sys.exit("Not implemented yet - ILC")
 
-#%% Linearisation methods
-match 2:
-    case 1:  # baseline
-        X = Xc + Dq
-        
-        YU, YM = generate_dac_output(X, QuantizerConfig, YQ_1)
-    case 2:  # physical level calibration
-        sys.exit("Not implemented yet.")
-    case 3:  # dynamic element matching
-        sys.exit("Not implemented yet.")
-    case 4:  # noise shaping with digital calibration (INL model)
-        sys.exit("Not implemented yet.")
-    case 5:  # stochastic high-pass noise dither
-        sys.exit("Not implemented yet.")
-    case 6:  # periodic high-frequency dither
-        Dp = periodic_dither(t, 49e3, 1)
-        Dp_SCALE = 0.25
-        Xc_SCALE = 1 - Dp_SCALE
-        X1 = Xc_SCALE*Xc + Dp_SCALE*Dp + Dq
-        X2 = Xc_SCALE*Xc - Dp_SCALE*Dp + Dq
-        
-        YU1, YM1 = generate_dac_output(X1, QuantizerConfig, YQ_1)
-        YU2, YM2 = generate_dac_output(X2, QuantizerConfig, YQ_2)
-        
-        YU = YU1 + YU2
-        YM = YM1 + YM2
-    case 7:  # model predictive control (with INL model)
-        sys.exit("Not implemented yet.")
-    case 8:  # iterative learning control (with INL model, only periodic signals)
-        sys.exit("Not implemented yet.")
+# FILTERING
+# Filter the output using a reconstruction (output) filter
+b, a = signal.butter(FILTER_ORDER, 2*np.pi*FILTER_FREQ, FILTER_PASS_TYPE, analog=True) # Filter coefficients
+Wlp = signal.lti(b, a) # Filter system instance
+output_ideal_filtered = signal.lsim(Wlp, output_ideal, t, X0=None, interp=False) # Filter the ideal output
+output_meas_filtered = signal.lsim(Wlp, output_meas, t, X0=None, interp=False) # Filter the measured output
 
-#%% Reconstruciton (output) filter
-b, a = signal.butter(2, 2*np.pi*20e3, 'low', analog=True)
-Wlp = signal.lti(b, a)
-YUf = signal.lsim(Wlp, YU, t, X0=None, interp=False)
-YMf = signal.lsim(Wlp, YM, t, X0=None, interp=False)
+# Extract the filtered data (?)
+YUp = output_ideal_filtered[1]
+YMp = output_meas_filtered[1]
 
-YUp = YUf[1]
-YMp = YMf[1]
-
+# TODO: Make variables and constants to describe and chose what to do here.
 match 1:
     case 1:
-        RU = FFT_SINAD(YUp[TRANSOFF:-1], Fs)
-        RM = FFT_SINAD(YMp[TRANSOFF:-1], Fs)
+        RU = FFT_SINAD(YUp[TRANSOFF:-1], Fs,'RU_run_me')
+        RM = FFT_SINAD(YMp[TRANSOFF:-1], Fs,'RM_run_me')
     case 2:
         RU = TS_SINAD(YUp[TRANSOFF:-1], t[TRANSOFF:-1])
         RM = TS_SINAD(YMp[TRANSOFF:-1], t[TRANSOFF:-1])
@@ -134,3 +173,19 @@ print("ENOB uniform: {}".format(ENOB_U))
 
 print("SINAD non-linear: {}".format(RM))
 print("ENOB non-linear: {}".format(ENOB_M))
+
+fig_wave, axs_wave = plt.subplots(6, 1, sharex=True)
+axs_wave[0].plot(t, X1)
+axs_wave[0].grid()
+axs_wave[1].plot(t, X2)
+axs_wave[1].grid()
+axs_wave[2].plot(t, YU)
+axs_wave[2].grid()
+axs_wave[3].plot(t, YM)
+axs_wave[3].grid()
+axs_wave[4].plot(t, Dq)
+axs_wave[4].grid()
+axs_wave[5].plot(t, Dp)
+axs_wave[5].grid()
+
+fig_wave.savefig('run_me_dither_waveforms_5.pdf', bbox_inches='tight')
