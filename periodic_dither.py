@@ -25,7 +25,7 @@ def periodic_dither(t, freq=49e3, type=1):
     # Generate triangular wave (can be transformed to other dither signal shapes)
     tri_wave = (2/np.pi)*np.arcsin(np.sin(2*np.pi*freq*t)) # Triangular wave vector
     
-    if (dither_type == UNIFORM_ADF_TRI_WAVE) # UNIFORM ADF (Triangular wave)
+    if (dither_type == UNIFORM_ADF_TRI_WAVE): # UNIFORM ADF (Triangular wave)
         dither_wave = tri_wave
 
     elif (dither_type == TRIANGULAR_ADF): # TRIANGULAR ADF
