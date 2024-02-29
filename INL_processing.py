@@ -53,65 +53,85 @@ def generate_random_output_levels():
             np.save(outfile, YQn)
             break
 
-#def generate_physical_level_calibration_look_up_table():
+def generate_physical_level_calibration_look_up_table(SAVE_LUT=0):
     """
     Least-squares minimisation of element mismatch via a look-up table (LUT)
     to be used when a secondary calibration DAC is available
     """
-SAVE_LUT = 0
-
-# Quantiser model
-Nb, Mq, Vmin, Vmax, Rng, Qstep, YQ, Qtype = quantiser_configurations(4)
-
-# load level measurements (or randomly generated)
-#mat = scipy.io.loadmat('measurements_and_data\PHYSCAL_level_measurements_set_1.mat'); fileset = 1    
-mat = scipy.io.loadmat('measurements_and_data/PHYSCAL_level_measurements_set_2.mat'); fileset = 2
-
-PRILVLS = mat['PRILVLS']
-SECLVLS = mat['SECLVLS']
     
-qs = np.arange(-2**(Nb-1), 2**(Nb-1), 1) # possible quantisation steps/codes
-qs = qs.reshape(-1, 1) # ensure column vector for codes
+    # Quantiser model
+    Nb, Mq, Vmin, Vmax, Rng, Qstep, YQ, Qtype = quantiser_configurations(4)
 
-YQ = YQ.reshape(-1,1) # ensure column vector for ideal levels
+    # load level measurements (or randomly generated)
+    #mat = scipy.io.loadmat('measurements_and_data\PHYSCAL_level_measurements_set_1.mat'); fileset = 1    
+    mat = scipy.io.loadmat('measurements_and_data/PHYSCAL_level_measurements_set_2.mat'); fileset = 2
 
-QQ = np.hstack([qs, np.ones(qs.shape)]) # codes matrix for straight line least-squares fit
-YY = np.hstack([YQ, np.ones(qs.shape)]) # ideal levels matrix
+    PRILVLS = mat['PRILVLS']
+    SECLVLS = mat['SECLVLS']
+        
+    qs = np.arange(-2**(Nb-1), 2**(Nb-1), 1) # possible quantisation steps/codes
+    qs = qs.reshape(-1, 1) # ensure column vector for codes
 
-MLm = PRILVLS; # use channel 1 as Main/primary (measured levels)
-MLm = MLm.reshape(-1, 1) # ensure column vector
+    YQ = YQ.reshape(-1,1) # ensure column vector for ideal levels
 
-thetam = np.linalg.lstsq(QQ, MLm, rcond=None)[0] # staight line fit; theta[0] is slope, theta[1] is offset
+    QQ = np.hstack([qs, np.ones(qs.shape)]) # codes matrix for straight line least-squares fit
+    YY = np.hstack([YQ, np.ones(qs.shape)]) # ideal levels matrix
 
-ML = MLm - thetam[1] # remove fitted offset for measured levels
-INL = (ML - YQ)/Qstep # find the INL
+    MLm = PRILVLS; # use channel 1 as Main/primary (measured levels)
+    MLm = MLm.reshape(-1, 1) # ensure column vector
 
-CLm = SECLVLS; # use channel 2 to Calibrate/secondary (measured levels)
-CLm = CLm.reshape(-1, 1) # ensure column vector
+    thetam = np.linalg.lstsq(QQ, MLm, rcond=None)[0] # staight line fit; theta[0] is slope, theta[1] is offset
 
-thetacq = np.linalg.lstsq(QQ, CLm, rcond=None)[0] # staight line fit
+    ML = MLm - thetam[1] # remove fitted offset for measured levels
+    INL = (ML - YQ)/Qstep # find the INL
 
-Qcal = thetacq[0] # effective quantization step for secondary channel
-CL = Qcal*qs # use ideal output for secondary channel (measurements too noisy for monotonic behavior)
+    CLm = SECLVLS; # use channel 2 to Calibrate/secondary (measured levels)
+    CLm = CLm.reshape(-1, 1) # ensure column vector
 
-Nl = Mq+1 # number of output levels
-LUTcal = np.zeros(Nl) # initalise look-up table (LUT)
-err = ML - YQ # compute level errors (INL*Qstep)
-for k in range(0,Nl):
-    errc = abs(err[k] + CL)
-    LUTcal[k] = np.argmin(errc)
+    thetacq = np.linalg.lstsq(QQ, CLm, rcond=None)[0] # staight line fit
 
-LUTcal = LUTcal.astype(np.uint16)
+    Qcal = thetacq[0] # effective quantization step for secondary channel (effective gain/scale)
+    CL = Qcal*qs # resort to using scaled, ideal output for secondary calibration channel
+    # (level measurements for seconduary too noisy for monotonic behavior, i.e. does more harm than good)
 
-if SAVE_LUT:
-    outfile = "LUTcal"
-    np.savez(outfile, LUTcal, MLm, ML, CLm, CL)
-    
-plt.figure(1)
-plt.plot(YQ,LUTcal,YQ,INL/Qstep)
-# plt.xlabel('x')
-# plt.ylabel('y')
-plt.figure(2)
-plt.plot(YQ,CL[LUTcal],YQ,CLm[LUTcal])
-plt.figure(3)
-plt.plot(YQ,CL[LUTcal]-CLm[LUTcal])
+    # Generate the look-up table by minimising the primary output deviation from ideal
+    # for every code value by adding or subtracting using the secondary
+    Nl = Mq + 1  # number of output levels
+    LUTcal = np.zeros(Nl)  # initalise look-up table (LUT)
+    err = ML - YQ  # compute level errors (same as INL*Qstep)
+    for k in range(0,Nl):
+        errc = abs(err[k] + CL)  # given all secondary outputs, compute the errors for a given primary code
+        LUTcal[k] = np.argmin(errc)  # save the secodary code that yields the smallest error
+
+    LUTcal = LUTcal.astype(np.uint16)  # convert to integers
+
+    if SAVE_LUT:
+        outfile = "LUTcal"
+        np.savez(outfile, LUTcal, MLm, ML, CLm, CL)
+
+    #%%
+    plt.figure(1)
+    plt.plot(YQ, LUTcal, label='Calibrated look-up table (LUT)')
+    plt.xlabel('Ideal output level')
+    plt.ylabel('Code')
+    plt.legend()
+
+    plt.figure(2)
+    plt.plot(YQ, CL[LUTcal], label='Scaled ideal levels as secondary\n(error from INL is tiny for secondary due to small gain)')
+    plt.plot(YQ, CLm[LUTcal], label='Measured levels as secondary\n(ostensibly better with good enough measurements)')
+    plt.plot(YQ, INL*Qstep, label=r"$INL \cdot Q$")
+    plt.xlabel('Ideal output level')
+    plt.ylabel('Secondary voltage output')
+    plt.legend()
+
+    plt.figure(3)
+    plt.plot(YQ, CL[LUTcal]-CLm[LUTcal], label='Error using ideal secondary levels vs measured')
+    plt.xlabel('Ideal output level')
+    plt.ylabel('Difference, secondary voltage output')
+    plt.legend()
+
+    plt.figure(4)
+    plt.plot(YQ, CL[LUTcal] + INL*Qstep, label=r"INL calibration results (residual: $INL \cdot Q + Y_{C}$)")
+    plt.xlabel('Ideal output level')
+    plt.ylabel('Combined voltage output')
+    plt.legend()

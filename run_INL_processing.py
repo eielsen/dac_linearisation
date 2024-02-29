@@ -9,4 +9,4 @@
 
 from INL_processing import generate_physical_level_calibration_look_up_table
 
-generate_physical_level_calibration_look_up_table()
+generate_physical_level_calibration_look_up_table(SAVE_LUT=1)
