@@ -25,7 +25,7 @@ def find_psd_peak(Pxx, f, EQNBW=1, f_find=-1):
         # find closest bin to specified freq.
         k_find = np.argmin(np.abs(f - f_find))
         # check neighbour values for a larger maximum
-        k_left_bin = np.amax([0, k_find-1])
+        k_left_bin = np.amax([0, k_find-1]) # type: ignore
         k_right_bin = np.amin([k_find+1, Pxx.size-1])
         k_local_max = np.argmax(Pxx[k_left_bin:k_right_bin])
         k_max = k_left_bin + k_local_max
@@ -60,7 +60,7 @@ def find_psd_peak(Pxx, f, EQNBW=1, f_find=-1):
         # use the current bin width
         power = Pxx[k_right]*(f[k_right+1]-f[k_right-1])/2
     else: # resort to using the average bin width at the "edges"
-        power = Pxx[k_right]*np.mean(np.diff(f))
+        power = Pxx[k_right]*np.mean(np.diff(f)) 
     
     # attempt to correct for any nearby peak overlapping or edge case
     if power < EQNBW*Pxx[k_max]:

@@ -13,22 +13,57 @@ try:
 except:
     from configurations import quantiser_configurations
 
-def generate_dac_output(input, QuantizerConfig, measured):
+def quantise_signal(w, Qstep, Qtype):
     """
-    Table look-up to implement a simple static non-linear DAC model
+    Quantise a signal with given quantiser specifications
     """
-    
-    Nb, Mq, Vmin, Vmax, Rng, LSb, YQ, Qtype = quantiser_configurations(QuantizerConfig)
     
     match Qtype:
         case "midtread":
-            q = np.floor(input/LSb + 0.5) # mid-tread
-            c = q - np.floor(Vmin/LSb) # mid-tread
+            q = np.floor(w/Qstep + 0.5) # truncated/quantised value, mid-tread
         case "midriser":
-            q = np.floor(input/LSb) + 0.5 # mid-riser
-            c = q - np.floor(Vmin/LSb) - 0.5 # mid-riser
-            
-    ideal_output = LSb*q # ideal levels
-    measured_output = measured[c.astype(int)] # measured levels
+            q = np.floor(w/Qstep) + 0.5 # truncated/quantised value, mid-riser
     
-    return ideal_output, measured_output
+    return q
+
+def generate_codes(q, Qstep, Qtype, Vmin):
+    """
+    Generate codes for quantised signal with given quantiser specifications
+    """
+    
+    match Qtype:
+        case "midtread":
+            c = q - np.floor(Vmin/Qstep) # code, mid-tread
+        case "midriser":
+            c = q - np.floor(Vmin/Qstep) - 0.5 # code, mid-riser
+    
+    return c
+
+def generate_dac_output(w, QuantizerConfig, ML):
+    """
+    Table look-up to implement a simple static non-linear DAC model
+
+    Parameters
+    ----------
+    w
+        input signal array
+    QuantizerConfig
+        choose from prepared quantiser specificatons
+    ML
+        measured output levels
+
+    Returns
+    -------
+    ideal_output, measured_output
+
+    """
+    
+    Nb, Mq, Vmin, Vmax, Rng, Qstep, YQ, Qtype = quantiser_configurations(QuantizerConfig)
+    
+    q = quantise_signal(w, Qstep, Qtype)
+    c = generate_codes(q, Qstep, Qtype, Vmin)
+
+    c = c.reshape(1,-1)
+    y = ML[c.astype(int)]  # output
+    
+    return y

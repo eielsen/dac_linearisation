@@ -136,7 +136,7 @@ def FFT_SINAD(x, Fs, name=''):
             power_c = integrate.simpson(y=Pxx[k_left_c:k_right_c], x=f[k_left_c:k_right_c])
             Pxx[k_left_c:k_right_c] = 0 # setting to zero to eliminate adding to the total noise power
     
-    fig_wave.savefig(f'dither_waveforms_{name}.pdf', bbox_inches='tight')
+    #fig_wave.savefig(f'dither_waveforms_{name}.pdf', bbox_inches='tight')
     
     # compute the remaining harmonic and noise distortion.
     power_noise = integrate.simpson(y=Pxx, x=f)

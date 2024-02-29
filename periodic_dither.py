@@ -10,42 +10,62 @@
 import numpy as np
 from scipy import special as spcl
 
-def periodic_dither(t, freq=49e3, type=1):
+def periodic_dither(t, freq=49e3, dither_type=1):
     """
-    Periodic dither generation
+    Periodic dither signal generation
+
+    Parameters
+    ----------
+    t
+        time vector
+    freq
+        dither signal frequency
+    dither_type
+        chose the dither type (amplitude distribution function)
+
+    Returns
+    -------
+    dither_signal
+        the dither signal
+    
+    Raises
+    ------
+    No error handling.
+
+    Examples
+    --------
+    TODO: Make an example
     """
-    dither_type = type          # DITHER TYPE
+    dither_type = type  # chose the dither type (amplitude distribution function)
 
     ### DEFINITIONS ###
-    UNIFORM_ADF_TRI_WAVE = 1    # UNIFORM ADF (TRIANGULAR WAVE)
-    TRIANGULAR_ADF = 2          # TRIANGULAR ADF
-    CAUCHY_ADF = 3              # CAUCHY_ADF (when tri_wave in ±pi/2 !)
-    GAUSSIAN_ADF = 4            # GAUSSIAN_ADF
+    class adf: #  amplitude distribution function
+        uniform = 1  # use a triangle wave
+        triangular = 2
+        cauchy = 3  # when triangle wave amplitude is ±pi/2
+        gaussian = 4
     
-    # Generate triangular wave (can be transformed to other dither signal shapes)
-    tri_wave = (2/np.pi)*np.arcsin(np.sin(2*np.pi*freq*t)) # Triangular wave vector
+    # Generate triangle wave (can be transformed to other dither signal shapes)
+    triangle_wave = (2/np.pi)*np.arcsin(np.sin(2*np.pi*freq*t)) # triangle wave vector
     
-    if (dither_type == UNIFORM_ADF_TRI_WAVE): # UNIFORM ADF (Triangular wave)
-        dither_wave = tri_wave
-
-    elif (dither_type == TRIANGULAR_ADF): # TRIANGULAR ADF
-        tri_wave = 0.99999*tri_wave
-        dither_wave = np.empty(tri_wave.size)
-        for i in range(len(tri_wave)):
-            if tri_wave[i] > 0:
-                dither_wave[i] = 1 - np.sqrt(1 - tri_wave[i])
-            else:
-                dither_wave[i] = np.sqrt(tri_wave[i] + 1) - 1
-
-    elif (dither_type == CAUCHY_ADF): # CAUCHY_ADF (when tri_wave in ±pi/2 !)
-        dither_wave = np.tan(0.95*np.pi/2*tri_wave)
-
-    elif (dither_type == GAUSSIAN_ADF): # GAUSSIAN_ADF
-        dither_wave = np.sqrt(2)*spcl.erfinv(0.99*tri_wave)
-
-    else: # UNIFORM ADF (TRIANGULAR WAVE)
-        dither_wave = tri_wave  
+    match dither_type:
+        case adf.uniform:
+            dither_signal = triangle_wave
+        case adf.triangular:
+            triangle_wave = 0.99999*triangle_wave
+            dither_signal = np.empty(triangle_wave.size)
+            for i in range(len(triangle_wave)):
+                if triangle_wave[i] > 0:
+                    dither_signal[i] = 1 - np.sqrt(1 - triangle_wave[i])
+                else:
+                    dither_signal[i] = np.sqrt(triangle_wave[i] + 1) - 1
+        case adf.cauchy:
+            dither_signal = np.tan(0.95*np.pi/2*triangle_wave)
+        case adf.gaussian:
+            dither_signal = np.sqrt(2)*spcl.erfinv(0.99*triangle_wave)
+        case _:  # default to triangle wave
+            dither_signal = triangle_wave  
     
-    dither_wave = dither_wave/np.max(dither_wave)  # Normalize the dither amplitude
+    dither_signal = dither_signal/np.max(dither_signal)  # normalize the dither amplitude
     
-    return dither_wave
+    return dither_signal

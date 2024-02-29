@@ -9,17 +9,17 @@
 
 import numpy as np
 import scipy.io
+import os
 
 from matplotlib import pyplot as plt
 from configurations import quantiser_configurations
-from os.path import exists
 
-def generate_random_output_levels():
+def generate_random_output_levels(QuantizerConfig=4):
     """
     Generates random errors for the output levels +/-1 LSB and saves to file
     """
     # Quantiser model
-    Nb, Mq, Vmin, Vmax, Rng, Qstep, YQ, Qtype = quantiser_configurations(3)
+    Nb, Mq, Vmin, Vmax, Rng, Qstep, YQ, Qtype = quantiser_configurations(QuantizerConfig)
 
     CD = np.arange(0, 2**Nb)
     CD = np.append(CD, CD[-1]+1)
@@ -46,8 +46,10 @@ def generate_random_output_levels():
     # Save to file
     gno = 1
     while True:
-        outfile = "generated_output_levels_{0}_bit_{1}.npy".format(Nb, gno)
-        if exists(outfile):
+        outpath = "generated_output_levels"
+        outfile_str = "generated_output_levels_{0}_bit_{1}_QuantizerConfig_{2}.npy".format(Nb, gno, QuantizerConfig)
+        outfile = os.path.join(outpath, outfile_str)
+        if os.path.exists(outfile):
             gno = gno + 1
         else:
             np.save(outfile, YQn)
@@ -58,7 +60,7 @@ def generate_physical_level_calibration_look_up_table(SAVE_LUT=0):
     Least-squares minimisation of element mismatch via a look-up table (LUT)
     to be used when a secondary calibration DAC is available
     """
-    
+
     # Quantiser model
     Nb, Mq, Vmin, Vmax, Rng, Qstep, YQ, Qtype = quantiser_configurations(4)
 
@@ -66,8 +68,8 @@ def generate_physical_level_calibration_look_up_table(SAVE_LUT=0):
     #mat = scipy.io.loadmat('measurements_and_data\PHYSCAL_level_measurements_set_1.mat'); fileset = 1    
     mat = scipy.io.loadmat('measurements_and_data/PHYSCAL_level_measurements_set_2.mat'); fileset = 2
 
-    PRILVLS = mat['PRILVLS']
-    SECLVLS = mat['SECLVLS']
+    PRILVLS = mat['PRILVLS'][0]
+    SECLVLS = mat['SECLVLS'][0]
         
     qs = np.arange(-2**(Nb-1), 2**(Nb-1), 1) # possible quantisation steps/codes
     qs = qs.reshape(-1, 1) # ensure column vector for codes
@@ -85,7 +87,7 @@ def generate_physical_level_calibration_look_up_table(SAVE_LUT=0):
     ML = MLm - thetam[1] # remove fitted offset for measured levels
     INL = (ML - YQ)/Qstep # find the INL
 
-    CLm = SECLVLS; # use channel 2 to Calibrate/secondary (measured levels)
+    CLm = SECLVLS; # use channel 2 to calibrate/secondary (measured levels)
     CLm = CLm.reshape(-1, 1) # ensure column vector
 
     thetacq = np.linalg.lstsq(QQ, CLm, rcond=None)[0] # staight line fit
@@ -107,7 +109,8 @@ def generate_physical_level_calibration_look_up_table(SAVE_LUT=0):
 
     if SAVE_LUT:
         outfile = "LUTcal"
-        np.savez(outfile, LUTcal, MLm, ML, CLm, CL)
+        #np.savez(outfile, LUTcal, MLm, ML, CLm, CL)
+        np.save(outfile, LUTcal)
 
     #%%
     plt.figure(1)

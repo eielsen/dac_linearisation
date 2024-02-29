@@ -11,12 +11,12 @@ import sys
 import numpy as np
 
 #%% 
-def quantiser_configurations(QuantizerConfig):
+def quantiser_configurations(QConfig):
     """
-    Return specified configuration.
+    Return specified configuration, given QConfig selector
     """
-
-    match QuantizerConfig:
+    
+    match QConfig:
         case 1:
             Nb = 4 # word-size
             max_code = 2**Nb - 1; # max. code

@@ -8,5 +8,7 @@
 """
 
 from INL_processing import generate_physical_level_calibration_look_up_table
+from INL_processing import generate_random_output_levels
 
 generate_physical_level_calibration_look_up_table(SAVE_LUT=1)
+#generate_random_output_levels(QuantizerConfig=4)
