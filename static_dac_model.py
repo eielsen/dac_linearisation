@@ -39,31 +39,31 @@ def generate_codes(q, Qstep, Qtype, Vmin):
     
     return c
 
-def generate_dac_output(w, QuantizerConfig, ML):
+def generate_dac_output(C, ML):
     """
     Table look-up to implement a simple static non-linear DAC model
 
     Parameters
     ----------
-    w
-        input signal array
-    QuantizerConfig
-        choose from prepared quantiser specificatons
+    C
+        input codes, one channel per row
     ML
-        measured output levels
+        static DAC model output levels, one channel per row
 
     Returns
     -------
-    ideal_output, measured_output
-
+    Y
+        emulated DAC output
     """
     
-    Nb, Mq, Vmin, Vmax, Rng, Qstep, YQ, Qtype = quantiser_configurations(QuantizerConfig)
-    
-    q = quantise_signal(w, Qstep, Qtype)
-    c = generate_codes(q, Qstep, Qtype, Vmin)
+    Y = np.zeros(C.shape)
 
-    c = c.reshape(1,-1)
-    y = ML[c.astype(int)]  # output
+
+
+    for k in range(0,C.shape[0])
+        Y[k,:] = ML
     
-    return y
+    
+    #Y = ML[C.astype(int)]  # output
+    
+    return Y

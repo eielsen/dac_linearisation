@@ -109,7 +109,6 @@ def generate_physical_level_calibration_look_up_table(SAVE_LUT=0):
 
     if SAVE_LUT:
         outfile = "LUTcal"
-        #np.savez(outfile, LUTcal, MLm, ML, CLm, CL)
         np.save(outfile, LUTcal)
 
     #%%
