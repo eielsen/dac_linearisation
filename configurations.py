@@ -50,10 +50,11 @@ def quantiser_configurations(QConfig):
         case _:
             sys.exit("Invalid quantiser configuration selected.")
 
-    range = Vmax - Vmin # voltage range
+    range = Vmax - Vmin  # voltage range
     
-    Qstep = range/max_code # step-size (LSB)
+    Qstep = range/max_code  # step-size (LSB)
     
-    YQ = np.arange(Vmin,Vmax+Qstep,Qstep) # ideal ouput levels (mid-tread quantizer)
+    YQ = np.arange(Vmin,Vmax+Qstep,Qstep)  # ideal ouput levels (mid-tread quantizer)
+    YQ = np.reshape(YQ, (-1, YQ.shape[0]))  # generate 2d array with 1 row
     
     return Nb, max_code, Vmin, Vmax, range, Qstep, YQ, Qtype

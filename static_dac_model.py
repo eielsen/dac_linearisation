@@ -8,10 +8,7 @@
 """
 
 import numpy as np
-try:
-    from repos.DAC_Linearisation.configurations import quantiser_configurations
-except:
-    from configurations import quantiser_configurations
+from configurations import quantiser_configurations
 
 def quantise_signal(w, Qstep, Qtype):
     """
@@ -37,7 +34,7 @@ def generate_codes(q, Qstep, Qtype, Vmin):
         case "midriser":
             c = q - np.floor(Vmin/Qstep) - 0.5 # code, mid-riser
     
-    return c
+    return c.astype(int)
 
 def generate_dac_output(C, ML):
     """
@@ -46,9 +43,9 @@ def generate_dac_output(C, ML):
     Parameters
     ----------
     C
-        input codes, one channel per row
+        input codes, one channel per row, must be integers, 2d array
     ML
-        static DAC model output levels, one channel per row
+        static DAC model output levels, one channel per row, 2d array
 
     Returns
     -------
@@ -56,14 +53,22 @@ def generate_dac_output(C, ML):
         emulated DAC output
     """
     
+    if C.shape[0] > ML.shape[0]:
+        print(C.shape[0])
+        print(ML.shape[0])
+        raise ValueError('Not enough channels in model.')
+
     Y = np.zeros(C.shape)
-
-
-
-    for k in range(0,C.shape[0])
-        Y[k,:] = ML
     
-    
-    #Y = ML[C.astype(int)]  # output
-    
+    match 2:
+        case 1: # use loops
+            for k in range(0,C.shape[0]):
+                for j in range(0,C.shape[1]):
+                    c = C[k,j]
+                    ml = ML[k,c]
+                    Y[k,j] = ml
+        case 2: # use numpy indexing
+            for k in range(0,C.shape[0]):
+                Y[k,:] = ML[k,C[k,:]]
+        
     return Y
