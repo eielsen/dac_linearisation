@@ -14,3 +14,31 @@ for k in range(0,M.shape[0]):
 
 #M[x]
 
+# w, h = signal.freqz(b, a)
+# h[0] = h[1]
+# f = Fs*w/(2*np.pi)
+
+# fig, ax1 = plt.subplots()
+# ax1.set_title('Digital filter frequency response')
+# ax1.semilogx(f, 20*np.log10(abs(h)), 'b')
+# ax1.set_ylabel('Amplitude (dB)', color='b')
+# ax1.set_xlabel('Frequency (Hz)')
+# ax1.grid(True)
+
+# fig, ax2 = plt.subplots()
+# angles = (180/np.pi)*np.unwrap(np.angle(h))
+# ax2.semilogx(f, angles, 'g')
+# ax2.set_ylabel('Angle (degrees)', color='g')
+# ax2.set_xlabel('Frequency (Hz)')
+# ax2.grid(True)
+
+# plt.show()
+
+# dsf = Dsf[1, :]
+# f, Pxx_den = signal.welch(dsf, Fs)
+
+# fig, ax1 = plt.subplots()
+# ax1.loglog(f, Pxx_den)
+# ax1.set_xlabel('frequency [Hz]')
+# ax1.set_ylabel('PSD [V**2/Hz]')
+# plt.show()

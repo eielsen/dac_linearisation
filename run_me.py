@@ -13,9 +13,10 @@
 # Imports
 import sys
 import numpy as np
-import numpy.matlib
+from numpy import matlib
 import os
 import scipy
+from scipy import signal
 import dither
 from matplotlib import pyplot as plt
 
@@ -35,7 +36,7 @@ class lin_method:
     ILC = 8  # iterative learning control (with INL model, periodic signals)
 
 
-def test_signal(SCALE, A, FREQ, OFFSET, t):
+def test_signal(SCALE, MAXAMP, FREQ, OFFSET, t):
     """
     Generate a test signal (carrier)
 
@@ -43,7 +44,7 @@ def test_signal(SCALE, A, FREQ, OFFSET, t):
     ----------
     SCALE
         Percentage of maximum amplitude
-    A
+    MAXAMP
         Maximum amplitude
     FREQ
         Signal frequency in hertz
@@ -66,30 +67,34 @@ def test_signal(SCALE, A, FREQ, OFFSET, t):
     TODO: Make an example
 
     """
-    return (SCALE/100)*A*np.cos(2*np.pi*FREQ*t) + OFFSET
+    return (SCALE/100)*MAXAMP*np.cos(2*np.pi*FREQ*t) + OFFSET
+
+# %% Configuration
 
 # Choose which linearization method you want to test
 # RUN_LIN_METHOD = lin_method.BASELINE
 # RUN_LIN_METHOD = lin_method.PHYSCAL
-RUN_LIN_METHOD = lin_method.PHFD
+# RUN_LIN_METHOD = lin_method.PHFD
+RUN_LIN_METHOD = lin_method.SHPD
 
-# Output filter configuration
-FILT_FREQ = 20e3
-FILT_ORDER = 3
+# Output low-pass filter configuration
+Fc_lp = 10e3  # cut-off frequency in hertz
+N_lf = 3  # filter order
 
 # Sampling rate
 Fs = 1e6  # sampling rate (over-sampling) in hertz
 Ts = 1/Fs  # sampling time
 
-# Test signal; carrier (to be recovered on the output)
-CARRIER_SCALE = 100  # %
-CARRIER_FREQ = 99  # Hz
+# Carrier signal (to be recovered on the output)
+Xcs_SCALE = 100  # %
+Xcs_FREQ = 99  # Hz
 
 # Set quantiser model
 QConfig = 4
 Nb, Mq, Vmin, Vmax, Rng, Qstep, YQ, Qtype = quantiser_configurations(QConfig)
 
-# Load measured or generated output levels
+# %% Load measured or generated output levels
+# TODO: This is a bit of a mess
 match 2:
     case 1:  # load some generated levels
         infile_1 = os.path.join(os.getcwd(),
@@ -110,9 +115,9 @@ match 2:
             # can't recover from this
             sys.exit("YQ_2 - No level file found.")
     case 2:  # load measured levels
-        # Linearisation methods
+        # load measured levels given linearisation method (measured for a given physical set-up)
         match RUN_LIN_METHOD:
-            case lin_method.BASELINE | lin_method.PHFD:
+            case lin_method.BASELINE | lin_method.NSDCAL | lin_method.SHPD | lin_method.PHFD:
                 infile = 'measurements_and_data/level_measurements.mat'
                 fileset = 2
                 if os.path.exists(infile):
@@ -125,8 +130,7 @@ match 2:
                 ML = mat_file['ML']  # measured levels
 
             case lin_method.PHYSCAL:
-                infile = 'measurements_and_data/\
-                    PHYSCAL_level_measurements_set_2.mat'
+                infile = 'measurements_and_data/PHYSCAL_level_measurements_set_2.mat'
                 fileset = 2
                 if os.path.exists(infile):
                     mat_file = scipy.io.loadmat(infile)
@@ -140,25 +144,24 @@ match 2:
                 # static DAC model output levels, one channel per row
                 ML = np.stack((ML_1, ML_2))
 
-# Generate time vector
+# %% Generate time vector
 match 1:
     case 1:  # specify duration as number of samples and find number of periods
-        TRANSOFF = int(1e3)  # no. of samples to use to account for transients
-        Nts = 1e6 + TRANSOFF  # no. of time samples
-        Np = CARRIER_FREQ*Ts*Nts  # no. of periods for carrier
+        Npt = 1  # no. of carrier periods to use to account for transients
+        Nts = 1e6  # no. of time samples
+        Np = np.ceil(Xcs_FREQ*Ts*Nts).astype(int) + Npt  # no. of periods for carrier
     case 2:  # specify duration as number of periods of carrier
         Np = 5  # no. of periods for carrier
 
-t_end = Np/CARRIER_FREQ  # time vector duration
+t_end = Np/Xcs_FREQ  # time vector duration
 t = np.arange(0, t_end, Ts)  # time vector
 
-# Generate carrier/test signal
+# %% Generate carrier/test signal
 SIGNAL_MAXAMP = Rng/2 - Qstep  # make headroom for noise dither (see below)
-SIGNAL_OFFSET = -Qstep/2
-# Carrier signal
-Xcs = test_signal(CARRIER_SCALE, SIGNAL_MAXAMP, CARRIER_FREQ, SIGNAL_OFFSET, t)
+SIGNAL_OFFSET = -Qstep/2  # try to center given quantiser type
+Xcs = test_signal(Xcs_SCALE, SIGNAL_MAXAMP, Xcs_FREQ, SIGNAL_OFFSET, t)
 
-# Linearisation methods
+# %% Linearisation methods
 match RUN_LIN_METHOD:
     case lin_method.BASELINE:  # baseline, only carrier
         Nch = 1  # number of channels to use (averaging to reduce noise floor)
@@ -167,7 +170,7 @@ match RUN_LIN_METHOD:
         Dq = dither.gen_stochastic(t.size, Nch, Qstep,
                                    dither.pdf.triangular_hp)
 
-        Xcs = numpy.matlib.repmat(Xcs, Nch, 1)
+        Xcs = matlib.repmat(Xcs, Nch, 1)
 
         X = Xcs + Dq  # quantiser input
 
@@ -199,28 +202,62 @@ match RUN_LIN_METHOD:
         sys.exit("Not implemented yet - \
                  noise shaping with digital calibration")
     case lin_method.SHPD:  # stochastic high-pass noise dither
-        sys.exit("Not implemented yet - stochastic high-pass noise dither")
-    case lin_method.PHFD:  # periodic high-frequency dither
-        # Scaling dither with respect to the carrier scaling
-        CARRIER_RATIO = 0.6  # carrier scaling
-        DITHER_FREQ = 49e3
-        DITHER_TYPE = dither.adf.uniform
-
-        DITHER_RATIO = 1 - CARRIER_RATIO
-        
-        # quantisation dither
+        # Quantisation dither
         Dq = dither.gen_stochastic(t.size, 2, Qstep, dither.pdf.triangular_hp)
 
-        # same carrier to both channels
-        Xcs = numpy.matlib.repmat(Xcs, 2, 1)
+        # Same carrier to both channels
+        Xcs = matlib.repmat(Xcs, 2, 1)
+
+        # LARGE high-pass dither set-up
+        Xscale = 80  # carrier to dither ratio (between 0% and 100%)
+
+        Dmaxamp = Rng/2  # maximum dither amplitude (volt)
+        Dscale = 60  # %
+        Ds = dither.gen_stochastic(t.size, 2, Dmaxamp/2, dither.pdf.uniform)
+
+        N_hf = 2
+        Fc_hf = 150e3
+
+        b, a = signal.butter(N_hf, Fc_hf/(Fs/2), btype='high', analog=False)#, fs=Fs)
+
+        Dsf = signal.filtfilt(b, a, Ds, method="gust")
         
-        DAMP = Rng/2  # maximum dither amplitude (volt)
-        dp = DAMP*dither.gen_periodic(t, DITHER_FREQ, DITHER_TYPE)
+        X = (Xscale/100)*Xcs + (Dscale/100)*Dsf + Dq
+
+        print(np.max(X))
+        print(np.min(X))
+
+        if np.max(X) > Rng/2:
+            raise ValueError('Input out of bounds.') 
+        if np.min(X) < -Rng/2:
+            raise ValueError('Input out of bounds.')
+
+        Q = quantise_signal(X, Qstep, Qtype)
+        C = generate_codes(Q, Qstep, Qtype, Vmin)
+
+        # two identical, ideal channels
+        YQ = np.stack((YQ[0, :], YQ[0, :]))
+
+    case lin_method.PHFD:  # periodic high-frequency dither
+        # Quantisation dither
+        Dq = dither.gen_stochastic(t.size, 2, Qstep, dither.pdf.triangular_hp)
+
+        # Same carrier to both channels
+        Xcs = matlib.repmat(Xcs, 2, 1)
+
+        # Scaling dither with respect to the carrier
+        Xscale = 50  # carrier to dither ratio (between 0% and 100%)
+        Dscale = 100 - Xscale  # dither to carrier ratio
+        Dfreq = 49e3  # Hz
+        Dadf = dither.adf.uniform  # amplitude distr. funct.
+        # Generate periodic dither
+        Dmaxamp = Rng/2  # maximum dither amplitude (volt)
+        dp = Dmaxamp*dither.gen_periodic(t, Dfreq, Dadf)
         
-        # opposite polarity for HF dither
+        # opposite polarity for HF dither for pri. and sec. channel
         Dp = np.stack((dp, -dp))
 
-        X = CARRIER_RATIO*Xcs + DITHER_RATIO*Dp + Dq
+        X = (Xscale/100)*Xcs + (Dscale/100)*Dp + Dq
 
         Q = quantise_signal(X, Qstep, Qtype)
         C = generate_codes(Q, Qstep, Qtype, Vmin)
@@ -233,32 +270,33 @@ match RUN_LIN_METHOD:
     case lin_method.ILC:  # iterative learning control (with INL model, only periodic signals)
         sys.exit("Not implemented yet - ILC")
 
-# DAC output(s)
+# %% DAC output(s)
 YU = generate_dac_output(C, YQ)  # using ideal, uniform levels
 YM = generate_dac_output(C, ML)  # using measured or randomised levels
 
-# Summation stage
+# %% Summation stage
 yu = np.sum(YU, 0)/YU.shape[0]
 ym = np.sum(YM, 0)/YM.shape[0]
 
-# Filter the output using a reconstruction (output) filter
+# %% Filter the output using a reconstruction (output) filter
 # filter coefficients
-b, a = scipy.signal.butter(FILT_ORDER, 2*np.pi*FILT_FREQ, 'low', analog=True)
-Wlp = scipy.signal.lti(b, a)  # filter LTI system instance
+b, a = signal.butter(N_lf, 2*np.pi*Fc_lp, 'lowpass', analog=True)
+Wlp = signal.lti(b, a)  # filter LTI system instance
 
-yu = yu.reshape(-1, 1)
-# filter the ideal output using zero-order hold
-yu_avg_out = scipy.signal.lsim(Wlp, yu, t, X0=None, interp=False)
+yu = yu.reshape(-1, 1)  # ensure the vector is a column vector
+# filter the ideal output (using zero-order hold interp.)
+yu_avg_out = signal.lsim(Wlp, yu, t, X0=None, interp=False)
 
-ym = ym.reshape(-1, 1)
-# filter the measured output
-ym_avg_out = scipy.signal.lsim(Wlp, ym, t, X0=None, interp=False)
+ym = ym.reshape(-1, 1)  # ensure the vector is a column vector
+# filter the DAC model output (using zero-order hold interp.)
+ym_avg_out = signal.lsim(Wlp, ym, t, X0=None, interp=False)
 
-# Extract the filtered data; lsim returns (T, y, x) tuple, want output y
+# extract the filtered data; lsim returns (T, y, x) tuple, want output y
 yu_avg = yu_avg_out[1]
 ym_avg = ym_avg_out[1]
 
 # %% Evaluate performance
+TRANSOFF = np.floor(Npt*Fs/Xcs_FREQ).astype(int)
 match 1:
     case 1:  # use FFT based method to detemine SINAD
         RU = FFT_SINAD(yu_avg[TRANSOFF:-1], Fs, 'Uniform')
@@ -277,6 +315,7 @@ print("ENOB uniform: {}".format(ENOB_U))
 print("SINAD non-linear: {}".format(RM))
 print("ENOB non-linear: {}".format(ENOB_M))
 
+# %%
 # fig_wave, axs_wave = plt.subplots(6, 1, sharex=True)
 # axs_wave[0].plot(t, X1)
 # axs_wave[0].grid()
