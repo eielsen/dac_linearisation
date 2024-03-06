@@ -23,6 +23,7 @@ from matplotlib import pyplot as plt
 from configurations import quantiser_configurations
 from static_dac_model import generate_dac_output, quantise_signal, generate_codes
 from figures_of_merit import FFT_SINAD, TS_SINAD
+from balreal import balreal
 
 
 class lin_method:
