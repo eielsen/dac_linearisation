@@ -75,7 +75,8 @@ def test_signal(SCALE, MAXAMP, FREQ, OFFSET, t):
 # RUN_LIN_METHOD = lin_method.BASELINE
 # RUN_LIN_METHOD = lin_method.PHYSCAL
 # RUN_LIN_METHOD = lin_method.PHFD
-RUN_LIN_METHOD = lin_method.SHPD
+# RUN_LIN_METHOD = lin_method.SHPD
+RUN_LIN_METHOD = lin_method.NSDCAL
 
 # Output low-pass filter configuration
 Fc_lp = 10e3  # cut-off frequency in hertz
@@ -184,7 +185,7 @@ match RUN_LIN_METHOD:
         X = Xcs + Dq  # quantiser input
 
         # TODO: figure out a better way to deal with this file dependency
-        LUTcal = np.load('LUTcal.npy')  # load calibation look-up table
+        LUTcal = np.load('LUTcal.npy')  # load calibration look-up table
 
         q = quantise_signal(X, Qstep, Qtype)
         c_pri = generate_codes(q, Qstep, Qtype, Vmin)
@@ -201,6 +202,16 @@ match RUN_LIN_METHOD:
     case lin_method.NSDCAL:  # noise shaping with digital calibration
         sys.exit("Not implemented yet - \
                  noise shaping with digital calibration")
+        
+
+        # Noise Shaping Filter
+        # double integrator
+        #Hns = tf([1 -1],[1 0],1)^2
+        #Mns = 1 - Hns
+        #Mns = balreal(Mns)
+
+        Hns = signal.TransferFunction([1, -1], [1, 0])
+
     case lin_method.SHPD:  # stochastic high-pass noise dither
         # Quantisation dither
         Dq = dither.gen_stochastic(t.size, 2, Qstep, dither.pdf.triangular_hp)
