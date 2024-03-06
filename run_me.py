@@ -17,9 +17,10 @@ from numpy import matlib
 import os
 import scipy
 from scipy import signal
-import dither
 from matplotlib import pyplot as plt
+import math
 
+import dither
 from configurations import quantiser_configurations
 from static_dac_model import generate_dac_output, quantise_signal, generate_codes
 from figures_of_merit import FFT_SINAD, TS_SINAD
@@ -168,10 +169,10 @@ match RUN_LIN_METHOD:
     case lin_method.BASELINE:  # baseline, only carrier
         Nch = 1  # number of channels to use (averaging to reduce noise floor)
 
-        # quantisation dither
-        Dq = dither.gen_stochastic(t.size, Nch, Qstep,
-                                   dither.pdf.triangular_hp)
+        # Quantisation dither
+        Dq = dither.gen_stochastic(t.size, Nch, Qstep, dither.pdf.triangular_hp)
 
+        # Repeat carrier on all channels
         Xcs = matlib.repmat(Xcs, Nch, 1)
 
         X = Xcs + Dq  # quantiser input
@@ -180,7 +181,7 @@ match RUN_LIN_METHOD:
         C = generate_codes(Q, Qstep, Qtype, Vmin)
 
     case lin_method.PHYSCAL:  # physical level calibration
-        # quantisation dither
+        # Quantisation dither
         Dq = dither.gen_stochastic(t.size, 1, Qstep, dither.pdf.triangular_hp)
 
         X = Xcs + Dq  # quantiser input
@@ -195,37 +196,102 @@ match RUN_LIN_METHOD:
 
         C = np.stack((c_pri[0, :], c_sec[0, :]))
 
-        # zero contribution from secondary in ideal case
+        # Zero contribution from secondary in ideal case
         YQ = np.stack((YQ[0, :], np.zeros(YQ.shape[1])))
 
     case lin_method.DEM:  # dynamic element matching
         sys.exit("Not implemented yet - DEM")
     case lin_method.NSDCAL:  # noise shaping with digital calibration
-        sys.exit("Not implemented yet - \
-                 noise shaping with digital calibration")
-        
+        Nch = 1  # only supports a single channel (at this point)
 
-        # Noise Shaping Filter
-        # double integrator
-        #Hns = tf([1 -1],[1 0],1)^2
-        #Mns = 1 - Hns
-        #Mns = balreal(Mns)
-
-        Hns = signal.TransferFunction([1, -1], [1, 0])
-
-    case lin_method.SHPD:  # stochastic high-pass noise dither
         # Quantisation dither
-        Dq = dither.gen_stochastic(t.size, 2, Qstep, dither.pdf.triangular_hp)
+        Dq = dither.gen_stochastic(t.size, Nch, Qstep, dither.pdf.triangular_hp)
+        Dq = Dq[0]  # convert to 1d
 
-        # Same carrier to both channels
-        Xcs = matlib.repmat(Xcs, 2, 1)
+        HEADROOM = 1  # %
+        X = ((100-HEADROOM)/100)*Xcs + Dq  # quantiser input
 
-        # LARGE high-pass dither set-up
+        # Noise-shaping filter 
+        Hns_tf = signal.TransferFunction([1, -2, 1], [1, 0, 0], dt=1)  # double integrator
+        Mns_tf = signal.TransferFunction([2, -1], [1, 0, 0], dt=1)  # Mns = 1 - Hns
+        Mns = Mns_tf.to_ss()
+        
+        Ad, Bd, Cd, Dd = balreal(Mns.A, Mns.B, Mns.C, Mns.D)
+
+        satcnt = 0  # saturation counter (generate warning if saturating)
+
+        xns = np.zeros((Ad.shape[0], 1))  # noise-shaping filter state
+        yns = np.zeros((1, 1))  # noise-shaping filter output
+        e = np.zeros((1,1))  # quantiser error
+
+        C = np.zeros((1, t.size)).astype(int)  # save codes
+
+        DITHER_ON = 0
+        FB_ON = True
+        QMODEL_FB = 2
+        
+        YQns = YQ[0]
+        MLns = ML[0]
+
+        for i in range(0, t.size):
+            x = X[i]  # noise-shaper input
+            d = DITHER_ON*Dq[i]  # dither
+            
+            if FB_ON:
+                w = x - yns  # noise-shaped feedback
+            else:
+                w = x
+            
+            u = w + d  # re-quantizer input
+            
+            # Re-quantizer (mid-tread)
+            q = math.floor(u/Qstep + 0.5)  # quantize
+            c = q - math.floor(Vmin/Qstep)  # code
+            C[0, i] = c  # save code
+
+            # Saturation (can't index out of bounds)
+            if c > 2**Nb - 1:
+                c = 2**Nb - 1
+                satcnt = satcnt + 1
+                if satcnt >= 10:
+                    print(f'warning: pos. sat. -- cnt: {satcnt}')
+                
+            if c < 0:
+                c = 0
+                satcnt = satcnt + 1
+                if satcnt >= 10:
+                    print(f'warning: neg. sat. -- cnt: {satcnt}')
+            
+            # Output models
+            yi = YQns[c]  # ideal levels
+            ym = MLns[c]  # measured levels
+            
+            # Generate error
+            match QMODEL_FB:  # model used in feedback
+                case 1:
+                    e[0] = yi - w
+                case 2:
+                    e[0] = ym - w
+            
+            # Noise-shaping filter
+            xns = Ad@xns + Bd@e  # filter states
+            yns = Cd@xns  # filter output
+        
+    case lin_method.SHPD:  # stochastic high-pass noise dither
+        Nch = 2
+
+        # Quantisation dither
+        Dq = dither.gen_stochastic(t.size, Nch, Qstep, dither.pdf.triangular_hp)
+
+        # Repeat carrier on all channels
+        Xcs = matlib.repmat(Xcs, Nch, 1)
+
+        # Large high-pass dither set-up
         Xscale = 80  # carrier to dither ratio (between 0% and 100%)
 
         Dmaxamp = Rng/2  # maximum dither amplitude (volt)
         Dscale = 60  # %
-        Ds = dither.gen_stochastic(t.size, 2, Dmaxamp/2, dither.pdf.uniform)
+        Ds = dither.gen_stochastic(t.size, Nch, Dmaxamp/2, dither.pdf.uniform)
 
         N_hf = 2
         Fc_hf = 150e3
@@ -251,11 +317,13 @@ match RUN_LIN_METHOD:
         YQ = np.stack((YQ[0, :], YQ[0, :]))
 
     case lin_method.PHFD:  # periodic high-frequency dither
-        # Quantisation dither
-        Dq = dither.gen_stochastic(t.size, 2, Qstep, dither.pdf.triangular_hp)
+        Nch = 2  # this method requires even no. channels
 
-        # Same carrier to both channels
-        Xcs = matlib.repmat(Xcs, 2, 1)
+        # Quantisation dither
+        Dq = dither.gen_stochastic(t.size, Nch, Qstep, dither.pdf.triangular_hp)
+
+        # Repeat carrier on all channels
+        Xcs = matlib.repmat(Xcs, Nch, 1)
 
         # Scaling dither with respect to the carrier
         Xscale = 50  # carrier to dither ratio (between 0% and 100%)
@@ -266,7 +334,7 @@ match RUN_LIN_METHOD:
         Dmaxamp = Rng/2  # maximum dither amplitude (volt)
         dp = Dmaxamp*dither.gen_periodic(t, Dfreq, Dadf)
         
-        # opposite polarity for HF dither for pri. and sec. channel
+        # Opposite polarity for HF dither for pri. and sec. channel
         Dp = np.stack((dp, -dp))
 
         X = (Xscale/100)*Xcs + (Dscale/100)*Dp + Dq

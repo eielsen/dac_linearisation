@@ -8,15 +8,20 @@ from matplotlib import pyplot as plt
 
 import control as ct
 
+from balreal import balreal
+
 Hns_tf = signal.TransferFunction([1, -2, 1], [1, 0, 0], dt=1)
 Mns_tf = signal.TransferFunction([2, -1], [1, 0, 0], dt=1)  # Mns = 1 - Hns
 
 Mns = Mns_tf.to_ss()
 
+A = Mns.A
+B = Mns.B
+C = Mns.C
+D = Mns.D
 
 
-
-
+A_, B_, C_, D_ = balreal(A, B, C, D)
 
 
 # %%
