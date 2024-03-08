@@ -151,7 +151,6 @@ match 2:
                 ML = np.stack((ML_1, ML_2))
 
 # %% Generate time vector
-
 match 1:
     case 1:  # specify duration as number of samples and find number of periods
         Nts = 1e6  # no. of time samples
@@ -173,6 +172,8 @@ Xcs = test_signal(Xcs_SCALE, SIGNAL_MAXAMP, Xcs_FREQ, SIGNAL_OFFSET, t)
 # %% Linearisation methods
 match RUN_LIN_METHOD:
     case lin_method.BASELINE:  # baseline, only carrier
+        # Generate unmodified DAC output without any corrections.
+
         Nch = 1  # number of channels to use (averaging to reduce noise floor)
 
         # Quantisation dither
@@ -187,8 +188,15 @@ match RUN_LIN_METHOD:
         C = generate_codes(Q, Qstep, Qtype, Vmin)
 
     case lin_method.PHYSCAL:  # physical level calibration
+        # This method relies on a main/primary DAC operating normally
+        # whilst a secondary DAC with a small gain tries to correct
+        # for the level mismatches for each and every code.
+        # Needs INL measurements and a calibration step.
+
+        Nch = 1  # effectively 1 channel input (with 1 DAC pair)
+
         # Quantisation dither
-        Dq = dither.gen_stochastic(t.size, 1, Qstep, dither.pdf.triangular_hp)
+        Dq = dither.gen_stochastic(t.size, Nch, Qstep, dither.pdf.triangular_hp)
 
         X = Xcs + Dq  # quantiser input
 
@@ -206,6 +214,9 @@ match RUN_LIN_METHOD:
         YQ = np.stack((YQ[0, :], np.zeros(YQ.shape[1])))
 
     case lin_method.DEM:  # dynamic element matching
+        # Here we assume standard off-the-shelf DACs which translates to
+        # full segmentation, which then means we have 2 DACs to work with.
+
         Nch = 1  # DEM effectively has 1 channel input
 
         # Quantisation dither
@@ -220,6 +231,11 @@ match RUN_LIN_METHOD:
         YQ = np.stack((YQ[0, :], YQ[0, :]))
 
     case lin_method.NSDCAL:  # noise shaping with digital calibration
+        # Use a simple static model as an open-loop observer for a simple
+        # noise-shaping feed-back filter. Model is essentially the INL.
+        # Open-loop observer error feeds directly to output, so very
+        # sensitive to model error.
+
         Nch = 1  # only supports a single channel (at this point)
 
         # Re-quantisation dither
@@ -236,7 +252,7 @@ match RUN_LIN_METHOD:
         YQns = YQ[0]  # ideal ouput levels
         MLns = ML[0]  # measured ouput levels (convert from 2d to 1d)
 
-        # introducing some "measurement error" in the levels
+        # introducing some "measurement/model error" in the levels
         MLns_err = np.random.uniform(-Qstep/2, Qstep/2, MLns.shape)
         MLns = MLns + MLns_err
 
@@ -244,6 +260,10 @@ match RUN_LIN_METHOD:
         C = nsdcal(X, Dq, YQns, MLns, Qstep, Vmin, Nb, QMODEL)
         
     case lin_method.SHPD:  # stochastic high-pass noise dither
+        # Adds a large(ish) high-pass filtered normally distributed noise dither.
+        # The normal PDF has poor INL averaging properties.
+
+        # most recent prototype has 4 channels, so limit to 4
         Nch = 2
 
         # Quantisation dither
@@ -283,6 +303,11 @@ match RUN_LIN_METHOD:
         YQ = np.stack((YQ[0, :], YQ[0, :]))
 
     case lin_method.PHFD:  # periodic high-frequency dither
+        # Adds a large, periodic high-frequency dither. Uniform ADF has good
+        # averaging effect on INL. May experiment with orther ADF for
+        # smoothing results.
+
+        # most recent prototype has 4 channels, so limit to 4
         Nch = 2  # this method requires even no. of channels
 
         # Quantisation dither
@@ -295,7 +320,7 @@ match RUN_LIN_METHOD:
         Xscale = 50  # carrier to dither ratio (between 0% and 100%)
         Dscale = 100 - Xscale  # dither to carrier ratio
         Dfreq = 49e3  # Hz
-        Dadf = dither.adf.uniform  # amplitude distr. funct.
+        Dadf = dither.adf.uniform  # amplitude distr. funct. (ADF)
         # Generate periodic dither
         Dmaxamp = Rng/2  # maximum dither amplitude (volt)
         dp = Dmaxamp*dither.gen_periodic(t, Dfreq, Dadf)
