@@ -18,14 +18,16 @@ import os
 import scipy
 from scipy import signal
 from matplotlib import pyplot as plt
+
 import math
 
 import dither
 from configurations import quantiser_configurations
 from static_dac_model import generate_dac_output, quantise_signal, generate_codes
 from figures_of_merit import FFT_SINAD, TS_SINAD
-from balreal import balreal
 
+from lin_method_nsdcal import nsdcal
+from lin_method_dem import dem
 
 class lin_method:
     BASELINE = 1  # baseline
@@ -78,7 +80,8 @@ def test_signal(SCALE, MAXAMP, FREQ, OFFSET, t):
 # RUN_LIN_METHOD = lin_method.PHYSCAL
 # RUN_LIN_METHOD = lin_method.PHFD
 # RUN_LIN_METHOD = lin_method.SHPD
-RUN_LIN_METHOD = lin_method.NSDCAL
+# RUN_LIN_METHOD = lin_method.NSDCAL
+RUN_LIN_METHOD = lin_method.DEM
 
 # Output low-pass filter configuration
 Fc_lp = 10e3  # cut-off frequency in hertz
@@ -120,7 +123,7 @@ match 2:
     case 2:  # load measured levels
         # load measured levels given linearisation method (measured for a given physical set-up)
         match RUN_LIN_METHOD:
-            case lin_method.BASELINE | lin_method.NSDCAL | lin_method.SHPD | lin_method.PHFD:
+            case lin_method.BASELINE | lin_method.DEM | lin_method.NSDCAL | lin_method.SHPD | lin_method.PHFD:
                 infile = 'measurements_and_data/level_measurements.mat'
                 fileset = 2
                 if os.path.exists(infile):
@@ -148,13 +151,16 @@ match 2:
                 ML = np.stack((ML_1, ML_2))
 
 # %% Generate time vector
+
 match 1:
     case 1:  # specify duration as number of samples and find number of periods
-        Npt = 1  # no. of carrier periods to use to account for transients
         Nts = 1e6  # no. of time samples
-        Np = np.ceil(Xcs_FREQ*Ts*Nts).astype(int) + Npt  # no. of periods for carrier
+        Np = np.ceil(Xcs_FREQ*Ts*Nts).astype(int) # no. of periods for carrier
     case 2:  # specify duration as number of periods of carrier
         Np = 5  # no. of periods for carrier
+        
+Npt = 1  # no. of carrier periods to use to account for transients
+Np = Np + Npt
 
 t_end = Np/Xcs_FREQ  # time vector duration
 t = np.arange(0, t_end, Ts)  # time vector
@@ -200,82 +206,42 @@ match RUN_LIN_METHOD:
         YQ = np.stack((YQ[0, :], np.zeros(YQ.shape[1])))
 
     case lin_method.DEM:  # dynamic element matching
-        sys.exit("Not implemented yet - DEM")
-    case lin_method.NSDCAL:  # noise shaping with digital calibration
-        Nch = 1  # only supports a single channel (at this point)
+        Nch = 1  # DEM effectively has 1 channel input
 
         # Quantisation dither
         Dq = dither.gen_stochastic(t.size, Nch, Qstep, dither.pdf.triangular_hp)
         Dq = Dq[0]  # convert to 1d
 
+        X = Xcs + Dq  # input
+
+        C = dem(X, Rng, Nb)
+            
+        # two identical, ideal channels
+        YQ = np.stack((YQ[0, :], YQ[0, :]))
+
+    case lin_method.NSDCAL:  # noise shaping with digital calibration
+        Nch = 1  # only supports a single channel (at this point)
+
+        # Re-quantisation dither
+        DITHER_ON = 1
+        Dq = dither.gen_stochastic(t.size, Nch, Qstep, dither.pdf.triangular_hp)
+        Dq = DITHER_ON*Dq[0]  # convert to 1d, add/remove dither
+        
+        # The feedback generates an actuation signal that may cause the
+        # quantiser to saturate if there is no "headroom"
+        # Also need room for re-quantisation dither
         HEADROOM = 1  # %
-        X = ((100-HEADROOM)/100)*Xcs + Dq  # quantiser input
-
-        # Noise-shaping filter 
-        Hns_tf = signal.TransferFunction([1, -2, 1], [1, 0, 0], dt=1)  # double integrator
-        Mns_tf = signal.TransferFunction([2, -1], [1, 0, 0], dt=1)  # Mns = 1 - Hns
-        Mns = Mns_tf.to_ss()
+        X = ((100-HEADROOM)/100)*Xcs  # input
         
-        Ad, Bd, Cd, Dd = balreal(Mns.A, Mns.B, Mns.C, Mns.D)
+        YQns = YQ[0]  # ideal ouput levels
+        MLns = ML[0]  # measured ouput levels (convert from 2d to 1d)
 
-        satcnt = 0  # saturation counter (generate warning if saturating)
+        # introducing some "measurement error" in the levels
+        MLns_err = np.random.uniform(-Qstep/2, Qstep/2, MLns.shape)
+        MLns = MLns + MLns_err
 
-        xns = np.zeros((Ad.shape[0], 1))  # noise-shaping filter state
-        yns = np.zeros((1, 1))  # noise-shaping filter output
-        e = np.zeros((1,1))  # quantiser error
-
-        C = np.zeros((1, t.size)).astype(int)  # save codes
-
-        DITHER_ON = 0
-        FB_ON = True
-        QMODEL_FB = 2
-        
-        YQns = YQ[0]
-        MLns = ML[0]
-
-        for i in range(0, t.size):
-            x = X[i]  # noise-shaper input
-            d = DITHER_ON*Dq[i]  # dither
-            
-            if FB_ON:
-                w = x - yns  # noise-shaped feedback
-            else:
-                w = x
-            
-            u = w + d  # re-quantizer input
-            
-            # Re-quantizer (mid-tread)
-            q = math.floor(u/Qstep + 0.5)  # quantize
-            c = q - math.floor(Vmin/Qstep)  # code
-            C[0, i] = c  # save code
-
-            # Saturation (can't index out of bounds)
-            if c > 2**Nb - 1:
-                c = 2**Nb - 1
-                satcnt = satcnt + 1
-                if satcnt >= 10:
-                    print(f'warning: pos. sat. -- cnt: {satcnt}')
-                
-            if c < 0:
-                c = 0
-                satcnt = satcnt + 1
-                if satcnt >= 10:
-                    print(f'warning: neg. sat. -- cnt: {satcnt}')
-            
-            # Output models
-            yi = YQns[c]  # ideal levels
-            ym = MLns[c]  # measured levels
-            
-            # Generate error
-            match QMODEL_FB:  # model used in feedback
-                case 1:
-                    e[0] = yi - w
-                case 2:
-                    e[0] = ym - w
-            
-            # Noise-shaping filter
-            xns = Ad@xns + Bd@e  # filter states
-            yns = Cd@xns  # filter output
+        QMODEL = 2  # 1: no calibration, 2: use calibration
+        C = nsdcal(X, Dq, YQns, MLns, Qstep, Vmin, Nb, QMODEL)
         
     case lin_method.SHPD:  # stochastic high-pass noise dither
         Nch = 2
@@ -317,7 +283,7 @@ match RUN_LIN_METHOD:
         YQ = np.stack((YQ[0, :], YQ[0, :]))
 
     case lin_method.PHFD:  # periodic high-frequency dither
-        Nch = 2  # this method requires even no. channels
+        Nch = 2  # this method requires even no. of channels
 
         # Quantisation dither
         Dq = dither.gen_stochastic(t.size, Nch, Qstep, dither.pdf.triangular_hp)
@@ -355,8 +321,16 @@ YU = generate_dac_output(C, YQ)  # using ideal, uniform levels
 YM = generate_dac_output(C, ML)  # using measured or randomised levels
 
 # %% Summation stage
-yu = np.sum(YU, 0)/YU.shape[0]
-ym = np.sum(YM, 0)/YM.shape[0]
+if RUN_LIN_METHOD == lin_method.DEM:
+    K = 1
+else:
+    K = 1/Nch
+
+yu = K*np.sum(YU, 0)
+ym = K*np.sum(YM, 0)
+
+plt.plot(t, yu)
+plt.show()
 
 # %% Filter the output using a reconstruction (output) filter
 # filter coefficients

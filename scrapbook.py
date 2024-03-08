@@ -5,23 +5,65 @@ import numpy as np
 from scipy import signal
 from scipy import linalg
 from matplotlib import pyplot as plt
+from numpy import matlib
 
 import control as ct
 
-from balreal import balreal
+from configurations import quantiser_configurations
 
-Hns_tf = signal.TransferFunction([1, -2, 1], [1, 0, 0], dt=1)
-Mns_tf = signal.TransferFunction([2, -1], [1, 0, 0], dt=1)  # Mns = 1 - Hns
+QConfig = 4
+Nb, Mq, Vmin, Vmax, Rng, Qstep, YQ, Qtype = quantiser_configurations(QConfig)
 
-Mns = Mns_tf.to_ss()
+# DEM code input range
+M = 2*(2**Nb - 1)
+cmin = 2**(Nb-1) - 1
+cmax = M - 2**(Nb-1) + 1
+Qseg = Rng/(cmax-cmin)  # segmented step-size (LSB)
 
-A = Mns.A
-B = Mns.B
-C = Mns.C
-D = Mns.D
+#if RUN_LIN_METHOD == lin_method.DEM:
+#    SIGNAL_OFFSET = Rng/2# - Qstep/2
+#else:
+    
+
+"""
+Ks =
+
+           1           1
+           2           2
+           4           4
+           8           8
+          16          16
+          32          32
+          64          64
+         128         128
+         256         256
+         512         512
+        1024        1024
+        2048        2048
+        4096        4096
+        8192        8192
+       16384       16384
+       32768       32768
+"""
+
+# DEM mapping from output segment weights to codes
+Ks = 2**np.arange(0,Nb)
+Ks = matlib.repmat(Ks.reshape(-1, 1),1,2)
+
+# from balreal import balreal
+
+# Hns_tf = signal.TransferFunction([1, -2, 1], [1, 0, 0], dt=1)
+# Mns_tf = signal.TransferFunction([2, -1], [1, 0, 0], dt=1)  # Mns = 1 - Hns
+
+# Mns = Mns_tf.to_ss()
+
+# A = Mns.A
+# B = Mns.B
+# C = Mns.C
+# D = Mns.D
 
 
-A_, B_, C_, D_ = balreal(A, B, C, D)
+# A_, B_, C_, D_ = balreal(A, B, C, D)
 
 
 # %%

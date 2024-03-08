@@ -19,7 +19,6 @@ for testing Digital-to-Analog Converter Devices.
 """
 
 import numpy as np
-import matplotlib.pyplot as plt
 from scipy.optimize import curve_fit
 
 
@@ -44,7 +43,8 @@ def fit_sinusoid(x, y, fcn_alt):
     Assuming a dominantly single sinusoidal input signa (with some noise and distortion);
     guessing the initial values using a heuristic method,
     then running standard least-squares curve fit.
-    There are two common parametrisations for a sinusoid, can use either.
+    There are two common parametrisations for a sinusoid;
+    the method can be configured to use either.
     """
     
     # signal stats
@@ -58,8 +58,9 @@ def fit_sinusoid(x, y, fcn_alt):
     C_guess = y_mean
 
     # frequency and phase guesses
-    yg = schmitt(y - y_mean, [-y_std/4, y_std/4]) # gate the signal using Schmitt trigger
-    ygd = np.diff(yg) # use difference for zero crossing detection
+    th = y_std/4  # gating threshold, assume noise amp. is smaller than RMS(sine)/4
+    yg = schmitt(y - y_mean, [-th, th])  # gate the signal using Schmitt trigger
+    ygd = np.diff(yg)  # use difference for zero crossing detection
     
     # find zero crossing points from low to high (rising)
     idx = []
@@ -67,11 +68,11 @@ def fit_sinusoid(x, y, fcn_alt):
         if ygd[k] == 1:
             idx.append(k)
 
-    x_zero_up = [x[i] for i in idx] # pick timestamps at zero crossings
+    x_zero_up = [x[i] for i in idx]  # pick timestamps at zero crossings
     
     # guess the period as the average time intervals between rising zero crossings
-    T_guess = np.mean(np.diff(x_zero_up)) # period guess
-    f_guess = 1/T_guess; # frequency guess
+    T_guess = np.mean(np.diff(x_zero_up))  # period guess (mean value of time between zero crossings)
+    f_guess = 1/T_guess;  # frequency guess
     
     # find zero crossing points (rising and falling)
     idx = []
@@ -79,47 +80,49 @@ def fit_sinusoid(x, y, fcn_alt):
         if ygd[k] == 1 or ygd[k] == -1:
             idx.append(k)
             
-    x_zero = [x[i] for i in idx] # pick timestamps at zero crossings
-    d_zero = [ygd[i] for i in idx] # pick gated output values at zero crossings
+    x_zero = [x[i] for i in idx]  # pick timestamps at zero crossings
+    d_zero = [ygd[i] for i in idx]  # pick gated output values at zero crossings
     
+    # guessing the phase, this estimate is impacted by the Schitt trigger gate threshold
     if d_zero[0] == 1:
-        phi_guess = 1 - x_zero[0]*(f_guess); # phase guess
+        phi_guess = 1 - x_zero[0]*(f_guess)  # phase guess
     elif d_zero[0] == -1:
-        phi_guess = 0.5 - x_zero[0]*(f_guess); # phase guess
+        phi_guess = 0.5 - x_zero[0]*(f_guess)  # phase guess
     
     p_opt = []
     match fcn_alt:
-        case 1: # parameterised sinusoid alt. 1
-            p1_guess = [A_guess, f_guess, phi_guess, C_guess] # initial vals
+        case 1:  # parameterised sinusoid alt. 1
+            p1_guess = [A_guess, f_guess, phi_guess, C_guess]  # initial vals
             print("p_guess: ", p1_guess)
             p_opt, p_cov = curve_fit(sin_p, x, y, p0=p1_guess)
-        case 2: # parameterised sinusoid alt. 2
+        case 2:  # parameterised sinusoid alt. 2
             A0_guess = A_guess*np.sin(2*np.pi*phi_guess)
             B0_guess = A_guess*np.cos(2*np.pi*phi_guess)
             f0_guess = f_guess
             C0_guess = C_guess
-            p2_guess = [A0_guess, B0_guess, f0_guess, C0_guess] # initial vals
+            p2_guess = [A0_guess, B0_guess, f0_guess, C0_guess]  # initial vals
             print("p_guess: ", p2_guess)
             p_opt, p_cov = curve_fit(cos_sin_p, x, y, p0=p2_guess)
         
     return p_opt
 
+
 def schmitt(x, thresholds):
     """
     Implement the behaviour of a Schmitt trigger.
     """ 
-    lim = 0 # store current state
-    yg = np.zeros(x.size) # gated signal (output)
+    lim = 0  # store current state
+    yg = np.zeros(x.size)  # gated signal (output)
     for k in range(x.size):
         if (lim == 0):
             yg[k] = 0
         elif (lim == 1):
             yg[k] = 1
         # change state if signal crosses threshold (low or high)
-        if (x[k] <= thresholds[0]): # going low
+        if (x[k] <= thresholds[0]):  # going low
             lim = 0
             yg[k] = 0
-        elif (x[k] >= thresholds[1]): # going high
+        elif (x[k] >= thresholds[1]):  # going high
             lim = 1 
             yg[k] = 1
     
@@ -130,8 +133,10 @@ def main():
     """
     Test the fitting method.
     """
+    
+    import matplotlib.pyplot as plt
 
-    rng = np.random.default_rng() # set up random number generator
+    rng = np.random.default_rng()  # set up random number generator
 
     fcn_alt = 1 # choose function parameterisation to use
     # experience so far indicates that param. alt. 1 possibly gives better results
@@ -139,11 +144,11 @@ def main():
     # Pick some random parameters form sinusoid
     p_true = np.array(rng.uniform(size = 4))/rng.uniform(size = 4)
     p_true = [12, 23, 0.45, 2.1]
-    p_true[2] = p_true[2]%1 # wrap phase to 2*pi*[0, 1]
+    p_true[2] = p_true[2]%1  # wrap phase to 2*pi*[0, 1]
 
-    print("p_true: ", p_true) # true params.
+    print("p_true: ", p_true)  # true params.
 
-    p_true_2 = np.zeros(4) # store params. for parametrisation alt. 2
+    p_true_2 = np.zeros(4)  # store params. for parametrisation alt. 2
 
     match fcn_alt:
         case 1:
@@ -155,14 +160,14 @@ def main():
             p_true_2[3] = p_true[3] # C0
             print("Alt 2")
 
-    x = np.linspace(0, 5/p_true[1], 1000) # generate 5 periods
+    x = np.linspace(0, 5/p_true[1], 1000)  # generate 5 periods
 
     match fcn_alt:
         case 1:
-            print("p_true: ", p_true) # true params.
+            print("p_true: ", p_true)  # true params.
             y_signal = sin_p(x, *p_true)
         case 2:
-            print("p_true_2: ", p_true_2) # true params.
+            print("p_true_2: ", p_true_2)  # true params.
             y_signal = cos_sin_p(x, *p_true_2)
 
     y_noise = 0.1*np.std(y_signal)*rng.normal(size = x.size)
@@ -172,18 +177,16 @@ def main():
     y_mean = np.mean(y)
     y_std = np.std(y)
 
-    plt.clf()
-
     plt.plot(x, y, 'b-', label='input time-series')
 
     match fcn_alt:
         case 1:
             p_opt = fit_sinusoid(x, y, 1)
-            print("p_opt: ", p_opt) # fitted params.
+            print("p_opt: ", p_opt)  # fitted params.
             plt.plot(x, sin_p(x, *p_opt), 'g--', label='fit: A=%5.3f, f=%5.3f, phi=%5.3f, C=%5.3f' % tuple(p_opt))
         case 2:
             p_opt = fit_sinusoid(x, y, 2)
-            print("p_opt: ", p_opt) # fitted params.
+            print("p_opt: ", p_opt)  # fitted params.
             plt.plot(x, cos_sin_p(x, *p_opt), 'g--', label='fit: A0=%5.3f, B0=%5.3f, f0=%5.3f, C0=%5.3f' % tuple(p_opt))
 
     plt.xlabel('x')

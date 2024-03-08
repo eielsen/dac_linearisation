@@ -10,12 +10,12 @@
 import numpy as np
 from scipy import special as spcl
 
-class pdf: #  amplitude distribution function
+class pdf: #  amplitude distribution function (stochastic)
     uniform = 1
     triangular_white = 2
     triangular_hp = 3
 
-class adf: #  amplitude distribution function
+class adf: #  amplitude distribution function (periodic)
     uniform = 1  # use a triangle wave
     triangular = 2
     cauchy = 3  # when triangle wave amplitude is ±pi/2

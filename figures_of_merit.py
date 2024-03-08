@@ -21,10 +21,9 @@ from fit_sinusoid import fit_sinusoid, sin_p
 
 def TS_SINAD(x, t):
     """
-    Take a time-series for computation of the SINAD using a curve-fitting
-    method.
-    Use at least 5 periods of the fundamental carrier signal for a good
-    estimate.
+    Take a time-series for computation of the SINAD using a curve-fitting method.
+    Use at least 5 periods of the fundamental carrier signal for a good estimate
+    (as prescribed in IEEE Std 1658-2011).
     """
 
     p_opt = fit_sinusoid(t, x, 1)
@@ -53,9 +52,8 @@ def TS_SINAD(x, t):
 def FFT_SINAD(x, Fs, plot_label=''):
     """
     Take a time-series for computation of the SINAD using an FFT-based method.
-    Typically needs a farily long time-series
-    (rule of thumb; more than 100 periods of the fundamental carrier)
-    for sufficient frequency resolution.
+    Typically needs a farily long time-series for sufficient frequency resolution.
+    Rule of thumb: More than 100 periods of the fundamental carrier.
     """
 
     L = 4  # number of averages for PSD estimation
