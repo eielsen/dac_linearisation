@@ -16,6 +16,8 @@ import subprocess
 import datetime
 from scipy import signal
 
+from quantiser_configurations import quantiser_word_size
+
 
 def addtexttofile(filename, text):
     f = open(filename, 'w')
@@ -93,7 +95,7 @@ def get_inverted_pwl_string(c, Ts, Ns, dnum, vbpc, vdd, trisefall):
     return rval
 
 
-def run_spice_sim(c, Nb, t, Ts):
+def run_spice_sim(c, Nb, t, Ts, QConfig):
     """
     Set up and run SPICE simulaton for a give DAC circuit description
 
@@ -109,34 +111,50 @@ def run_spice_sim(c, Nb, t, Ts):
     outputfile = "spice_temp/waveform_for_spice_sim.txt"
     nsamples = len(c)
 
-    vbpc = "3.28"
-    vdd = "5.0"
-    Tr = 1e-3 # 1e-9  # the rise-time for edges
+    t1 = "\n"
+    t2 = "\n"
 
-    t1 = ""
-    t2 = ""
+    match QConfig:
+        case quantiser_word_size.w_06bit:  # 6 bit DAC
+            vbpc = "3.28"
+            vdd = "5.0"
+            Tr = 1e-3  # the rise-time for edges, in µs
+            for k in range(0, Nb):
+                m = pow(2, k)
+                k_str = str(k)
+                t1 += "vdp" + k_str + " data" + k_str + " 0 pwl " + \
+                    get_pwl_string(c, Ts, nsamples, k, vbpc, vdd, Tr)
+                t2 += "vdn" + k_str + " datai" + k_str + " 0 pwl " + \
+                    get_inverted_pwl_string(c, Ts, nsamples, k, vbpc, vdd, Tr)
+            
+            circf = './spice_circuits/cs_dac_06bit_ngspice.cir'  # circuit description
+            spicef = './spice_output/cs_dac_06bit_ngspice_batch.cir'  # complete spice input file
 
-    for i in range(0, Nb):
-        m = pow(2, i)
-        jstr = str(i)
-        t1 += "vdp" + jstr + " data" + jstr + " 0 pwl " + \
-            get_pwl_string(c, Ts, nsamples, i, vbpc, vdd, Tr)
-        t2 += "vdn" + jstr + " datai" + jstr + " 0 pwl " + \
-            get_inverted_pwl_string(c, Ts, nsamples, i, vbpc, vdd, Tr)
+            ctrl_str = '\n' + '.save v(outf)' + '\n' + '.tran 10u ' + str(t[-1]) + '\n'
+
+        case quantiser_word_size.w_16bit:  # 16 bit DAC
+            vbpc = "0"
+            vdd = "1.5"
+            Tr = 1e-3  # the rise-time for edges, in µs
+            for k in range(0, Nb):
+                m = pow(2, k)
+                k_str = str(k+1)
+                t1 += "vb" + k_str + " b" + k_str + " 0 pwl " + \
+                    get_pwl_string(c, Ts, nsamples, k, vbpc, vdd, Tr)
+                t2 += "vbb" + k_str + " bb" + k_str + " 0 pwl " + \
+                    get_inverted_pwl_string(c, Ts, nsamples, k, vbpc, vdd, Tr)
+
+            circf = './spice_circuits/cs_dac_16bit_ngspice.cir'  # circuit description
+            spicef = './spice_output/cs_dac_16bit_ngspice_batch.cir'  # complete spice input file
+
+            ctrl_str = '\n' + '.save v(out)' + '\n' + '.tran 10u ' + str(t[-1]) + '\n'
 
     addtexttofile(outputfile, t1 + t2)
 
-    ctrl_str = '\n' + '.save v(outf)' + \
-        '\n' + '.tran 10u ' + str(t[-1]) + '\n'
-
     addtexttofile('spice_temp/spice_cmds.txt', ctrl_str)
 
-    spicef = './spice_output/cs_dac_06bit_ngspice_batch.cir'  # complete spice input file
-    circf = './spice_circuits/cs_dac_06bit_ngspice.cir'  # circuit description
-
     with open(spicef, 'w') as fout:
-        fin = fileinput.input([circf, outputfile,
-                            'spice_temp/spice_cmds.txt'])
+        fin = fileinput.input([circf, outputfile, 'spice_temp/spice_cmds.txt'])
         for line in fin:
             fout.write(line)
         fin.close()
@@ -154,9 +172,11 @@ def read_spice_bin_file_with_most_recent_timestamp(path):
     """
 
     binfiles = [file for file in os.listdir(path) if file.endswith('.bin')]
+    binfiles.sort()
     fname = binfiles[-1]
     fid = open(path + fname, 'rb')
-    
+    print("Opening file: " + fname)
+
     read_new_line = True
     count = 0
     while read_new_line:

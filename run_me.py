@@ -22,7 +22,7 @@ from matplotlib import pyplot as plt
 import math
 
 import dither_generation
-from quantiser_configurations import quantiser_configurations
+from quantiser_configurations import quantiser_configurations, quantiser_word_size
 from static_dac_model import generate_dac_output, quantise_signal, generate_codes
 from figures_of_merit import FFT_SINAD, TS_SINAD
 
@@ -144,11 +144,8 @@ Xcs_SCALE = 100  # %
 Xcs_FREQ = 99  # Hz
 
 # Set quantiser model
-QConfig = 2  # 6 bit quantiser
-# QConfig = 4  # 16 bit
+QConfig = quantiser_word_size.w_16bit
 Nb, Mq, Vmin, Vmax, Rng, Qstep, YQ, Qtype = quantiser_configurations(QConfig)
-
-
 
 # %% Generate time vector
 match 2:
@@ -156,7 +153,7 @@ match 2:
         Nts = 1e6  # no. of time samples
         Np = np.ceil(Xcs_FREQ*Ts*Nts).astype(int) # no. of periods for carrier
     case 2:  # specify duration as number of periods of carrier
-        Np = 5  # no. of periods for carrier
+        Np = 3  # no. of periods for carrier
         
 Npt = 1  # no. of carrier periods to use to account for transients
 Np = Np + Npt
@@ -355,7 +352,7 @@ match DAC_MODEL:
         tm = t
     case 2:  # use SPICE to simulate DAC output
         c = C[0,:]  # pick one channel for now
-        run_spice_sim(c, Nb, t, Ts)
+        run_spice_sim(c, Nb, t, Ts, QConfig)
         path = './spice_output/'
         t_spice, y_spice = read_spice_bin_file_with_most_recent_timestamp(path)
         y_resamp = np.interp(t, t_spice, y_spice) # re-sample

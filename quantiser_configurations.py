@@ -10,42 +10,42 @@
 import sys
 import numpy as np
 
-#%% 
+class quantiser_word_size:
+    w_04bit = 1
+    w_06bit = 2
+    w_12bit = 3
+    w_16bit = 4
+    
+
 def quantiser_configurations(QConfig):
     """
     Return specified configuration, given QConfig selector
     """
     
     match QConfig:
-        case 1:
+        case quantiser_word_size.w_04bit:
             Nb = 4 # word-size
             max_code = 2**Nb - 1; # max. code
             Vmin = -1 # volt
             Vmax = 1 # volt
             Qtype = "midtread"
-        case 2:
+        case quantiser_word_size.w_06bit:
             Nb = 6 # word-size
             max_code = 2**Nb - 1; # max. code
             Vmin = -0.3 # volt
             Vmax = 0.3 # volt
             Qtype = "midtread"
-        case 3:
+        case quantiser_word_size.w_12bit:
             Nb = 12 # word-size
             max_code = 2**Nb - 1; # max. code
             Vmin = -5 # volt
             Vmax = 5 # volt
             Qtype = "midtread"
-        case 4:
+        case quantiser_word_size.w_16bit:
             Nb = 16 # word-size
             max_code = 2**Nb - 1 # max. code
             Vmin = -10 # volt
             Vmax = 10 # volt
-            Qtype = "midtread"
-        case 5: # PURE DIGITAL CODE
-            Nb = 12 # word-size
-            max_code = 2**Nb - 1 # max. code
-            Vmin = 0 # volt
-            Vmax = max_code # volt
             Qtype = "midtread"
         case _:
             sys.exit("Invalid quantiser configuration selected.")
