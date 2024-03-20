@@ -8,7 +8,8 @@
 """
 
 import numpy as np
-from configurations import quantiser_configurations
+from quantiser_configurations import quantiser_configurations
+
 
 def quantise_signal(w, Qstep, Qtype):
     """
@@ -23,18 +24,22 @@ def quantise_signal(w, Qstep, Qtype):
     
     return q
 
-def generate_codes(q, Qstep, Qtype, Vmin):
+
+def generate_codes(q, Nb, Qtype):
     """
     Generate codes for quantised signal with given quantiser specifications
     """
     
     match Qtype:
         case "midtread":
-            c = q - np.floor(Vmin/Qstep) # code, mid-tread
+            #c = q - np.floor(Vmin/Qstep) # code, mid-tread
+            c = q + 2**(Nb-1) # code, mid-tread
         case "midriser":
-            c = q - np.floor(Vmin/Qstep) - 0.5 # code, mid-riser
-    
+            #c = q - np.floor(Vmin/Qstep) - 0.5 # code, mid-riser
+            c = q + 2**(Nb-1) - 0.5 # code, mid-riser
+
     return c.astype(int)
+
 
 def generate_dac_output(C, ML):
     """

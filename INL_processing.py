@@ -12,7 +12,7 @@ import scipy.io
 import os
 
 from matplotlib import pyplot as plt
-from configurations import quantiser_configurations
+from quantiser_configurations import quantiser_configurations
 
 def generate_random_output_levels(QuantizerConfig=4):
     """
@@ -37,11 +37,11 @@ def generate_random_output_levels(QuantizerConfig=4):
     ax1.plot(RL)
 
     fig, ax2 = plt.subplots()
-    ax2.stairs(YQ,CD)
-    ax2.stairs(YQn,CD)
+    ax2.stairs(YQ, CD)
+    ax2.stairs(YQn, CD)
 
     fig, ax2 = plt.subplots()
-    ax2.stairs(INL,CD)
+    ax2.stairs(INL, CD)
 
     # Save to file
     gno = 1

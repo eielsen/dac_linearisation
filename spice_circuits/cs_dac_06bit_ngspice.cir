@@ -1,0 +1,82 @@
+current-steering dac core
+
+.option gmin=1e-19 reltol=10u abstol=0.1p vntol=0.1u
+
+.param ibias = 10u
+.param vdd = 5
+
+vdd vdd 0 dc vdd
+ebp bp 0 bp1 0 1
+ibias bp2 0 dc ibias
+xm1 bp1 bp1 vdd vdd pmos mfac=1
+xm2 bp2 bp2 bp1 vdd pmos mfac=1
+rlp outp 0 50
+rln outn 0 50
+ebufp xp 0 outp 0 1
+ebufn xn 0 outn 0 1
+rfp xp outfp 1k
+cfp outfp 0 1n
+rfn xn outfn 1k
+cfn outfn 0 1n
+ed2s outf 0 outfp outfn 1
+rl outf 0 1k
+
+.subckt pmos d g s b mfac=1 vth=-0.4220357
+m d g s b pfet l=0.26u w=1u as=0.34p ad=0.34p ps=2.68u pd=2.68u nrd=0.34 nrs=0.34 m=mfac
+
+.MODEL pfet PMOS LEVEL   = 49
++VERSION = 3.3.2          TNOM    = 27             TOX     = 4.2E-9
++XJ      = 1E-7           NCH     = 4.1589E17      VTH0    = vth
++K1      = 0.5813738      K2      = 0.0303955      K3      = 0
++K3B     = 11.3426872     W0      = 1E-6           NLX     = 9.876034E-8
++DVT0W   = 0              DVT1W   = 0              DVT2W   = 0
++DVT0    = 0.5131166      DVT1    = 0.2665264      DVT2    = 0.1
++U0      = 120.5316596    UA      = 1.645481E-9    UB      = 1E-21
++UC      = -1E-10         VSAT    = 2E5            A0      = 1.671928
++AGS     = 0.3934127      B0      = 1.830733E-6    B1      = 4.739218E-6
++KETA    = 0.0202801      A1      = 0.1976849      A2      = 0.5787213
++RDSW    = 265.2609374    PRWG    = 0.5            PRWB    = -0.2145086
++WR      = 1              WINT    = 0              LINT    = 2.176517E-8
++DWG     = -4.223522E-8
++DWB     = 7.670464E-9    VOFF    = -0.096172      NFACTOR = 2
++CIT     = 0              CDSC    = 2.4E-4         CDSCD   = 0
++CDSCB   = 0              ETA0    = 0.023671       ETAB    = -0.3005133
++DSUB    = 1.2320494      PCLM    = 2.2844319      PDIBLC1 = 4.836921E-3
++PDIBLC2 = 0.0442167      PDIBLCB = -1E-3          DROUT   = 9.991187E-4
++PSCBE1  = 1.732893E9     PSCBE2  = 5E-10          PVAG    = 14.9616148
++DELTA   = 0.01           RSH     = 7.6            MOBMOD  = 1
++PRT     = 0              UTE     = -1.5           KT1     = -0.11
++KT1L    = 0              KT2     = 0.022          UA1     = 4.31E-9
++UB1     = -7.61E-18      UC1     = -5.6E-11       AT      = 3.3E4
++WL      = 0              WLN     = 1              WW      = 0
++WWN     = 1              WWL     = 0              LL      = 0
++LLN     = 1              LW      = 0              LWN     = 1
++LWL     = 0              CAPMOD  = 2              XPART   = 0.5
++CGDO    = 6.6E-10        CGSO    = 6.6E-10        CGBO    = 1E-12
++CJ      = 1.183858E-3    PB      = 0.8534482      MJ      = 0.4124158
++CJSW    = 2.066263E-10   PBSW    = 0.6189346      MJSW    = 0.2893774
++CJSWG   = 4.22E-10       PBSWG   = 0.6189346      MJSWG   = 0.2893774
++CF      = 0              PVTH0   = 2.308546E-3    PRDSW   = 13.6874174
++PK2     = 2.657069E-3    WKETA   = 2.467864E-3    LKETA   = -2.56649E-3
++PU0     = -1.846164      PUA     = -8.06063E-11   PUB     = 1E-21
++PVSAT   = -50            PETA0   = 1E-4           PKETA   = 2.794471E-3
+.ends
+
+xm01 dp01 bp vdd vdd pmos mfac=1 vth=-0.3967723184867215
+xm02 outn datai0 dp01 vdd pmos mfac=1 vth=-0.3936097329128789
+xm03 outp data0 dp01 vdd pmos mfac=1 vth=-0.4207347477529763
+xm11 dp11 bp vdd vdd pmos mfac=2 vth=-0.4326380128304179
+xm12 outn datai1 dp11 vdd pmos mfac=2 vth=-0.43718141741825517
+xm13 outp data1 dp11 vdd pmos mfac=2 vth=-0.4216011684341206
+xm21 dp21 bp vdd vdd pmos mfac=4 vth=-0.43205824617075095
+xm22 outn datai2 dp21 vdd pmos mfac=4 vth=-0.4361249718813125
+xm23 outp data2 dp21 vdd pmos mfac=4 vth=-0.4200812852742627
+xm31 dp31 bp vdd vdd pmos mfac=8 vth=-0.4211109135078051
+xm32 outn datai3 dp31 vdd pmos mfac=8 vth=-0.41824662408214397
+xm33 outp data3 dp31 vdd pmos mfac=8 vth=-0.4283729482729267
+xm41 dp41 bp vdd vdd pmos mfac=16 vth=-0.4220111595779972
+xm42 outn datai4 dp41 vdd pmos mfac=16 vth=-0.4223531225956584
+xm43 outp data4 dp41 vdd pmos mfac=16 vth=-0.42941863409765624
+xm51 dp51 bp vdd vdd pmos mfac=32 vth=-0.42017053037142565
+xm52 outn datai5 dp51 vdd pmos mfac=32 vth=-0.4209238343084021
+xm53 outp data5 dp51 vdd pmos mfac=32 vth=-0.4137529442550646

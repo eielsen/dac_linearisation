@@ -26,8 +26,8 @@ def quantiser_configurations(QConfig):
         case 2:
             Nb = 6 # word-size
             max_code = 2**Nb - 1; # max. code
-            Vmin = 0 # volt
-            Vmax = 5 # volt
+            Vmin = -0.3 # volt
+            Vmax = 0.3 # volt
             Qtype = "midtread"
         case 3:
             Nb = 12 # word-size

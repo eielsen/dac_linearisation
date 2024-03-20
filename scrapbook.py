@@ -9,7 +9,7 @@ from numpy import matlib
 
 import control as ct
 
-from configurations import quantiser_configurations
+from quantiser_configurations import quantiser_configurations
 
 QConfig = 4
 Nb, Mq, Vmin, Vmax, Rng, Qstep, YQ, Qtype = quantiser_configurations(QConfig)
