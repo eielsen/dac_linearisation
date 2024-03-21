@@ -7,10 +7,10 @@
 @license: BSD 3-Clause
 """
 
-%reload_ext autoreload
-%autoreload 2
+# %reload_ext autoreload
+# %autoreload 2
 
-# Imports
+#  %%Imports
 import sys
 import numpy as np
 from numpy import matlib
@@ -28,6 +28,7 @@ from figures_of_merit import FFT_SINAD, TS_SINAD
 
 from lin_method_nsdcal import nsdcal
 from lin_method_dem import dem
+from lin_method_ILC import get_control, learningMatrices 
 
 from spice_utils import run_spice_sim, read_spice_bin_file_with_most_recent_timestamp
 
@@ -88,7 +89,7 @@ def get_output_levels(RUN_LIN_METHOD):
         case 2:  # load measured levels
             # load measured levels given linearisation method (measured for a given physical set-up)
             match RUN_LIN_METHOD:
-                case lin_method.BASELINE | lin_method.DEM | lin_method.NSDCAL | lin_method.SHPD | lin_method.PHFD:
+                case lin_method.BASELINE | lin_method.DEM | lin_method.NSDCAL | lin_method.SHPD | lin_method.PHFD | lin_method.ILC:
                     infile = 'measurements_and_data/level_measurements.mat'
                     fileset = 2
                     if os.path.exists(infile):
@@ -121,15 +122,16 @@ def get_output_levels(RUN_LIN_METHOD):
 # %% Configuration
 
 # Choose which linearization method you want to test
-RUN_LIN_METHOD = lin_method.BASELINE
+# RUN_LIN_METHOD = lin_method.BASELINE
 # RUN_LIN_METHOD = lin_method.PHYSCAL
 # RUN_LIN_METHOD = lin_method.PHFD
 # RUN_LIN_METHOD = lin_method.SHPD
 # RUN_LIN_METHOD = lin_method.NSDCAL
 # RUN_LIN_METHOD = lin_method.DEM
+RUN_LIN_METHOD = lin_method.ILC
 
-# DAC_MODEL = 1  # use static non-linear quantiser model to simulate DAC
-DAC_MODEL = 2  # use SPICE to simulate DAC output
+DAC_MODEL = 1  # use static non-linear quantiser model to simulate DAC
+# DAC_MODEL = 2  # use SPICE to simulate DAC output
 
 # Output low-pass filter configuration
 Fc_lp = 10e3  # cut-off frequency in hertz
@@ -148,7 +150,7 @@ QConfig = quantiser_word_size.w_16bit
 Nb, Mq, Vmin, Vmax, Rng, Qstep, YQ, Qtype = quantiser_configurations(QConfig)
 
 # %% Generate time vector
-match 2:
+match 1:
     case 1:  # specify duration as number of samples and find number of periods
         Nts = 1e6  # no. of time samples
         Np = np.ceil(Xcs_FREQ*Ts*Nts).astype(int) # no. of periods for carrier
@@ -338,7 +340,73 @@ match RUN_LIN_METHOD:
     case lin_method.MPC:  # model predictive control (with INL model)
         sys.exit("Not implemented yet - MPC")
     case lin_method.ILC:  # iterative learning control (with INL model, only periodic signals)
-        sys.exit("Not implemented yet - ILC")
+        # sys.exit("Not implemented yet - ILC")
+        Nch = 1
+        # Quantisation dither
+        Dq = dither_generation.gen_stochastic(t.size, Nch, Qstep, dither_generation.pdf.triangular_hp)
+         # Create levels dictionary
+        Q_levels = YQ.squeeze()      # make array to list 
+
+        # Unsigned integers representing the level codes
+        level_codes = np.arange(0, 2**Nb,1) # Levels:  0, 1, 2, .... 2^(Nb)
+
+        # Dictionary: Keys- Levels codes;  Values - DAC levels
+        IL_dict = dict(zip(level_codes, Q_levels ))  # Each level represent the idea DAC levels
+
+        # Measured level dictionary - Generated randomly for test 
+        # ML_dict = generate_ML(Nb, Qstep, Q_levels)
+        ML_values = get_output_levels(RUN_LIN_METHOD)
+        ML_dict = dict(zip(level_codes, ML_values[0,:]))
+
+        # % #  Reconstruction Filter
+        b, a = signal.butter(2, Fc_lp/(Fs/2)) 
+        but = signal.dlti(b,a,dt = Ts)
+        ft, fi = signal.dimpulse(but, n = 2*len(Xcs))
+
+        # % Period and padding length
+        N = 1000
+        N_padding = 200
+        N_period = int(N + 2*N_padding)
+
+        QF_M, L_M, OUT_M = learningMatrices(len_X=N_period, im= fi)
+
+        iter = 5
+        X = Xcs + Dq
+        # ILC uniform/ideal quantizer 
+        ILC_U = get_control(N, N_padding, X.squeeze(), iter, QF_M, L_M, OUT_M, Qstep, Q_levels, Qtype, IL_dict)
+        
+        # ILC nonlinear quantizer with measured levels
+        ILC_M = get_control(N, N_padding, X.squeeze(), iter, QF_M, L_M, OUT_M, Qstep, Q_levels, Qtype, ML_dict)
+
+        # U_ILC stores values from all iterations, Extract only the last column for the output of last iteartion as follows    
+        ILC_yu = ILC_U[:,-1].reshape(1,-1)
+        ILC_ym = ILC_M[:,-1].reshape(1,-1)
+
+# %%
+"""
+I did not wanted to change any thing in the code, just added  "lin.method.ILC" and this part for running it
+
+To run ILC uncomment this section
+1. select lin_method.ILC
+2. Uncomment the part below and jump to the filtering part 
+"""
+
+# YU = ILC_yu     # ILC with ideal quantizer
+# YM = ILC_ym     # ILC with nonlinear qunatizer;  
+
+# # index for plotting; due to the padding and overlapping
+# idx1 = int(N_padding/2)
+# idx2 = int(idx1 + np.max(YU.shape))
+
+# tu = t[idx1:idx2]
+# tm = tu
+# # Plotss
+# fig, ax = plt.subplots()
+# ax.plot(t,Xcs)
+# ax.plot(t[idx1:idx2], YU.squeeze())
+
+# yu = YU
+# ym = YM
 
 # %% DAC output(s)
 
@@ -391,7 +459,7 @@ ym_avg = ym_avg_out[1]
 
 # %% Evaluate performance
 TRANSOFF = np.floor(Npt*Fs/Xcs_FREQ).astype(int)
-match 2:
+match 1:
     case 1:  # use FFT based method to detemine SINAD
         RU = FFT_SINAD(yu_avg[TRANSOFF:-1], Fs, 'Uniform')
         RM = FFT_SINAD(ym_avg[TRANSOFF:-1], Fs, 'Non-linear')
