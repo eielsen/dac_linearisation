@@ -7,6 +7,25 @@ import random
 # from configurations import quantiser_configurations
 
 def get_control(N, N_padding, Xcs, itr, QF_M, L_M, OUT_M, Qstep, Q_levels, Qtype, lvl_dict):
+    """ INPUTS:
+	N 		- Total length of reference/test signal (in sample numbers),
+	N_padding	- Padding length on each end, 
+	Xcs		- Reference/test signal	
+	QF_M		- Q-filtering matrix
+	L_M		- Learning matrix
+	OUT_M		- Output matrix/ Markov parameters/ Impulse responses
+	Qstep		- Quantizer step size
+	Q_levels	- Quantizer levels
+	Qtype		- Quantizer type
+	lvl-dict	- Dictionary, where, keys represent the codes and the values represent the 
+			  quantized measured(or ideal) levels depending on the Qstep and Range of the quantizer.
+    """
+    """ OUTPUT:
+	US		- Control (Stacked)
+	YS		- Output
+	ES		- Error
+	rmsErr		- RMS Error
+    """
 
     pMatrix = get_periodMatrix(N, N_padding, Xcs)
     N_period, T_period = pMatrix.shape        # Matrix dimensions
