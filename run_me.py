@@ -122,13 +122,13 @@ def get_output_levels(RUN_LIN_METHOD):
 # %% Configuration
 
 # Choose which linearization method you want to test
-RUN_LIN_METHOD = lin_method.BASELINE
+# RUN_LIN_METHOD = lin_method.BASELINE
 # RUN_LIN_METHOD = lin_method.PHYSCAL
 # RUN_LIN_METHOD = lin_method.PHFD
 RUN_LIN_METHOD = lin_method.SHPD
 # RUN_LIN_METHOD = lin_method.NSDCAL
 # RUN_LIN_METHOD = lin_method.DEM
-RUN_LIN_METHOD = lin_method.ILC
+# RUN_LIN_METHOD = lin_method.ILC
 
 DAC_MODEL = 1  # use static non-linear quantiser model to simulate DAC
 # DAC_MODEL = 2  # use SPICE to simulate DAC output
