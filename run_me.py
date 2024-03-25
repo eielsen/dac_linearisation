@@ -64,7 +64,7 @@ def get_output_levels(RUN_LIN_METHOD):
     Load measured or generated output levels.
     """
     # TODO: This is a bit of a mess
-    match 2:
+    match 3:
         case 1:  # load some generated levels
             infile_1 = os.path.join(os.getcwd(),
                                     'generated_output_levels',
@@ -90,7 +90,6 @@ def get_output_levels(RUN_LIN_METHOD):
             match RUN_LIN_METHOD:
                 case lin_method.BASELINE | lin_method.DEM | lin_method.NSDCAL | lin_method.SHPD | lin_method.PHFD:
                     infile = 'measurements_and_data/level_measurements.mat'
-                    fileset = 2
                     if os.path.exists(infile):
                         mat_file = scipy.io.loadmat(infile)
                     else:
@@ -102,7 +101,6 @@ def get_output_levels(RUN_LIN_METHOD):
 
                 case lin_method.PHYSCAL:
                     infile = 'measurements_and_data/PHYSCAL_level_measurements_set_2.mat'
-                    fileset = 2
                     if os.path.exists(infile):
                         mat_file = scipy.io.loadmat(infile)
                     else:
@@ -114,6 +112,8 @@ def get_output_levels(RUN_LIN_METHOD):
 
                     # static DAC model output levels, one channel per row
                     ML = np.stack((ML_1, ML_2))
+        case 3:
+            ML = np.load('SPICE_levels_16bit.npy')
 
     return ML
 
@@ -121,10 +121,10 @@ def get_output_levels(RUN_LIN_METHOD):
 # %% Configuration
 
 # Choose which linearization method you want to test
-RUN_LIN_METHOD = lin_method.BASELINE
+#RUN_LIN_METHOD = lin_method.BASELINE
 # RUN_LIN_METHOD = lin_method.PHYSCAL
 # RUN_LIN_METHOD = lin_method.PHFD
-# RUN_LIN_METHOD = lin_method.SHPD
+RUN_LIN_METHOD = lin_method.SHPD
 # RUN_LIN_METHOD = lin_method.NSDCAL
 # RUN_LIN_METHOD = lin_method.DEM
 
@@ -136,7 +136,7 @@ Fc_lp = 10e3  # cut-off frequency in hertz
 N_lf = 3  # filter order
 
 # Sampling rate
-Fs = 1e5  # sampling rate (over-sampling) in hertz
+Fs = 1e6  # sampling rate (over-sampling) in hertz
 Ts = 1/Fs  # sampling time
 
 # Carrier signal (to be recovered on the output)
@@ -144,7 +144,8 @@ Xcs_SCALE = 100  # %
 Xcs_FREQ = 99  # Hz
 
 # Set quantiser model
-QConfig = quantiser_word_size.w_16bit
+QConfig = quantiser_word_size.w_16bit_SPICE
+#QConfig = quantiser_word_size.w_16bit_NI_card
 Nb, Mq, Vmin, Vmax, Rng, Qstep, YQ, Qtype = quantiser_configurations(QConfig)
 
 # %% Generate time vector
@@ -190,9 +191,8 @@ match RUN_LIN_METHOD:
         # for the level mismatches for each and every code.
         # Needs INL measurements and a calibration step.
 
-        Nch = 1  # effectively 1 channel input (with 1 DAC pair)
-
         # Quantisation dither
+        Nch = 1  # effectively 1 channel input (with 1 DAC pair)
         Dq = dither_generation.gen_stochastic(t.size, Nch, Qstep, dither_generation.pdf.triangular_hp)
 
         X = Xcs + Dq  # quantiser input
@@ -203,28 +203,29 @@ match RUN_LIN_METHOD:
         q = quantise_signal(X, Qstep, Qtype)
         c_pri = generate_codes(q, Nb, Qtype)
 
-        c_sec = LUTcal[c_pri.astype(int)]
+        c_sec = LUTcal[c_pri.astype(int)]  # table look-up
 
         C = np.stack((c_pri[0, :], c_sec[0, :]))
 
         # Zero contribution from secondary in ideal case
+        Nch = 2  # 2 physical channels
         YQ = np.stack((YQ[0, :], np.zeros(YQ.shape[1])))
 
     case lin_method.DEM:  # dynamic element matching
         # Here we assume standard off-the-shelf DACs which translates to
         # full segmentation, which then means we have 2 DACs to work with.
 
-        Nch = 1  # DEM effectively has 1 channel input
-
         # Quantisation dither
+        Nch = 1  # DEM effectively has 1 channel input
         Dq = dither_generation.gen_stochastic(t.size, Nch, Qstep, dither_generation.pdf.triangular_hp)
         Dq = Dq[0]  # convert to 1d
 
         X = Xcs + Dq  # input
 
         C = dem(X, Rng, Nb)
-            
+        
         # two identical, ideal channels
+        Nch = 2  # 2 physical channels
         YQ = np.stack((YQ[0, :], YQ[0, :]))
 
     case lin_method.NSDCAL:  # noise shaping with digital calibration
@@ -316,10 +317,12 @@ match RUN_LIN_METHOD:
         Xcs = matlib.repmat(Xcs, Nch, 1)
 
         # Scaling dither with respect to the carrier
-        Xscale = 50  # carrier to dither ratio (between 0% and 100%)
+        Xscale = 55  # carrier to dither ratio (between 0% and 100%)
         Dscale = 100 - Xscale  # dither to carrier ratio
         Dfreq = 49e3  # Hz
         Dadf = dither_generation.adf.uniform  # amplitude distr. funct. (ADF)
+        #Dadf = dither_generation.adf.cauchy  # amplitude distr. funct. (ADF)
+        
         # Generate periodic dither
         Dmaxamp = Rng/2  # maximum dither amplitude (volt)
         dp = Dmaxamp*dither_generation.gen_periodic(t, Dfreq, Dadf)
@@ -351,23 +354,28 @@ match DAC_MODEL:
         YM = generate_dac_output(C, ML)  # using measured or randomised levels
         tm = t
     case 2:  # use SPICE to simulate DAC output
-        c = C[0,:]  # pick one channel for now
-        run_spice_sim(c, Nb, t, Ts, QConfig)
-        path = './spice_output/'
-        t_spice, y_spice = read_spice_bin_file_with_most_recent_timestamp(path)
-        y_resamp = np.interp(t, t_spice, y_spice) # re-sample
-        YM = np.zeros([1, y_resamp.size])
-        YM[0,:] = y_resamp
+        YM = np.zeros([Nch, t.size])
         tm = t
-
+        for k in range(0,Nch):
+            c = C[k,:]
+            seed = k + 1
+            run_spice_sim(c, Nb, t, Ts, QConfig, seed)
+            path = './spice_output/'
+            t_spice, y_spice = read_spice_bin_file_with_most_recent_timestamp(path)
+            y_resamp = np.interp(t, t_spice, y_spice) # re-sample
+            YM[k,:] = y_resamp
+        
 # %% Summation stage
 if RUN_LIN_METHOD == lin_method.DEM:
-    K = 1
+    K = np.ones((2,1))
+if RUN_LIN_METHOD == lin_method.PHYSCAL:
+    K = np.ones((2,1))
+    K[1] = 1e-2
 else:
-    K = 1/Nch
+    K = np.ones((2,1))/Nch
 
-yu = K*np.sum(YU, 0)
-ym = K*np.sum(YM, 0)
+yu = np.sum(K*YU, 0)
+ym = np.sum(K*YM, 0)
 
 plt.plot(tu, yu)
 plt.show()

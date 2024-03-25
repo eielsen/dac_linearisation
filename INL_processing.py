@@ -10,6 +10,7 @@
 import numpy as np
 import scipy.io
 import os
+import sys
 
 from matplotlib import pyplot as plt
 from quantiser_configurations import quantiser_configurations
@@ -55,26 +56,62 @@ def generate_random_output_levels(QuantizerConfig=4):
             np.save(outfile, YQn)
             break
 
-def generate_physical_level_calibration_look_up_table(SAVE_LUT=0):
+
+def get_levels_from_file(config):
+    # load level measurements (or randomly generated)
+
+    match config:
+        case 0:
+            infile = 'measurements_and_data/level_measurements.mat'
+            if os.path.exists(infile):
+                mf = scipy.io.loadmat(infile)
+            else:
+                # can't recover from this
+                sys.exit("No level measurements file found.")
+            ML = mf['ML']  # measured levels
+            PRILVLS = ML[0,:]
+            SECLVLS = ML[1,:]
+        case 1:
+            mf = scipy.io.loadmat('measurements_and_data/PHYSCAL_level_measurements_set_1.mat')  # measured levels
+            PRILVLS = mf['PRILVLS'][0]
+            SECLVLS = mf['SECLVLS'][0]
+        case 2:
+            mf = scipy.io.loadmat('measurements_and_data/PHYSCAL_level_measurements_set_2.mat')  # measured levels
+            PRILVLS = mf['PRILVLS'][0]
+            SECLVLS = mf['SECLVLS'][0]
+        case 3:
+            ML = np.load('SPICE_levels_16bit.npy')  # measured levels
+            PRILVLS = ML[0,:]
+            SECLVLS = 1e-2*ML[1,:]
+    
+    return PRILVLS, SECLVLS
+
+
+def generate_physical_level_calibration_look_up_table(QConfig=4, FConfig=2, SAVE_LUT=0):
     """
     Least-squares minimisation of element mismatch via a look-up table (LUT)
     to be used when a secondary calibration DAC is available
     """
 
     # Quantiser model
-    Nb, Mq, Vmin, Vmax, Rng, Qstep, YQ, Qtype = quantiser_configurations(4)
+    Nb, Mq, Vmin, Vmax, Rng, Qstep, YQ, Qtype = quantiser_configurations(QConfig)
 
-    # load level measurements (or randomly generated)
-    #mat = scipy.io.loadmat('measurements_and_data\PHYSCAL_level_measurements_set_1.mat'); fileset = 1    
-    mat = scipy.io.loadmat('measurements_and_data/PHYSCAL_level_measurements_set_2.mat'); fileset = 2
+    PRILVLS, SECLVLS = get_levels_from_file(FConfig)
+    PRILVLS = np.array(PRILVLS)
+    SECLVLS = np.array(SECLVLS)
 
-    PRILVLS = mat['PRILVLS'][0]
-    SECLVLS = mat['SECLVLS'][0]
-        
-    qs = np.arange(-2**(Nb-1), 2**(Nb-1), 1) # possible quantisation steps/codes
+    qs = np.arange(-2**(Nb-1), 2**(Nb-1), 1) # possible quantisation steps/codes (recall arange() is not inclusive)
     qs = qs.reshape(-1, 1) # ensure column vector for codes
 
     YQ = YQ.reshape(-1,1) # ensure column vector for ideal levels
+    
+    #%%
+    plt.figure(10)
+    plt.plot(qs, YQ, label='Uniform')
+    plt.plot(qs, PRILVLS, label='Measured')
+    plt.xlabel('Code')
+    plt.ylabel('Ideal output level')
+    plt.legend()
 
     QQ = np.hstack([qs, np.ones(qs.shape)]) # codes matrix for straight line least-squares fit
     YY = np.hstack([YQ, np.ones(qs.shape)]) # ideal levels matrix
@@ -91,6 +128,7 @@ def generate_physical_level_calibration_look_up_table(SAVE_LUT=0):
     CLm = CLm.reshape(-1, 1) # ensure column vector
 
     thetacq = np.linalg.lstsq(QQ, CLm, rcond=None)[0] # staight line fit
+    print(thetacq)
 
     Qcal = thetacq[0] # effective quantization step for secondary channel (effective gain/scale)
     CL = Qcal*qs # resort to using scaled, ideal output for secondary calibration channel
@@ -115,7 +153,7 @@ def generate_physical_level_calibration_look_up_table(SAVE_LUT=0):
     plt.figure(1)
     plt.plot(YQ, LUTcal, label='Calibrated look-up table (LUT)')
     plt.xlabel('Ideal output level')
-    plt.ylabel('Code')
+    plt.ylabel('Calibrated Code')
     plt.legend()
 
     plt.figure(2)

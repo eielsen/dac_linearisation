@@ -11,14 +11,18 @@ import control as ct
 
 from quantiser_configurations import quantiser_configurations
 
-QConfig = 4
-Nb, Mq, Vmin, Vmax, Rng, Qstep, YQ, Qtype = quantiser_configurations(QConfig)
+N = 1
+for k in range(0,N):
+    print(k)
+
+#QConfig = 4
+#Nb, Mq, Vmin, Vmax, Rng, Qstep, YQ, Qtype = quantiser_configurations(QConfig)
 
 # DEM code input range
-M = 2*(2**Nb - 1)
-cmin = 2**(Nb-1) - 1
-cmax = M - 2**(Nb-1) + 1
-Qseg = Rng/(cmax-cmin)  # segmented step-size (LSB)
+#M = 2*(2**Nb - 1)
+#cmin = 2**(Nb-1) - 1
+#cmax = M - 2**(Nb-1) + 1
+#Qseg = Rng/(cmax-cmin)  # segmented step-size (LSB)
 
 #if RUN_LIN_METHOD == lin_method.DEM:
 #    SIGNAL_OFFSET = Rng/2# - Qstep/2
@@ -47,8 +51,8 @@ Ks =
 """
 
 # DEM mapping from output segment weights to codes
-Ks = 2**np.arange(0,Nb)
-Ks = matlib.repmat(Ks.reshape(-1, 1),1,2)
+#Ks = 2**np.arange(0,Nb)
+#Ks = matlib.repmat(Ks.reshape(-1, 1),1,2)
 
 # from balreal import balreal
 
