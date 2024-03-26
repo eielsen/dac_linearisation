@@ -362,7 +362,7 @@ match RUN_LIN_METHOD:
         level_codes = np.arange(0, 2**Nb, 1)  # Levels:  0, 1, 2, .... 2^(Nb)
 
         # Dictionary: Keys - Levels codes; Values - DAC levels
-        IL_dict = dict(zip(level_codes, Q_levels ))  # Each level represent the idea DAC levels
+        IL_dict = dict(zip(level_codes, Q_levels))  # Each level represent the ideal DAC levels
 
         # Measured level dictionary - Generated randomly for test 
         # ML_dict = generate_ML(Nb, Qstep, Q_levels)
@@ -380,7 +380,7 @@ match RUN_LIN_METHOD:
         N_padding = 200
         N_period = int(N + 2*N_padding)
 
-        QF_M, L_M, OUT_M = learning_matrices(len_X=N_period, im= fi)
+        QF_M, L_M, OUT_M = learning_matrices(len_X=N_period, im=fi)
 
         iter = 5
         X = Xcs + Dq
