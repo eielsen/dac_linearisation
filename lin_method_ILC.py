@@ -1,5 +1,14 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+Iterative learning control.
 
- # %%
+@author: Bikash Adhikari
+@date: 25.03.2024
+@license: BSD 3-Clause
+"""
+
+# %%
 import numpy as np
 from scipy import linalg, signal
 import sys
@@ -7,28 +16,29 @@ import random
 # from configurations import quantiser_configurations
 
 def get_control(N, N_padding, Xcs, itr, QF_M, L_M, OUT_M, Qstep, Q_levels, Qtype, lvl_dict):
-    """ INPUTS:
-	N 		- Total length of reference/test signal (in sample numbers),
-	N_padding	- Padding length on each end, 
-	Xcs		- Reference/test signal	
-	QF_M		- Q-filtering matrix
-	L_M		- Learning matrix
-	OUT_M		- Output matrix/ Markov parameters/ Impulse responses
-	Qstep		- Quantizer step size
-	Q_levels	- Quantizer levels
-	Qtype		- Quantizer type
-	lvl-dict	- Dictionary, where, keys represent the codes and the values represent the 
-			  quantized measured(or ideal) levels depending on the Qstep and Range of the quantizer.
     """
-    """ OUTPUT:
-	US		- Control (Stacked)
-	YS		- Output
-	ES		- Error
-	rmsErr		- RMS Error
+    INPUT:
+        N         - Total length of reference/test signal (in sample numbers),
+        N_padding - Padding length on each end, 
+        Xcs       - Reference/test signal	
+        QF_M      - Q-filtering matrix
+        L_M       - Learning matrix
+        OUT_M     - Output matrix/Markov parameters/Impulse responses
+        Qstep     - Quantizer step size
+        Q_levels  - Quantizer levels
+        Qtype     - Quantizer type
+        lvl-dict  - Dictionary, where, keys represent the codes and the values represent the 
+                    quantized measured(or ideal) levels depending on the Qstep and Range of the quantizer.
+    
+    OUTPUT:
+        US		- Control (Stacked)
+        YS		- Output
+        ES		- Error
+        rmsErr	- RMS Error
     """
 
     pMatrix = get_periodMatrix(N, N_padding, Xcs)
-    N_period, T_period = pMatrix.shape        # Matrix dimensions
+    N_period, T_period = pMatrix.shape  # matrix dimensions
 
     US = np.empty([1, itr+1])
     YS = np.empty([1, itr+1])
@@ -40,7 +50,7 @@ def get_control(N, N_padding, Xcs, itr, QF_M, L_M, OUT_M, Qstep, Q_levels, Qtype
         ref_signal = pMatrix[:,i]
         U, Y, E, rE = get_ILC_control(ref_signal, u_init, itr, QF_M, L_M, OUT_M, Qstep, Q_levels, Qtype, lvl_dict) 
 
-        u_init = U[:,-1]        # set initial control for the next period as the optimal control of the last period
+        u_init = U[:,-1]  # set initial control for the next period as the optimal control of the last period
 
         # u_init = np.ones(N_period)
 
@@ -64,29 +74,29 @@ def get_control(N, N_padding, Xcs, itr, QF_M, L_M, OUT_M, Qstep, Q_levels, Qtype
     for i in range(ES.shape[1]):
         rmsErr_i = np.sqrt(np.square(ES[:,i]).mean())
         rmsErr = np.append(rmsErr, rmsErr_i)
+    
     return US
 
 
-def get_ILC_control(Xcs, u_init, itr, QF_M, L_M, OUT_M, Qstep, Q_levels, Qtype, Mlvl_dict ):
-
-    """ INPUTS:
-    Xcs         - Reference / test signal
-    u_init      - Initial control signal 
-    iter        - Number of iterations
-    QF_M        - Q-filtering Matrix
-    L_M         - Learning Matrix 
-    OUT_M       - Output Matrix
-    Qstep       - Quantization step size
-    Q_leves     - Quantizer leves
-    Qtype       - Quantizer type; Ideal or Nonideal (with INL)
-    Mlvl_dict   - Measured level dictionary
-    """ 
-
-    """ OUTPUTS:
-    U       - Control matrix with values from every iteration
-    Y       - Ouput matrix with values from every iteration
-    E       - Error matrix with values from every iteration
-    rmsErr  - RMSError from every iteration
+def get_ILC_control(Xcs, u_init, itr, QF_M, L_M, OUT_M, Qstep, Q_levels, Qtype, Mlvl_dict):
+    """
+    INPUTS:
+        Xcs         - Reference / test signal
+        u_init      - Initial control signal 
+        iter        - Number of iterations
+        QF_M        - Q-filtering Matrix
+        L_M         - Learning Matrix 
+        OUT_M       - Output Matrix
+        Qstep       - Quantization step size
+        Q_leves     - Quantizer leves
+        Qtype       - Quantizer type; Ideal or Nonideal (with INL)
+        Mlvl_dict   - Measured level dictionary
+        
+    OUTPUTS:
+        U       - Control matrix with values from every iteration
+        Y       - Ouput matrix with values from every iteration
+        E       - Error matrix with values from every iteration
+        rmsErr  - RMSError from every iteration
 
     Note: Only use the value from last iteration for simulation 
     U, Y, E [:,-1]: Each column represent each iteration.
@@ -105,7 +115,7 @@ def get_ILC_control(Xcs, u_init, itr, QF_M, L_M, OUT_M, Qstep, Q_levels, Qtype, 
     Y = y
 
     # Initial Error 
-    e = Xcs - y     # Reference/test signal - output signal
+    e = Xcs - y  # reference/test signal - output signal
     E = e
 
     # RMS error 
@@ -123,7 +133,7 @@ def get_ILC_control(Xcs, u_init, itr, QF_M, L_M, OUT_M, Qstep, Q_levels, Qtype, 
         Vmin = np.min(Q_levels)
         q_u_new_code = gen_code(q_u_new, Qstep, Vmin, Qtype).squeeze()
 
-        # Assing measured levels according to the code
+        # Parsing measured levels according to the code
         q_u_new_dac = gen_dac_output(q_u_new_code, Mlvl_dict)
         q_u = np.array(q_u_new_dac).reshape(-1,1)
 
@@ -149,23 +159,19 @@ def get_ILC_control(Xcs, u_init, itr, QF_M, L_M, OUT_M, Qstep, Q_levels, Qtype, 
     return U, Y, E, rmsErr
 
 
-def learningMatrices(len_X, im):
-
+def learning_matrices(len_X, im):
     """  Q-filter and Learning matrix generated using results from:
     D. A. Bristow, M. Tharayil and A. G. Alleyne, "A survey of iterative learning control," 
     in IEEE Control Systems, vol. 26, no. 3, pp. 96-114, June 2006
-    """ 
-
-
-    """ INPUTS:
-    len_X   - Length of reference signal. Q,L,G matrix dimension should match (len_X x len_X)
-    im      - filter's impulse response
-    """
-
-    """ OUTPUTS:
-    Q       - Q-filtering matrix
-    L       - Learning matrix
-    G       - Plant output matrix
+    
+    INPUT:
+        len_X  - Length of reference signal. Q,L,G matrix dimension should match (len_X x len_X)
+        im     - filter's impulse response
+    
+    OUTPUT:
+        Q      - Q-filtering matrix
+        L      - Learning matrix
+        G      - Plant output matrix
     """
 
     # len_X = len(X)      # Length of test signal
@@ -244,15 +250,16 @@ def get_periodMatrix(N, N_padding, ref_signal):
     return period_matrix 
 
 
-def remove_Overlap(M, N, N_padding):
-    # Removes the overlapping due to padding
-    """ INPUTS:
-    M       -  period Matrix (i.e. the matrix that contains the segments of signals sotred as column vector on matrix M)
-    N       - Length of the segment
-    N_padding   - Padding length
-    """
-    """ OUTPUT
-    M_trim  - Trimmed matrix with overlapping due to padding removed
+def remove_Overlap(M, N, N_padding): 
+    """ Removes the overlapping due to padding
+
+    INPUTS:
+        M         -  period Matrix (i.e. the matrix that contains the segments of signals sotred as column vector on matrix M)
+        N         - Length of the segment
+        N_padding - Padding length
+    
+    OUTPUT:
+        M_trim  - Trimmed matrix with overlapping due to padding removed
     """
 
     nrows, ncols = M.shape
@@ -263,16 +270,16 @@ def remove_Overlap(M, N, N_padding):
 
 
 def direct_quant(Xcs, Qstep, Q_levels, Qtype):
-    # Direct quatinzer
-    """ INPUTS:
-    Xcs         - Reference signal
-    Qstep       - Qantizer step size
-    Q_levels    - Quantizer levels
-    Qtype       - Quantizer type; midread or midrise
-    """
-
-    """ OUTPUTS:
-    q_Xcs       - Quantized signal with Qstep, step size
+    """ Direct quatinzer
+    
+    INPUT:
+        Xcs      - Reference signal
+        Qstep    - Qantizer step size
+        Q_levels - Quantizer levels
+        Qtype    - Quantizer type; midread or midrise
+    
+    OUTPUTS:
+        q_Xcs    - Quantized signal with Qstep, step size
     """
     # Range of the quantizer
     Vmax = np.max(Q_levels)
@@ -292,18 +299,18 @@ def direct_quant(Xcs, Qstep, Q_levels, Qtype):
 
 
 def gen_code(q_Xcs, Qstep, Vmin, Qtype):
-    # Converter the quantized values to unsigned integers
+    """ Converter the quantized values to unsigned integers
 
-    """ INPUTS:
-    q_Xcs       - Quantized signal
-    Qstep       - Qantizer step size
-    Vmin        - Quantizer lower range
-    Qtype       - Quantizer type; midread or midrise
+    INPUTS:
+        q_Xcs       - Quantized signal
+        Qstep       - Qantizer step size
+        Vmin        - Quantizer lower range
+        Qtype       - Quantizer type; midread or midrise
+    
+    OUTPUTS:
+        q_code      - code corresponsing to the quantized values and quantizer levels
     """
 
-    """ OUTPUTS:
-    q_code      - code corresponsing to the quantized values and quantizer levels
-    """
     match Qtype:
         case "midtread":
             q_code = q_Xcs/Qstep - np.floor(Vmin/Qstep)
@@ -313,22 +320,25 @@ def gen_code(q_Xcs, Qstep, Vmin, Qtype):
 
 
 def gen_dac_output(q_codes, ML_dict):
-    """ INPUTS:
-    q_codes       - quantized signal in codes
-    ML_dict       - measured levels corresponding to the code, LUT
+    """ 
+    INPUTS:
+        q_codes       - quantized signal in codes
+        ML_dict       - measured levels corresponding to the code, LUT
+
+    OUTPUTS:
+        q_dac       -  Emulated DAC output 
     """
 
-    """ OUTPUTS:
-    q_dac       -  Emulated DAC output 
-    """
     q_dac = []
     for i in q_codes:
         q_dac_i = ML_dict[i]    # assing value to the code
         q_dac.append(q_dac_i)
     return  q_dac
 
+
 def generate_ML(Nb, Qstep, Q_levels):
     # Generate random INL for the simulation
+    
     level_codes = np.arange(0, 2**Nb,1) # Levels:  0, 1, 2, .... 2^(Nb)
     inl = []
     for _ in range(2**Nb):
