@@ -9,7 +9,7 @@ from gurobipy import GRB
 
 
 
-def MPC1(Nb, Xcs, N_pred,  x0, A, B, C, D):
+def MPC(Nb, Xcs, N_pred,  x0, A, B, C, D):
 
     # Gurobi Model
     m = gp.Model("MPC- INL")

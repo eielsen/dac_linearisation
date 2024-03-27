@@ -21,6 +21,8 @@ from scipy import signal
 from matplotlib import pyplot as plt
 import tqdm
 import math
+import csv
+
 
 import dither_generation
 from quantiser_configurations import quantiser_configurations, quantiser_word_size
@@ -29,8 +31,8 @@ from figures_of_merit import FFT_SINAD, TS_SINAD
 
 from lin_method_nsdcal import nsdcal
 from lin_method_dem import dem
-from lin_method_ILC import get_control, learningMatrices 
-from lin_method_MPC import MPC1, dq, gen_ML, gen_C, gen_DO
+from lin_method_ILC import get_control, learning_matrices 
+from lin_method_MPC import MPC, gen_ML, gen_C, gen_DO, dq
 
 from spice_utils import run_spice_sim, read_spice_bin_file_with_most_recent_timestamp
 
@@ -130,8 +132,8 @@ def get_output_levels(RUN_LIN_METHOD):
 # RUN_LIN_METHOD = lin_method.SHPD
 # RUN_LIN_METHOD = lin_method.NSDCAL
 # RUN_LIN_METHOD = lin_method.DEM
-RUN_LIN_METHOD = lin_method.ILC
-# RUN_LIN_METHOD = lin_method.MPC
+# RUN_LIN_METHOD = lin_method.ILC
+RUN_LIN_METHOD = lin_method.MPC
 
 DAC_MODEL = 1  # use static non-linear quantiser model to simulate DAC
 # DAC_MODEL = 2  # use SPICE to simulate DAC output
@@ -149,7 +151,7 @@ Xcs_SCALE = 100  # %
 Xcs_FREQ = 99  # Hz
 
 # Set quantiser model
-QConfig = quantiser_word_size.w_16bit
+QConfig = quantiser_word_size.w_16bit_NI_card
 Nb, Mq, Vmin, Vmax, Rng, Qstep, YQ, Qtype = quantiser_configurations(QConfig)
 
 # %% Generate time vector
@@ -340,10 +342,8 @@ match RUN_LIN_METHOD:
         # two identical, ideal channels
         YQ = np.stack((YQ[0, :], YQ[0, :]))
     case lin_method.MPC:  # model predictive control (with INL model)
-        sys.exit("Not implemented yet - MPC")
+        # sys.exit("Not implemented yet - MPC")
 
-    case lin_method.ILC:  # iterative learning control (with INL model, only periodic signals)
-        # sys.exit("Not implemented yet - ILC")
         Nch = 1
         # Quantisation dither
         Dq = dither_generation.gen_stochastic(t.size, Nch, Qstep, dither_generation.pdf.triangular_hp)
@@ -362,53 +362,149 @@ match RUN_LIN_METHOD:
         ML_dict = dict(zip(level_codes, ML_values[0,:]))
 
         # % #  Reconstruction Filter
-        b, a = signal.butter(3, Fc_lp/(Fs/2)) 
-        but = signal.dlti(b,a,dt = Ts)
-        ft, fi = signal.dimpulse(but, n = 2*len(Xcs))
+        b, a = signal.butter(2, Fc_lp/(Fs/2)) 
+        # but = signal.dlti(b,a,dt = Ts)
+        # ft, fi = signal.dimpulse(but, n = 2*len(Xcs))
+        A, B, C, D = signal.tf2ss(b,a) # Transfer function to StateSpace
 
-        # % Period and padding length
-        N = 2000
-        N_padding = 200
-        N_period = int(N + 2*N_padding)
+        N_PRED = 2     # prediction horizon
 
-        QF_M, L_M, OUT_M = learningMatrices(len_X=N_period, im= fi)
+        # Initial Condition
+        x0 = np.zeros(2).reshape(-1,1)
 
-        iter = 5
-        X = Xcs + Dq
-        # The difference in ideal and non-ideal DAC is the choice fo the IL_dict and ML_dict, dictionaries with the
-        # ideal DAC levels and measured levels corresponding to the codes, respectively.
+        # Loop counter
+        len_MPC = len(Xcs) - N_PRED
 
-        # ILC uniform/ideal quantizer 
-        ILC_U = get_control(N, N_padding, X.squeeze(), iter, QF_M, L_M, OUT_M, Qstep, Qlevels, Qtype, IL_dict)
+        # Storage Container
+        DAC_Q_MPC_Xcs = []
+
+        # First we need to scale up the signal due to the constraint in the optimization problem 
+        # Scale up the input signal 
+        Xcs1 = Xcs + Rng/2                  
+        Xcs_new =  ((2**Nb) * (Xcs1 /Rng)) 
+
+        for i in tqdm.tqdm(range(len_MPC)):
+            Xcs_i = Xcs_new[i:i+N_PRED]
+
+            # Get MPC control
+            Q_MPC_Xcs_N = MPC(Nb, Xcs_i, N_PRED, x0, A, B, C, D)
+            Q_MPC_Xcs_N =  Q_MPC_Xcs_N.astype(int)
+
+
+            """
+            CHOOSE- 
+                1. IL_DICT (Ideal level dictionary) FOR IDEAL DAC
+                2. ML_DICT (Measured level dictionary) FOR NONLINEAR DAC
+            """
+
+            # Generate DAC output
+            DAC_Q_MPC_Xcs_N = gen_DO(Q_MPC_Xcs_N, ML_dict)                   # Generate DAC output
         
-        # ILC nonlinear quantizer with measured levels
-        # ILC_M = get_control(N, N_padding, X.squeeze(), iter, QF_M, L_M, OUT_M, Qstep, Qlevels, Qtype, ML_dict)
+            # Store optimal value
+            DAC_Q_MPC_Xcs.append(DAC_Q_MPC_Xcs_N[0])
+            
+            # # State update for next horizon
+            x0_new = A @ x0 + B * (DAC_Q_MPC_Xcs_N[0] - Xcs[i])                       # State Prediction
+            x0 = x0_new                                                                 # State Update
 
-        # U_ILC stores values from all iterations, Extract only the last column for the output of last iteartion as follows    
-        ILC_yu = ILC_U[:,-1].reshape(1,-1)
-        ILC_ym = ILC_U[:,-1].reshape(1,-1)
-        # ILC_ym = ILC_M[:,-1].reshape(1,-1)
+        # Convert list to array
+        DAC_Q_MPC_Xcs = np.array(DAC_Q_MPC_Xcs)   
 
-# %%
-"""
-Added  "lin.method.ILC" 
+        yu = DAC_Q_MPC_Xcs
+        ym = DAC_Q_MPC_Xcs
 
-To run ILC uncomment this section
-1. select lin_method.ILC
-2. Uncomment the part below and jump to the filtering part 
-"""
-YU = ILC_yu     # ILC with ideal quantizer
-YM = ILC_ym     # ILC with nonlinear qunatizer;  
+        tu = t[0:len(DAC_Q_MPC_Xcs)]
+        tm = tu
 
-# index for plotting; due to the padding and overlapping
-idx1 = int(N_padding/2)
-idx2 = int(idx1 + np.max(YU.shape))
+        rf = Xcs[0:len(DAC_Q_MPC_Xcs)]
+        headerlist = ["Time", "Ref", "MPC"]
+        datalist = zip(tu, rf, DAC_Q_MPC_Xcs )
+        with open("mpc_16bit_ml.csv", 'w') as f1:
+            writer = csv.writer(f1, delimiter = '\t')
+            writer.writerow(headerlist)
+            writer.writerows(datalist)
 
-tu = t[idx1:idx2]
-tm = tu
+        
+        
 
-yu = YU
-ym = YM
+    case lin_method.ILC:  # iterative learning control (with INL model, only periodic signals)
+    #     # sys.exit("Not implemented yet - ILC")
+    #     Nch = 1
+    #     # Quantisation dither
+    #     Dq = dither_generation.gen_stochastic(t.size, Nch, Qstep, dither_generation.pdf.triangular_hp)
+    #      # Create levels dictionary
+    #     Qlevels = YQ.squeeze()      # make array to list 
+
+    #     # Unsigned integers representing the level codes
+    #     level_codes = np.arange(0, 2**Nb,1) # Levels:  0, 1, 2, .... 2^(Nb)
+
+    #     # Dictionary: Keys- Levels codes;  Values - DAC levels
+    #     IL_dict = dict(zip(level_codes, Qlevels ))  # Each level represent the idea DAC levels
+
+    #     # Measured level dictionary - Generated randomly for test 
+    #     # ML_dict = generate_ML(Nb, Qstep, Q_levels)
+    #     ML_values = get_output_levels(RUN_LIN_METHOD)
+    #     ML_dict = dict(zip(level_codes, ML_values[0,:]))
+
+    #     # % #  Reconstruction Filter
+    #     b, a = signal.butter(3, Fc_lp/(Fs/2)) 
+    #     but = signal.dlti(b,a,dt = Ts)
+    #     ft, fi = signal.dimpulse(but, n = 2*len(Xcs))
+
+    #     # % Period and padding length
+    #     N = 2000
+    #     N_padding = 200
+    #     N_period = int(N + 2*N_padding)
+
+    #     QF_M, L_M, OUT_M = learning_matrices(len_X=N_period, im= fi)
+
+    #     iter = 5
+    #     X = Xcs + Dq
+    #     # The difference in ideal and non-ideal DAC is the choice fo the IL_dict and ML_dict, dictionaries with the
+    #     # ideal DAC levels and measured levels corresponding to the codes, respectively.
+
+    #     # ILC uniform/ideal quantizer 
+    #     ILC_U = get_control(N, N_padding, X.squeeze(), iter, QF_M, L_M, OUT_M, Qstep, Qlevels, Qtype, IL_dict)
+        
+    #     # ILC nonlinear quantizer with measured levels
+    #     ILC_M = get_control(N, N_padding, X.squeeze(), iter, QF_M, L_M, OUT_M, Qstep, Qlevels, Qtype, ML_dict)
+
+    #     # U_ILC stores values from all iterations, Extract only the last column for the output of last iteartion as follows    
+    #     ILC_yu = ILC_U[:,-1].reshape(1,-1)
+    #     ILC_ym = ILC_M[:,-1].reshape(1,-1)
+
+    #     yu = ILC_yu     # ILC with ideal quantizer
+    #     ym = ILC_ym     # ILC with nonlinear qunatizer;  
+
+    #     # index for plotting; due to the padding and overlapping
+    #     idx1 = int(N_padding/2)
+    #     idx2 = int(idx1 + np.max(YU.shape))
+
+    #     tu = t[idx1:idx2]
+    #     tm = tu
+
+        
+
+# # %%
+# """
+# Added  "lin.method.ILC" 
+
+# To run ILC uncomment this section
+# 1. select lin_method.ILC
+# 2. Uncomment the part below and jump to the filtering part 
+# """
+# YU = ILC_yu     # ILC with ideal quantizer
+# YM = ILC_ym     # ILC with nonlinear qunatizer;  
+
+# # index for plotting; due to the padding and overlapping
+# idx1 = int(N_padding/2)
+# idx2 = int(idx1 + np.max(YU.shape))
+
+# tu = t[idx1:idx2]
+# tm = tu
+
+# yu = YU
+# ym = YM
 
 # %% DAC output(s)
 
