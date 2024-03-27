@@ -45,6 +45,10 @@ class lin_method:
     ILC = 8  # iterative learning control (with INL model, periodic signals)
 
 
+class sinad_comp:
+    FFT = 1
+    CFIT = 2
+
 def test_signal(SCALE, MAXAMP, FREQ, OFFSET, t):
     """
     Generate a test signal (carrier)
@@ -138,7 +142,6 @@ DAC_MODEL = 1  # use static non-linear quantiser model to simulate DAC
 
 # Chose how to compute SINAD
 SINAD_COMP_SEL = sinad_comp.CFIT
-RUN_LIN_METHOD = lin_method.ILC
 
 DAC_MODEL = 1  # use static non-linear quantiser model to simulate DAC
 # DAC_MODEL = 2  # use SPICE to simulate DAC output
