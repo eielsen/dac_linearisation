@@ -23,7 +23,6 @@ import tqdm
 import math
 import csv
 
-
 import dither_generation
 from quantiser_configurations import quantiser_configurations, quantiser_word_size
 from static_dac_model import generate_dac_output, quantise_signal, generate_codes
@@ -31,8 +30,8 @@ from figures_of_merit import FFT_SINAD, TS_SINAD
 
 from lin_method_nsdcal import nsdcal
 from lin_method_dem import dem
-from lin_method_ILC import get_control, learning_matrices 
-from lin_method_MPC import MPC1, dq, gen_ML, gen_C, gen_DO
+from lin_method_ilc import get_control, learning_matrices 
+from lin_method_mpc import MPC, dq, gen_ML, gen_C, gen_DO
 
 from spice_utils import run_spice_sim, read_spice_bin_file_with_most_recent_timestamp
 
@@ -403,7 +402,6 @@ match RUN_LIN_METHOD:
             Q_MPC_Xcs_N = MPC(Nb, Xcs_i, N_PRED, x0, A, B, C, D)
             Q_MPC_Xcs_N =  Q_MPC_Xcs_N.astype(int)
 
-
             """
             CHOOSE- 
                 1. IL_DICT (Ideal level dictionary) FOR IDEAL DAC
@@ -411,14 +409,14 @@ match RUN_LIN_METHOD:
             """
 
             # Generate DAC output
-            DAC_Q_MPC_Xcs_N = gen_DO(Q_MPC_Xcs_N, ML_dict)                   # Generate DAC output
+            DAC_Q_MPC_Xcs_N = gen_DO(Q_MPC_Xcs_N, ML_dict)  # Generate DAC output
         
             # Store optimal value
             DAC_Q_MPC_Xcs.append(DAC_Q_MPC_Xcs_N[0])
             
             # # State update for next horizon
-            x0_new = A @ x0 + B * (DAC_Q_MPC_Xcs_N[0] - Xcs[i])                       # State Prediction
-            x0 = x0_new                                                                 # State Update
+            x0_new = A @ x0 + B * (DAC_Q_MPC_Xcs_N[0] - Xcs[i])  # State Prediction
+            x0 = x0_new  # State Update
 
         # Convert list to array
         DAC_Q_MPC_Xcs = np.array(DAC_Q_MPC_Xcs)   

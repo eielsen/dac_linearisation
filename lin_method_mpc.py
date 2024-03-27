@@ -1,4 +1,12 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+Iterative learning control.
 
+@author: Bikash Adhikari
+@date: 27.03.2024
+@license: BSD 3-Clause
+"""
 
 import numpy as np
 from scipy import linalg , signal
@@ -7,14 +15,12 @@ import random
 import gurobipy as gp
 from gurobipy import GRB
 
-
-
 def MPC(Nb, Xcs, N_pred,  x0, A, B, C, D):
 
     # Gurobi Model
     m = gp.Model("MPC- INL")
-    u = m.addMVar(N_pred, vtype=GRB.INTEGER, name= "u", lb = 0, ub = (2**Nb-1))          # control variable
-    x = m.addMVar((2*(N_pred+1),1), vtype= GRB.CONTINUOUS, lb = -GRB.INFINITY, ub = GRB.INFINITY, name = "x") # State varible 
+    u = m.addMVar(N_pred, vtype=GRB.INTEGER, name= "u", lb = 0, ub = (2**Nb-1))  # control variable
+    x = m.addMVar((2*(N_pred+1),1), vtype= GRB.CONTINUOUS, lb = -GRB.INFINITY, ub = GRB.INFINITY, name = "x")  # State varible 
 
     # Objective function
     Obj = 0
