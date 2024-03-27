@@ -95,7 +95,7 @@ def get_inverted_pwl_string(c, Ts, Ns, dnum, vbpc, vdd, trisefall):
     return rval
 
 
-def run_spice_sim(c, Nb, t, Ts, QConfig):
+def run_spice_sim(c, Nb, t, Ts, QConfig, seed):
     """
     Set up and run SPICE simulaton for a give DAC circuit description
 
@@ -120,7 +120,7 @@ def run_spice_sim(c, Nb, t, Ts, QConfig):
             vdd = "5.0"
             Tr = 1e-3  # the rise-time for edges, in µs
             for k in range(0, Nb):
-                m = pow(2, k)
+                #m = pow(2, k)
                 k_str = str(k)
                 t1 += "vdp" + k_str + " data" + k_str + " 0 pwl " + \
                     get_pwl_string(c, Ts, nsamples, k, vbpc, vdd, Tr)
@@ -132,20 +132,29 @@ def run_spice_sim(c, Nb, t, Ts, QConfig):
 
             ctrl_str = '\n' + '.save v(outf)' + '\n' + '.tran 10u ' + str(t[-1]) + '\n'
 
-        case quantiser_word_size.w_16bit:  # 16 bit DAC
+        case quantiser_word_size.w_16bit_SPICE:  # 16 bit DAC
             vbpc = "0"
             vdd = "1.5"
             Tr = 1e-3  # the rise-time for edges, in µs
             for k in range(0, Nb):
-                m = pow(2, k)
+                #m = pow(2, k)
                 k_str = str(k+1)
                 t1 += "vb" + k_str + " b" + k_str + " 0 pwl " + \
                     get_pwl_string(c, Ts, nsamples, k, vbpc, vdd, Tr)
                 t2 += "vbb" + k_str + " bb" + k_str + " 0 pwl " + \
                     get_inverted_pwl_string(c, Ts, nsamples, k, vbpc, vdd, Tr)
 
-            circf = './spice_circuits/cs_dac_16bit_ngspice.cir'  # circuit description
+            seed_str = ''
+            if seed == 1:
+                seed_str = 'seed_1'
+            elif seed == 2:
+                seed_str = 'seed_2'
+
+            circf = './spice_circuits/cs_dac_16bit_ngspice_' + seed_str + '.cir'  # circuit description
             spicef = './spice_output/cs_dac_16bit_ngspice_batch.cir'  # complete spice input file
+
+            print(circf)
+            print(spicef)
 
             ctrl_str = '\n' + '.save v(out)' + '\n' + '.tran 10u ' + str(t[-1]) + '\n'
 
@@ -175,7 +184,7 @@ def read_spice_bin_file_with_most_recent_timestamp(path):
     binfiles.sort()
     fname = binfiles[-1]
     fid = open(path + fname, 'rb')
-    print("Opening file: " + fname)
+    # print("Opening file: " + fname)
 
     read_new_line = True
     count = 0
@@ -195,8 +204,8 @@ def read_spice_bin_file_with_most_recent_timestamp(path):
     t_spice = data[::2]
     y_spice = data[1::2]
 
-    plt.plot(t_spice, y_spice)
-    plt.show()
+    # plt.plot(t_spice, y_spice)
+    # plt.show()
 
     return t_spice, y_spice
 
@@ -212,7 +221,7 @@ def main():
     YM = np.zeros([1,y_spice.size])
     YM[0,:] = y_spice
 
-    
+    plt.plot(y_spice)
 
     print(YM)
 
