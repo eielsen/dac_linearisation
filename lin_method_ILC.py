@@ -4,6 +4,7 @@ import numpy as np
 from scipy import linalg, signal
 import sys
 import random
+import tqdm
 # from configurations import quantiser_configurations
 
 def get_control(N, N_padding, Xcs, itr, QF_M, L_M, OUT_M, Qstep, Q_levels, Qtype, lvl_dict):
@@ -34,9 +35,10 @@ def get_control(N, N_padding, Xcs, itr, QF_M, L_M, OUT_M, Qstep, Q_levels, Qtype
     YS = np.empty([1, itr+1])
     ES = np.empty([1, itr+1])
 
-    u_init = np.ones(N_period)
+    u_init = Xcs[0]*np.ones(N_period)
 
-    for i in range(T_period):
+    # for i in range(T_period):
+    for i in tqdm.tqdm(range(T_period)):
         ref_signal = pMatrix[:,i]
         U, Y, E, rE = get_ILC_control(ref_signal, u_init, itr, QF_M, L_M, OUT_M, Qstep, Q_levels, Qtype, lvl_dict) 
 
