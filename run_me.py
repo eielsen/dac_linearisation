@@ -29,7 +29,7 @@ from figures_of_merit import FFT_SINAD, TS_SINAD
 
 from lin_method_nsdcal import nsdcal
 from lin_method_dem import dem
-from lin_method_ILC import get_control, learningMatrices 
+from lin_method_ILC import get_control, learning_matrices 
 from lin_method_MPC import MPC1, dq, gen_ML, gen_C, gen_DO
 
 from spice_utils import run_spice_sim, read_spice_bin_file_with_most_recent_timestamp
@@ -46,8 +46,9 @@ class lin_method:
 
 
 class sinad_comp:
-    FFT = 1
-    CFIT = 2
+    FFT = 1  # FFT based
+    CFIT = 2  # curve fit
+
 
 def test_signal(SCALE, MAXAMP, FREQ, OFFSET, t):
     """
@@ -159,16 +160,16 @@ Xcs_SCALE = 100  # %
 Xcs_FREQ = 99  # Hz
 
 # Set quantiser model
-QConfig = quantiser_word_size.w_16bit
+QConfig = quantiser_word_size.w_16bit_SPICE
 Nb, Mq, Vmin, Vmax, Rng, Qstep, YQ, Qtype = quantiser_configurations(QConfig)
 
 # %% Generate time vector
-match 1:
+match 2:
     case 1:  # specify duration as number of samples and find number of periods
         Nts = 1e6  # no. of time samples
         Np = np.ceil(Xcs_FREQ*Ts*Nts).astype(int) # no. of periods for carrier
     case 2:  # specify duration as number of periods of carrier
-        Np = 6  # no. of periods for carrier
+        Np = 3  # no. of periods for carrier
         
 Npt = 1  # no. of carrier periods to use to account for transients
 Np = Np + Npt
@@ -381,7 +382,7 @@ match RUN_LIN_METHOD:
         N_padding = 200
         N_period = int(N + 2*N_padding)
 
-        QF_M, L_M, OUT_M = learningMatrices(len_X=N_period, im= fi)
+        QF_M, L_M, OUT_M = learning_matrices(len_X=N_period, im= fi)
 
         iter = 5
         X = Xcs + Dq
@@ -399,55 +400,66 @@ match RUN_LIN_METHOD:
         ILC_ym = ILC_U[:,-1].reshape(1,-1)
         # ILC_ym = ILC_M[:,-1].reshape(1,-1)
 
-# %%
-"""
-Added  "lin.method.ILC" 
-
-To run ILC uncomment this section
-1. select lin_method.ILC
-2. Uncomment the part below and jump to the filtering part 
-"""
-YU = ILC_yu     # ILC with ideal quantizer
-YM = ILC_ym     # ILC with nonlinear qunatizer;  
-
-# index for plotting; due to the padding and overlapping
-idx1 = int(N_padding/2)
-idx2 = int(idx1 + np.max(YU.shape))
-
-tu = t[idx1:idx2]
-tm = tu
-
-yu = YU
-ym = YM
-
 # %% DAC output(s)
 
-# YU = generate_dac_output(C, YQ)  # using ideal, uniform levels
-# tu = t
+"""TODO:
+    I did not wanted to change any thing in the code, just added  "lin.method.ILC" and this part for running it
 
-# match DAC_MODEL:
-#     case 1:  # use static non-linear quantiser model to simulate DAC
-#         ML = get_output_levels(RUN_LIN_METHOD)
-#         YM = generate_dac_output(C, ML)  # using measured or randomised levels
-#         tm = t
-#     case 2:  # use SPICE to simulate DAC output
-#         c = C[0,:]  # pick one channel for now
-#         run_spice_sim(c, Nb, t, Ts, QConfig)
-#         path = './spice_output/'
-#         t_spice, y_spice = read_spice_bin_file_with_most_recent_timestamp(path)
-#         y_resamp = np.interp(t, t_spice, y_spice) # re-sample
-#         YM = np.zeros([1, y_resamp.size])
-#         YM[0,:] = y_resamp
-#         tm = t
+    To run ILC uncomment this section
+    1. select lin_method.ILC
+    2. Uncomment the part below and jump to the filtering part 
+"""
+# %% DAC output(s)
+if RUN_LIN_METHOD == lin_method.ILC:
+    YU = ILC_yu     # ILC with ideal quantizer
+    YM = ILC_ym     # ILC with nonlinear qunatizer;  
 
+    # index for plotting; due to the padding and overlapping
+    idx1 = int(N_padding/2)
+    idx2 = int(idx1 + np.max(YU.shape))
+
+    tu = t[idx1:idx2]
+    tm = tu
+    
+    # plots
+    fig, ax = plt.subplots()
+    ax.plot(t,Xcs)
+    ax.plot(t[idx1:idx2], YU.squeeze())
+
+    yu = YU
+    ym = YM
+else:
+    YU = generate_dac_output(C, YQ)  # using ideal, uniform levels
+    tu = t
+
+    match DAC_MODEL:
+        case 1:  # use static non-linear quantiser model to simulate DAC
+            ML = get_output_levels(RUN_LIN_METHOD)
+            YM = generate_dac_output(C, ML)  # using measured or randomised levels
+            tm = t
+        case 2:  # use SPICE to simulate DAC output
+            YM = np.zeros([Nch, t.size])
+            tm = t
+            for k in range(0,Nch):
+                c = C[k,:]
+                seed = k + 1
+                run_spice_sim(c, Nb, t, Ts, QConfig, seed)
+                path = './spice_output/'
+                t_spice, y_spice = read_spice_bin_file_with_most_recent_timestamp(path)
+                y_resamp = np.interp(t, t_spice, y_spice) # re-sample
+                YM[k,:] = y_resamp
+        
 # %% Summation stage
-# if RUN_LIN_METHOD == lin_method.DEM :
-#     K = 1
-# else:
-#     K = 1/Nch
+if RUN_LIN_METHOD == lin_method.DEM:
+    K = np.ones((Nch,1))
+if RUN_LIN_METHOD == lin_method.PHYSCAL:
+    K = np.ones((Nch,1))
+    K[1] = 1e-2
+else:
+    K = 1/Nch
 
-# yu = K*np.sum(YU, 0)
-# ym = K*np.sum(YM, 0)
+yu = K*np.sum(YU, 0)
+ym = K*np.sum(YM, 0)
 
 # plt.plot(tu, yu)
 # plt.show()
@@ -472,11 +484,11 @@ ym_avg = ym_avg_out[1]
 
 # %% Evaluate performance
 TRANSOFF = np.floor(Npt*Fs/Xcs_FREQ).astype(int)
-match 1:
-    case 1:  # use FFT based method to detemine SINAD
+match SINAD_COMP_SEL:
+    case sinad_comp.FFT:  # use FFT based method to detemine SINAD
         RU = FFT_SINAD(yu_avg[TRANSOFF:-1], Fs, 'Uniform')
         RM = FFT_SINAD(ym_avg[TRANSOFF:-1], Fs, 'Non-linear')
-    case 2:  # use time-series sine fitting based method to detemine SINAD
+    case sinad_comp.CFIT:  # use time-series sine fitting based method to detemine SINAD
         RU = TS_SINAD(yu_avg[TRANSOFF:-1], t[TRANSOFF:-1])
         RM = TS_SINAD(ym_avg[TRANSOFF:-1], t[TRANSOFF:-1])
 
