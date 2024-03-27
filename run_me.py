@@ -352,6 +352,7 @@ match RUN_LIN_METHOD:
 
         # two identical, ideal channels
         YQ = np.stack((YQ[0, :], YQ[0, :]))
+
     case lin_method.MPC:  # model predictive control (with INL model)
         # sys.exit("Not implemented yet - MPC")
 
@@ -391,7 +392,8 @@ match RUN_LIN_METHOD:
 
         # First we need to scale up the signal due to the constraint in the optimization problem 
         # Scale up the input signal 
-        Xcs1 = Xcs + Rng/2                  
+        X = Xcs + Dq
+        Xcs1 = X + Rng/2                  
         Xcs_new =  ((2**Nb) * (Xcs1 /Rng)) 
 
         for i in tqdm.tqdm(range(len_MPC)):
@@ -427,16 +429,13 @@ match RUN_LIN_METHOD:
         tu = t[0:len(DAC_Q_MPC_Xcs)]
         tm = tu
 
-        rf = Xcs[0:len(DAC_Q_MPC_Xcs)]
-        headerlist = ["Time", "Ref", "MPC"]
-        datalist = zip(tu, rf, DAC_Q_MPC_Xcs )
-        with open("mpc_16bit_ml.csv", 'w') as f1:
-            writer = csv.writer(f1, delimiter = '\t')
-            writer.writerow(headerlist)
-            writer.writerows(datalist)
-
-        
-        
+        # rf = Xcs[0:len(DAC_Q_MPC_Xcs)]
+        # headerlist = ["Time", "Ref", "MPC"]
+        # datalist = zip(tu, rf, DAC_Q_MPC_Xcs )
+        # with open("mpc_16bit_ml.csv", 'w') as f1:
+        #     writer = csv.writer(f1, delimiter = '\t')
+        #     writer.writerow(headerlist)
+        #     writer.writerows(datalist)   
 
     case lin_method.ILC:  # iterative learning control (with INL model, only periodic signals)
     #     # sys.exit("Not implemented yet - ILC")
