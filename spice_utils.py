@@ -95,21 +95,49 @@ def get_inverted_pwl_string(c, Ts, Ns, dnum, vbpc, vdd, trisefall):
     return rval
 
 
-def run_spice_sim(c, Nb, t, Ts, QConfig, seed):
+def run_spice_sim(spicef, outdir, outputf):
     """
-    Set up and run SPICE simulaton for a give DAC circuit description
+    Run SPICE simulaton using provided filenames
+
+    Arguments
+        spicef - SPICE batch file
+        outputf - Output files name
+    """
+    
+    print(spicef)
+    print(outputf)
+
+    # outdir = 'spice_output/'
+
+    subprocess.run(['ngspice', '-o', outdir + outputf + '.log',
+                    '-r', outdir + outputf + '.bin',
+                    '-b', outdir + spicef])
+
+
+def generate_spice_batch_file(c, Nb, t, Ts, QConfig, seed, timestamp, seq):
+    """
+    Set up SPICE simulaton for a given DAC circuit description
 
     Arguments
         c - codes
         Nb - no. of bit
         t - time vector
         Ts - sampling time
+        timestamp
+        seq - sequence
     """
     c = c.astype(int)
-
-    # %% Generate PWL strings
-    outputfile = "spice_temp/waveform_for_spice_sim.txt"
     nsamples = len(c)
+    waveformfile = 'waveform_for_spice_sim.txt'
+    
+    tempdir = 'spice_temp/'
+    circdir = 'spice_circuits/'
+    outdir = 'spice_output/' + timestamp + '/'
+
+    if os.path.exists(outdir):
+        print('Putting output files in existing directory: ' + timestamp)
+    else:
+        os.mkdir(outdir) 
 
     t1 = "\n"
     t2 = "\n"
@@ -119,16 +147,15 @@ def run_spice_sim(c, Nb, t, Ts, QConfig, seed):
             vbpc = "3.28"
             vdd = "5.0"
             Tr = 1e-3  # the rise-time for edges, in µs
-            for k in range(0, Nb):
-                #m = pow(2, k)
+            for k in range(0, Nb):  # generate PWL strings
                 k_str = str(k)
                 t1 += "vdp" + k_str + " data" + k_str + " 0 pwl " + \
                     get_pwl_string(c, Ts, nsamples, k, vbpc, vdd, Tr)
                 t2 += "vdn" + k_str + " datai" + k_str + " 0 pwl " + \
                     get_inverted_pwl_string(c, Ts, nsamples, k, vbpc, vdd, Tr)
             
-            circf = './spice_circuits/cs_dac_06bit_ngspice.cir'  # circuit description
-            spicef = './spice_output/cs_dac_06bit_ngspice_batch.cir'  # complete spice input file
+            circf = 'cs_dac_06bit_ngspice.cir'  # circuit description
+            spicef = 'cs_dac_06bit_ngspice_batch.cir'  # complete spice input file
 
             ctrl_str = '\n' + '.save v(outf)' + '\n' + '.tran 10u ' + str(t[-1]) + '\n'
 
@@ -136,8 +163,7 @@ def run_spice_sim(c, Nb, t, Ts, QConfig, seed):
             vbpc = "0"
             vdd = "1.5"
             Tr = 1e-3  # the rise-time for edges, in µs
-            for k in range(0, Nb):
-                #m = pow(2, k)
+            for k in range(0, Nb):  # generate PWL strings
                 k_str = str(k+1)
                 t1 += "vb" + k_str + " b" + k_str + " 0 pwl " + \
                     get_pwl_string(c, Ts, nsamples, k, vbpc, vdd, Tr)
@@ -150,39 +176,38 @@ def run_spice_sim(c, Nb, t, Ts, QConfig, seed):
             elif seed == 2:
                 seed_str = 'seed_2'
 
-            circf = './spice_circuits/cs_dac_16bit_ngspice_' + seed_str + '.cir'  # circuit description
-            spicef = './spice_output/cs_dac_16bit_ngspice_batch.cir'  # complete spice input file
-
-            print(circf)
-            print(spicef)
+            # circuit description file
+            circf = 'cs_dac_16bit_ngspice_' + seed_str + '.cir'
+            # spice input file
+            spicef = 'cs_dac_16bit_ngspice_batch_' + str(seq) + '.cir'
 
             ctrl_str = '\n' + '.save v(out)' + '\n' + '.tran 10u ' + str(t[-1]) + '\n'
 
-    addtexttofile(outputfile, t1 + t2)
+    addtexttofile(tempdir + waveformfile, t1 + t2)
 
-    addtexttofile('spice_temp/spice_cmds.txt', ctrl_str)
+    addtexttofile(tempdir + 'spice_cmds.txt', ctrl_str)
 
-    with open(spicef, 'w') as fout:
-        fin = fileinput.input([circf, outputfile, 'spice_temp/spice_cmds.txt'])
+    with open(outdir + spicef, 'w') as fout:
+        fins = [circdir + circf, tempdir + waveformfile, tempdir + 'spice_cmds.txt']
+        fin = fileinput.input(fins)
         for line in fin:
             fout.write(line)
         fin.close()
 
-    outputf = 'output_' + datetime.datetime.now().strftime("%Y%m%dT%H%M%S")
+    outputf = 'output_' + str(seq)
 
-    subprocess.run(['ngspice', '-o', './spice_output/' + outputf + '.log',
-                    '-r', './spice_output/' + outputf + '.bin',
-                    '-b', spicef])
+    print(circf)
+    print(spicef)
+    print(outputf)
+    
+    return spicef, outputf
 
 
-def read_spice_bin_file_with_most_recent_timestamp(path):
+def read_spice_bin_file(path, fname):
     """
-    Read SPICE ouput file (assuming a certain format, i.e. not general)
+    Read a given SPICE ouput file (assuming a certain format, i.e. not general)
     """
 
-    binfiles = [file for file in os.listdir(path) if file.endswith('.bin')]
-    binfiles.sort()
-    fname = binfiles[-1]
     fid = open(path + fname, 'rb')
     # print("Opening file: " + fname)
 
@@ -206,6 +231,20 @@ def read_spice_bin_file_with_most_recent_timestamp(path):
 
     # plt.plot(t_spice, y_spice)
     # plt.show()
+
+    return t_spice, y_spice
+
+
+def read_spice_bin_file_with_most_recent_timestamp(path):
+    """
+    Read SPICE ouput file (assuming a certain format, i.e. not general)
+    """
+
+    binfiles = [file for file in os.listdir(path) if file.endswith('.bin')]
+    binfiles.sort()
+    fname = binfiles[-1]
+    
+    t_spice, y_spice = read_spice_bin_file(path, fname)
 
     return t_spice, y_spice
 

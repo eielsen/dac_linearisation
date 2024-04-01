@@ -7,8 +7,8 @@
 @license: BSD 3-Clause
 """
 
-# %reload_ext autoreload
-# %autoreload 2
+%reload_ext autoreload
+%autoreload 2
 
 #  %%Imports
 import sys
@@ -22,6 +22,7 @@ from matplotlib import pyplot as plt
 import tqdm
 import math
 import csv
+import datetime
 
 import dither_generation
 from quantiser_configurations import quantiser_configurations, quantiser_word_size
@@ -32,9 +33,9 @@ from lin_method_nsdcal import nsdcal
 from lin_method_dem import dem
 from lin_method_ilc import get_control, learning_matrices
 from lin_method_ilc_simple import ilc_simple
-from lin_method_mpc import MPC, dq, gen_ML, gen_C, gen_DO
+# from lin_method_mpc import MPC, dq, gen_ML, gen_C, gen_DO
 
-from spice_utils import run_spice_sim, read_spice_bin_file_with_most_recent_timestamp
+from spice_utils import run_spice_sim, generate_spice_batch_file, read_spice_bin_file
 
 class lin_method:
     BASELINE = 1  # baseline
@@ -154,7 +155,7 @@ Fc_lp = 25e3  # cut-off frequency in hertz
 N_lp = 3  # filter order
 
 # Sampling rate
-Fs = 10e6  # sampling rate (over-sampling) in hertz
+Fs = 5e6  # sampling rate (over-sampling) in hertz
 Ts = 1/Fs  # sampling time
 
 # Carrier signal (to be recovered on the output)
@@ -189,7 +190,7 @@ match RUN_LIN_METHOD:
     case lin_method.BASELINE:  # baseline, only carrier
         # Generate unmodified DAC output without any corrections.
 
-        Nch = 1  # number of channels to use (averaging to reduce noise floor)
+        Nch = 2  # number of channels to use (averaging to reduce noise floor)
 
         # Quantisation dither
         Dq = dither_generation.gen_stochastic(t.size, Nch, Qstep, dither_generation.pdf.triangular_hp)
@@ -201,6 +202,8 @@ match RUN_LIN_METHOD:
 
         Q = quantise_signal(X, Qstep, Qtype)
         C = generate_codes(Q, Nb, Qtype)
+
+        YQ = matlib.repmat(YQ, Nch, 1)
 
     case lin_method.PHYSCAL:  # physical level calibration
         # This method relies on a main/primary DAC operating normally
@@ -243,7 +246,7 @@ match RUN_LIN_METHOD:
         C = dem(X, Rng, Nb)
             
         # two identical, ideal channels
-        YQ = np.stack((YQ[0, :], YQ[0, :]))
+        YQ = matlib.repmat(YQ, 2, 1)
 
     case lin_method.NSDCAL:  # noise shaping with digital calibration
         # Use a simple static model as an open-loop observer for a simple
@@ -317,7 +320,7 @@ match RUN_LIN_METHOD:
         C = generate_codes(Q, Nb, Qtype)
 
         # two identical, ideal channels
-        YQ = np.stack((YQ[0, :], YQ[0, :]))
+        YQ = matlib.repmat(YQ, Nch, 1)
 
     case lin_method.PHFD:  # periodic high-frequency dither
         # Adds a large, periodic high-frequency dither. Uniform ADF has good
@@ -336,7 +339,8 @@ match RUN_LIN_METHOD:
         # Scaling dither with respect to the carrier
         Xscale = 50  # carrier to dither ratio (between 0% and 100%)
         Dscale = 100 - Xscale  # dither to carrier ratio
-        Dfreq = 359e3  # Hz
+        #Dfreq = 359e3  # Hz
+        Dfreq = 299e3  # Hz
         Dadf = dither_generation.adf.uniform  # amplitude distr. funct. (ADF)
         # Generate periodic dither
         Dmaxamp = Rng/2  # maximum dither amplitude (volt)
@@ -355,8 +359,8 @@ match RUN_LIN_METHOD:
         Q = quantise_signal(X, Qstep, Qtype)
         C = generate_codes(Q, Nb, Qtype)
 
-        # two identical, ideal channels
-        YQ = np.stack((YQ[0, :], YQ[0, :]))
+        # two/four identical, ideal channels
+        YQ = matlib.repmat(YQ, Nch, 1)
 
     case lin_method.MPC:  # model predictive control (with INL model)
         # sys.exit("Not implemented yet - MPC")
@@ -562,15 +566,28 @@ else:
             YM = generate_dac_output(C, ML)  # using measured or randomised levels
             tm = t
         case 2:  # use SPICE to simulate DAC output
-            YM = np.zeros([Nch, t.size])
-            tm = t
+            timestamp = datetime.datetime.now().strftime("%Y%m%dT%H%M%S")
+            
+            outdir = 'spice_output/' + timestamp + '/'
+
+            spicef_list = []
+            outputf_list = []
+            
             for k in range(0,Nch):
                 c = C[k,:]
                 seed = k + 1
-                run_spice_sim(c, Nb, t, Ts, QConfig, seed)
-                path = './spice_output/'
-                t_spice, y_spice = read_spice_bin_file_with_most_recent_timestamp(path)
-                y_resamp = np.interp(t, t_spice, y_spice) # re-sample
+                spicef, outputf = generate_spice_batch_file(c, Nb, t, Ts, QConfig, seed, timestamp, k)
+                spicef_list.append(spicef)
+                outputf_list.append(outputf)
+            
+            for k in range(0,Nch):
+                run_spice_sim(spicef_list[k], outdir, outputf_list[k])
+            
+            YM = np.zeros([Nch, t.size])
+            tm = t
+            for k in range(0,Nch):
+                t_spice, y_spice = read_spice_bin_file(outdir, outputf_list[k] + '.bin')
+                y_resamp = np.interp(t, t_spice, y_spice)  # re-sample
                 YM[k,:] = y_resamp
         
 # %% Summation stage
