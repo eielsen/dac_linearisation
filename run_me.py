@@ -133,9 +133,9 @@ def get_output_levels(RUN_LIN_METHOD):
 # %% Configuration
 
 # Choose which linearization method you want to test
-#RUN_LIN_METHOD = lin_method.BASELINE
-RUN_LIN_METHOD = lin_method.PHYSCAL
-# RUN_LIN_METHOD = lin_method.PHFD
+# RUN_LIN_METHOD = lin_method.BASELINE
+# RUN_LIN_METHOD = lin_method.PHYSCAL
+RUN_LIN_METHOD = lin_method.PHFD
 # RUN_LIN_METHOD = lin_method.SHPD
 # RUN_LIN_METHOD = lin_method.NSDCAL
 # RUN_LIN_METHOD = lin_method.DEM
@@ -143,14 +143,11 @@ RUN_LIN_METHOD = lin_method.PHYSCAL
 # RUN_LIN_METHOD = lin_method.ILC
 # RUN_LIN_METHOD = lin_method.ILC_SIMP
 
-DAC_MODEL = 1  # use static non-linear quantiser model to simulate DAC
-# DAC_MODEL = 2  # use SPICE to simulate DAC output
+# DAC_MODEL = 1  # use static non-linear quantiser model to simulate DAC
+DAC_MODEL = 2  # use SPICE to simulate DAC output
 
 # Chose how to compute SINAD
 SINAD_COMP_SEL = sinad_comp.CFIT
-
-DAC_MODEL = 1  # use static non-linear quantiser model to simulate DAC
-# DAC_MODEL = 2  # use SPICE to simulate DAC output
 
 # Output low-pass filter configuration
 Fc_lp = 25e3  # cut-off frequency in hertz
@@ -339,14 +336,19 @@ match RUN_LIN_METHOD:
         # Scaling dither with respect to the carrier
         Xscale = 50  # carrier to dither ratio (between 0% and 100%)
         Dscale = 100 - Xscale  # dither to carrier ratio
-        Dfreq = 49e3  # Hz
+        Dfreq = 359e3  # Hz
         Dadf = dither_generation.adf.uniform  # amplitude distr. funct. (ADF)
         # Generate periodic dither
         Dmaxamp = Rng/2  # maximum dither amplitude (volt)
         dp = Dmaxamp*dither_generation.gen_periodic(t, Dfreq, Dadf)
         
         # Opposite polarity for HF dither for pri. and sec. channel
-        Dp = np.stack((dp, -dp))
+        if Nch == 2:
+            Dp = np.stack((dp, -dp))
+        elif Nch == 4:
+            Dp = np.stack((dp, -dp, dp, -dp))
+        else:
+            sys.exit("Invalid channel config. for periodic dithering.")
 
         X = (Xscale/100)*Xcs + (Dscale/100)*Dp + Dq
 
