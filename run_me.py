@@ -155,7 +155,7 @@ Fc_lp = 25e3  # cut-off frequency in hertz
 N_lp = 3  # filter order
 
 # Sampling rate
-Fs = 1e5  # sampling rate (over-sampling) in hertz
+Fs = 1e6  # sampling rate (over-sampling) in hertz
 Ts = 1/Fs  # sampling time
 
 # Carrier signal (to be recovered on the output)
