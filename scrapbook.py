@@ -11,9 +11,40 @@ import control as ct
 
 from quantiser_configurations import quantiser_configurations
 
-N = 1
-for k in range(0,N):
-    print(k)
+from balreal import balreal
+
+Fc_lp = 10e3
+N_lp = 3
+
+Wn = 2*np.pi*Fc_lp
+b, a = signal.butter(N_lp, Wn, 'lowpass', analog=True)
+Wlp = signal.lti(b, a)  # filter LTI system instance
+#Wlp_ss = Wlp.to_ss()
+dt = 1e-3
+#Wlp_ss_d = signal.cont2discrete((Wlp_ss.A, Wlp_ss.B, Wlp_ss.C, Wlp_ss.D), dt, method='zoh')
+#Ad = Wlp_ss_d[0]
+#Bd = Wlp_ss_d[1]
+#Cd = Wlp_ss_d[2]
+#Dd = Wlp_ss_d[3]
+
+G = Wlp.to_discrete(dt, method='zoh')
+
+#Ad, Bd, Cd, Dd = balreal(Wlp_ss_d[0], Wlp_ss_d[1], Wlp_ss_d[2], Wlp_ss_d[3])
+
+
+# import tkinter as tk
+# root = tk.Tk()
+# root.configure(bg='red')
+# root.overrideredirect(True)
+# root.state('normal')
+# root.after(100, root.destroy) # set the flash time to 100 milliseconds
+# root.mainloop()
+
+
+
+#N = 1
+#for k in range(0,N):
+#    print(k)
 
 #QConfig = 4
 #Nb, Mq, Vmin, Vmax, Rng, Qstep, YQ, Qtype = quantiser_configurations(QConfig)

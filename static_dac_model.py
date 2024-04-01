@@ -8,7 +8,10 @@
 """
 
 import numpy as np
-from quantiser_configurations import quantiser_configurations
+
+class quantiser_type:
+    midtread = 1
+    midriser = 2
 
 
 def quantise_signal(w, Qstep, Qtype):
@@ -17,9 +20,9 @@ def quantise_signal(w, Qstep, Qtype):
     """
     
     match Qtype:
-        case "midtread":
+        case quantiser_type.midtread:
             q = np.floor(w/Qstep + 0.5) # truncated/quantised value, mid-tread
-        case "midriser":
+        case quantiser_type.midriser:
             q = np.floor(w/Qstep) + 0.5 # truncated/quantised value, mid-riser
     
     return q
@@ -31,10 +34,10 @@ def generate_codes(q, Nb, Qtype):
     """
     
     match Qtype:
-        case "midtread":
+        case quantiser_type.midtread:
             #c = q - np.floor(Vmin/Qstep) # code, mid-tread
             c = q + 2**(Nb-1) # code, mid-tread
-        case "midriser":
+        case quantiser_type.midriser:
             #c = q - np.floor(Vmin/Qstep) - 0.5 # code, mid-riser
             c = q + 2**(Nb-1) - 0.5 # code, mid-riser
 

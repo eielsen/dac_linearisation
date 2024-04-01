@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """Methods to operate on FFT data.
 
-A simple peak finding method for FFT/PSD data with "very large" single frequency peaks.
+A simple peak finding method for FFT/PSD data with a "very large" single frequency peak.
 
 @author: Arnfinn Aas Eielsen
 @license: BSD 3-Clause
@@ -14,9 +14,9 @@ from scipy import integrate
 def find_psd_peak(Pxx, f, EQNBW=1, f_find=-1):
     """
     Attempt to find the power and frequency of a windowed sinusoid (a peak in a given PSD estimate)
-    using very a simple peak finding algorithm (assuming peaks are "big" and "sharp").
+    using a very simple peak finding algorithm (assuming peaks are "big" and "sharp").
     It simply picks a (local) maximum and finds the (indices for) the peak base by stepping
-    the abscissa (index) on both sides for as long as the ordinate (power) value is decreasing.
+    the abscissa (index) on both sides for as long as the ordinate (power) is decreasing.
     """
 
     if f_find == -1: # assume the maximum is an actual peak
