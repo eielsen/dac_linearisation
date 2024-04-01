@@ -35,7 +35,7 @@ from lin_method_ilc import get_control, learning_matrices
 from lin_method_ilc_simple import ilc_simple
 # from lin_method_mpc import MPC, dq, gen_ML, gen_C, gen_DO
 
-from spice_utils import run_spice_sim, generate_spice_batch_file, read_spice_bin_file
+from spice_utils import run_spice_sim, run_spice_sim_parallell, generate_spice_batch_file, read_spice_bin_file
 
 class lin_method:
     BASELINE = 1  # baseline
@@ -155,7 +155,7 @@ Fc_lp = 25e3  # cut-off frequency in hertz
 N_lp = 3  # filter order
 
 # Sampling rate
-Fs = 5e6  # sampling rate (over-sampling) in hertz
+Fs = 1e5  # sampling rate (over-sampling) in hertz
 Ts = 1/Fs  # sampling time
 
 # Carrier signal (to be recovered on the output)
@@ -580,8 +580,13 @@ else:
                 spicef_list.append(spicef)
                 outputf_list.append(outputf)
             
-            for k in range(0,Nch):
-                run_spice_sim(spicef_list[k], outdir, outputf_list[k])
+            spice_path = '/home/eielsen/ngspice_files/bin/ngspice'  # newest ver., fastest (local)
+
+            if False:
+                for k in range(0,Nch):
+                    run_spice_sim(spicef_list[k], outputf_list[k], outdir, spice_path)
+            else:
+                run_spice_sim_parallell(spicef_list, outputf_list, outdir, spice_path)
             
             YM = np.zeros([Nch, t.size])
             tm = t

@@ -95,7 +95,7 @@ def get_inverted_pwl_string(c, Ts, Ns, dnum, vbpc, vdd, trisefall):
     return rval
 
 
-def run_spice_sim(spicef, outdir, outputf):
+def run_spice_sim(spicef, outputf, outdir='spice_output/', spice_path='ngspice'):
     """
     Run SPICE simulaton using provided filenames
 
@@ -107,11 +107,37 @@ def run_spice_sim(spicef, outdir, outputf):
     print(spicef)
     print(outputf)
 
-    # outdir = 'spice_output/'
-
-    subprocess.run(['ngspice', '-o', outdir + outputf + '.log',
+    cmd = [spice_path, '-o', outdir + outputf + '.log',
                     '-r', outdir + outputf + '.bin',
-                    '-b', outdir + spicef])
+                    '-b', outdir + spicef]
+
+    print(cmd)
+
+    subprocess.run(cmd)
+
+
+def run_spice_sim_parallell(spicef_list, outputf_list, outdir='spice_output/', spice_path='ngspice'):
+    """
+    Run SPICE simulaton using provided filenames
+
+    Arguments
+        spicef_list - SPICE batch files
+        outputf_list - Output files names
+    """
+    
+    cmd_list = []
+    for k in range(0, len(spicef_list)):
+        cmd = [spice_path, '-o', outdir + outputf_list[k] + '.log',
+            '-r', outdir + outputf_list[k] + '.bin',
+            '-b', outdir + spicef_list[k]]
+        print(cmd)
+        cmd_list.append(cmd)
+
+    procs_list = [subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE) for cmd in cmd_list]
+    
+    for proc in procs_list:
+        print('Waiting for SPICE to return...')
+        proc.wait()
 
 
 def generate_spice_batch_file(c, Nb, t, Ts, QConfig, seed, timestamp, seq):
