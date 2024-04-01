@@ -133,15 +133,15 @@ def get_output_levels(RUN_LIN_METHOD):
 # %% Configuration
 
 # Choose which linearization method you want to test
-# RUN_LIN_METHOD = lin_method.BASELINE
-# RUN_LIN_METHOD = lin_method.PHYSCAL
+#RUN_LIN_METHOD = lin_method.BASELINE
+RUN_LIN_METHOD = lin_method.PHYSCAL
 # RUN_LIN_METHOD = lin_method.PHFD
 # RUN_LIN_METHOD = lin_method.SHPD
 # RUN_LIN_METHOD = lin_method.NSDCAL
 # RUN_LIN_METHOD = lin_method.DEM
 # RUN_LIN_METHOD = lin_method.MPC
 # RUN_LIN_METHOD = lin_method.ILC
-RUN_LIN_METHOD = lin_method.ILC_SIMP
+# RUN_LIN_METHOD = lin_method.ILC_SIMP
 
 DAC_MODEL = 1  # use static non-linear quantiser model to simulate DAC
 # DAC_MODEL = 2  # use SPICE to simulate DAC output
@@ -153,11 +153,11 @@ DAC_MODEL = 1  # use static non-linear quantiser model to simulate DAC
 # DAC_MODEL = 2  # use SPICE to simulate DAC output
 
 # Output low-pass filter configuration
-Fc_lp = 20e3  # cut-off frequency in hertz
+Fc_lp = 25e3  # cut-off frequency in hertz
 N_lp = 3  # filter order
 
 # Sampling rate
-Fs = 1e6  # sampling rate (over-sampling) in hertz
+Fs = 10e6  # sampling rate (over-sampling) in hertz
 Ts = 1/Fs  # sampling time
 
 # Carrier signal (to be recovered on the output)
@@ -211,10 +211,9 @@ match RUN_LIN_METHOD:
         # for the level mismatches for each and every code.
         # Needs INL measurements and a calibration step.
 
-        Nch = 1  # effectively 1 channel input (with 1 DAC pair)
-
         # Quantisation dither
-        Dq = dither_generation.gen_stochastic(t.size, Nch, Qstep, dither_generation.pdf.triangular_hp)
+        Nch_in = 1  # effectively 1 channel input (with 1 DAC pair)
+        Dq = dither_generation.gen_stochastic(t.size, Nch_in, Qstep, dither_generation.pdf.triangular_hp)
 
         X = Xcs + Dq  # quantiser input
 
@@ -229,6 +228,7 @@ match RUN_LIN_METHOD:
         C = np.stack((c_pri[0, :], c_sec[0, :]))
 
         # Zero contribution from secondary in ideal case
+        Nch = 2  # number of physical channels
         YQ = np.stack((YQ[0, :], np.zeros(YQ.shape[1])))
 
     case lin_method.DEM:  # dynamic element matching
@@ -580,8 +580,8 @@ if RUN_LIN_METHOD == lin_method.PHYSCAL:
 else:
     K = 1/Nch
 
-yu = K*np.sum(YU, 0)
-ym = K*np.sum(YM, 0)
+yu = np.sum(K*YU, 0)
+ym = np.sum(K*YM, 0)
 
 # plt.plot(tu, yu)
 # plt.show()
