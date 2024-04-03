@@ -7,8 +7,8 @@
 @license: BSD 3-Clause
 """
 
-%reload_ext autoreload
-%autoreload 2
+# %reload_ext autoreload
+# %autoreload 2
 
 #  %%Imports
 import sys
@@ -31,9 +31,10 @@ from figures_of_merit import FFT_SINAD, TS_SINAD
 
 from lin_method_nsdcal import nsdcal
 from lin_method_dem import dem
-from lin_method_ilc import get_control, learning_matrices
-from lin_method_ilc_simple import ilc_simple
+# from lin_method_ilc import get_control, learning_matrices
+# from lin_method_ilc_simple import ilc_simple
 # from lin_method_mpc import MPC, dq, gen_ML, gen_C, gen_DO
+from lin_method_ILC_DSM import learningMatrices, get_ILC_control
 
 from spice_utils import run_spice_sim, run_spice_sim_parallell, generate_spice_batch_file, read_spice_bin_file
 
@@ -136,16 +137,16 @@ def get_output_levels(RUN_LIN_METHOD):
 # Choose which linearization method you want to test
 # RUN_LIN_METHOD = lin_method.BASELINE
 # RUN_LIN_METHOD = lin_method.PHYSCAL
-RUN_LIN_METHOD = lin_method.PHFD
+# RUN_LIN_METHOD = lin_method.PHFD
 # RUN_LIN_METHOD = lin_method.SHPD
 # RUN_LIN_METHOD = lin_method.NSDCAL
 # RUN_LIN_METHOD = lin_method.DEM
 # RUN_LIN_METHOD = lin_method.MPC
-# RUN_LIN_METHOD = lin_method.ILC
+RUN_LIN_METHOD = lin_method.ILC
 # RUN_LIN_METHOD = lin_method.ILC_SIMP
 
-# DAC_MODEL = 1  # use static non-linear quantiser model to simulate DAC
-DAC_MODEL = 2  # use SPICE to simulate DAC output
+DAC_MODEL = 1  # use static non-linear quantiser model to simulate DAC
+# DAC_MODEL = 2  # use SPICE to simulate DAC output
 
 # Chose how to compute SINAD
 SINAD_COMP_SEL = sinad_comp.CFIT
@@ -160,7 +161,7 @@ Ts = 1/Fs  # sampling time
 
 # Carrier signal (to be recovered on the output)
 Xcs_SCALE = 100  # %
-Xcs_FREQ = 99  # Hz
+Xcs_FREQ = 999  # Hz
 
 # Set quantiser model
 QConfig = quantiser_word_size.w_16bit_SPICE
@@ -172,7 +173,7 @@ match 2:
         Nts = 1e6  # no. of time samples
         Np = np.ceil(Xcs_FREQ*Ts*Nts).astype(int) # no. of periods for carrier
     case 2:  # specify duration as number of periods of carrier
-        Np = 3  # no. of periods for carrier
+        Np = 1  # no. of periods for carrier
         
 Npt = 1  # no. of carrier periods to use to account for transients
 Np = Np + 2*Npt
@@ -447,50 +448,53 @@ match RUN_LIN_METHOD:
 
     case lin_method.ILC:  # iterative learning control (with INL model, only periodic signals)
     #     # sys.exit("Not implemented yet - ILC")
-    #     Nch = 1
-    #     # Quantisation dither
-    #     Dq = dither_generation.gen_stochastic(t.size, Nch, Qstep, dither_generation.pdf.triangular_hp)
-    #      # Create levels dictionary
-    #     Qlevels = YQ.squeeze()      # make array to list 
 
-    #     # Unsigned integers representing the level codes
-    #     level_codes = np.arange(0, 2**Nb,1) # Levels:  0, 1, 2, .... 2^(Nb)
+        Nch = 1
+        # Quantisation dither
+        Dq = dither_generation.gen_stochastic(t.size, Nch, Qstep, dither_generation.pdf.triangular_hp)
+        # Ideal Levels
+        ILns = YQ.squeeze()
+        # % Measured Levels
+        ML = get_output_levels(4)
+        MLns = ML[0] # one channel only
 
-    #     # Dictionary: Keys- Levels codes;  Values - DAC levels
-    #     IL_dict = dict(zip(level_codes, Qlevels ))  # Each level represent the idea DAC levels
+        # % Reconstruction filter 
+        len_X = len(Xcs)
+        Wn = Fc_lp/(Fs/2)
+        b1, a1 = signal.butter(2, Wn )
+        l_dlti = signal.dlti(b1, a1, dt = Ts)
+        ft, fi = signal.dimpulse(l_dlti, n = 2*len_X)
 
-    #     # Measured level dictionary - Generated randomly for test 
-    #     # ML_dict = generate_ML(Nb, Qstep, Q_levels)
-    #     ML_values = get_output_levels(RUN_LIN_METHOD)
-    #     ML_dict = dict(zip(level_codes, ML_values[0,:]))
+        # % Learning and Output Matrices
+        Q, L, G = learningMatrices(len_X, fi)
 
-    #     # % #  Reconstruction Filter
-    #     b, a = signal.butter(3, Fc_lp/(Fs/2)) 
-    #     but = signal.dlti(b,a,dt = Ts)
-    #     ft, fi = signal.dimpulse(but, n = 2*len(Xcs))
+        # % ILC with DSM
+        itr = 10
+        # Dq = Dq*0
+        # % Get ILC output codes
+        CU1 = get_ILC_control(Nb, Xcs, Dq.squeeze(),  Q, L, G, itr, b1, a1, Qstep, Vmin,  Qtype, YQ,  ILns)
+        CM1 = get_ILC_control(Nb, Xcs, Dq.squeeze(),  Q, L, G, itr, b1, a1, Qstep, Vmin,  Qtype, YQ,  MLns)
 
-         # % Period and padding length
-        N = 2000
-        #N_padding = 200
-        #N_period = int(N + 2*N_padding)
+        # Silce 1 - 1 from the front and back to remove the transient
+        N_padding = int(len_X/Np)
+        CU1 = CU1.reshape(1,-1)
+        CM1 = CM1.reshape(1,-1)
+        # Reshape into column vector
+        CU1 = CU1[:,N_padding:-N_padding]
+        CM1 = CM1[:,N_padding:-N_padding]
 
-        #QF_M, L_M, OUT_M = learning_matrices(len_X=N_period, im= fi)
+        # Add multiple periods
+        CU = [] 
+        CM = []
+        for i in range(5):
+            CU = np.append(CU, CU1[0, :-1])
+            CM = np.append(CM, CM1[0, :-1])
+        CU = np.append(CU, CU1[0,-1]).astype(int)
+        CM = np.append(CM, CM1[0,-1]).astype(int)
+        CU  = CU.reshape(1,-1)
+        CM  = CM.reshape(1,-1)
 
-    #     iter = 5
-    #     X = Xcs + Dq
-    #     # The difference in ideal and non-ideal DAC is the choice fo the IL_dict and ML_dict, dictionaries with the
-    #     # ideal DAC levels and measured levels corresponding to the codes, respectively.
-
-    #     # ILC uniform/ideal quantizer 
-    #     ILC_U = get_control(N, N_padding, X.squeeze(), iter, QF_M, L_M, OUT_M, Qstep, Qlevels, Qtype, IL_dict)
-        
-    #     # ILC nonlinear quantizer with measured levels
-    #     ILC_M = get_control(N, N_padding, X.squeeze(), iter, QF_M, L_M, OUT_M, Qstep, Qlevels, Qtype, ML_dict)
-
-        # U_ILC stores values from all iterations, Extract only the last column for the output of last iteartion as follows    
-       # ILC_yu = ILC_U[:,-1].reshape(1,-1)
-      #  ILC_ym = ILC_U[:,-1].reshape(1,-1)
-        # ILC_ym = ILC_M[:,-1].reshape(1,-1)
+        t = np.arange(0,Ts*CU.size , Ts)
     case lin_method.ILC_SIMP:  # iterative learning control, basic implementation
         
         Nch = 1  # number of channels to use
@@ -538,62 +542,65 @@ match RUN_LIN_METHOD:
     2. Uncomment the part below and jump to the filtering part 
 """
 # %% DAC output(s)
-if RUN_LIN_METHOD == lin_method.ILC:
-    YU = ILC_yu     # ILC with ideal quantizer
-    YM = ILC_ym     # ILC with nonlinear qunatizer;  
+# if RUN_LIN_METHOD == lin_method.ILC:
+#     YU = ILC_yu     # ILC with ideal quantizer
+#     YM = ILC_ym     # ILC with nonlinear qunatizer;  
 
-    # index for plotting; due to the padding and overlapping
-    idx1 = int(N_padding/2)
-    idx2 = int(idx1 + np.max(YU.shape))
+#     # index for plotting; due to the padding and overlapping
+#     idx1 = int(N_padding/2)
+#     idx2 = int(idx1 + np.max(YU.shape))
 
-    tu = t[idx1:idx2]
-    tm = tu
+#     tu = t[idx1:idx2]
+#     tm = tu
     
-    # plots
-    fig, ax = plt.subplots()
-    ax.plot(t,Xcs)
-    ax.plot(t[idx1:idx2], YU.squeeze())
+#     # plots
+#     fig, ax = plt.subplots()
+#     ax.plot(t,Xcs)
+#     ax.plot(t[idx1:idx2], YU.squeeze())
 
-    yu = YU
-    ym = YM
-else:
-    YU = generate_dac_output(C, YQ)  # using ideal, uniform levels
-    tu = t
+#     yu = YU
+#     ym = YM
+# else:
+# %%
 
-    match DAC_MODEL:
-        case 1:  # use static non-linear quantiser model to simulate DAC
-            ML = get_output_levels(RUN_LIN_METHOD)
-            YM = generate_dac_output(C, ML)  # using measured or randomised levels
-            tm = t
-        case 2:  # use SPICE to simulate DAC output
-            timestamp = datetime.datetime.now().strftime("%Y%m%dT%H%M%S")
-            
-            outdir = 'spice_output/' + timestamp + '/'
+t = np.arange(0,Ts*CU.size , Ts)
+YU = generate_dac_output(CU, YQ)  # using ideal, uniform levels
+tu = t
 
-            spicef_list = []
-            outputf_list = []
-            
+match DAC_MODEL:
+    case 1:  # use static non-linear quantiser model to simulate DAC
+        ML = get_output_levels(RUN_LIN_METHOD)
+        YM = generate_dac_output(CM, ML)  # using measured or randomised levels
+        tm = t
+    case 2:  # use SPICE to simulate DAC output
+        timestamp = datetime.datetime.now().strftime("%Y%m%dT%H%M%S")
+        
+        outdir = 'spice_output/' + timestamp + '/'
+
+        spicef_list = []
+        outputf_list = []
+        
+        for k in range(0,Nch):
+            c = C[k,:]
+            seed = k + 1
+            spicef, outputf = generate_spice_batch_file(c, Nb, t, Ts, QConfig, seed, timestamp, k)
+            spicef_list.append(spicef)
+            outputf_list.append(outputf)
+        
+        spice_path = '/home/eielsen/ngspice_files/bin/ngspice'  # newest ver., fastest (local)
+
+        if False:
             for k in range(0,Nch):
-                c = C[k,:]
-                seed = k + 1
-                spicef, outputf = generate_spice_batch_file(c, Nb, t, Ts, QConfig, seed, timestamp, k)
-                spicef_list.append(spicef)
-                outputf_list.append(outputf)
-            
-            spice_path = '/home/eielsen/ngspice_files/bin/ngspice'  # newest ver., fastest (local)
-
-            if False:
-                for k in range(0,Nch):
-                    run_spice_sim(spicef_list[k], outputf_list[k], outdir, spice_path)
-            else:
-                run_spice_sim_parallell(spicef_list, outputf_list, outdir, spice_path)
-            
-            YM = np.zeros([Nch, t.size])
-            tm = t
-            for k in range(0,Nch):
-                t_spice, y_spice = read_spice_bin_file(outdir, outputf_list[k] + '.bin')
-                y_resamp = np.interp(t, t_spice, y_spice)  # re-sample
-                YM[k,:] = y_resamp
+                run_spice_sim(spicef_list[k], outputf_list[k], outdir, spice_path)
+        else:
+            run_spice_sim_parallell(spicef_list, outputf_list, outdir, spice_path)
+        
+        YM = np.zeros([Nch, t.size])
+        tm = t
+        for k in range(0,Nch):
+            t_spice, y_spice = read_spice_bin_file(outdir, outputf_list[k] + '.bin')
+            y_resamp = np.interp(t, t_spice, y_spice)  # re-sample
+            YM[k,:] = y_resamp
         
 # %% Summation stage
 if RUN_LIN_METHOD == lin_method.DEM:
