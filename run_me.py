@@ -470,7 +470,7 @@ match RUN_LIN_METHOD:
 
         # % ILC with DSM
         itr = 10
-        # Dq = Dq*0
+
         # % Get ILC output codes
         CU1 = get_ILC_control(Nb, Xcs, Dq.squeeze(),  Q, L, G, itr, b1, a1, Qstep, Vmin,  Qtype, YQ,  ILns)
         CM1 = get_ILC_control(Nb, Xcs, Dq.squeeze(),  Q, L, G, itr, b1, a1, Qstep, Vmin,  Qtype, YQ,  MLns)
@@ -532,38 +532,7 @@ match RUN_LIN_METHOD:
         C = np.array([c_])
         print('** ILC simple end **')
 
-# %% DAC output(s)
-
-"""TODO:
-    I did not wanted to change any thing in the code, just added  "lin.method.ILC" and this part for running it
-
-    To run ILC uncomment this section
-    1. select lin_method.ILC
-    2. Uncomment the part below and jump to the filtering part 
-"""
-# %% DAC output(s)
-# if RUN_LIN_METHOD == lin_method.ILC:
-#     YU = ILC_yu     # ILC with ideal quantizer
-#     YM = ILC_ym     # ILC with nonlinear qunatizer;  
-
-#     # index for plotting; due to the padding and overlapping
-#     idx1 = int(N_padding/2)
-#     idx2 = int(idx1 + np.max(YU.shape))
-
-#     tu = t[idx1:idx2]
-#     tm = tu
-    
-#     # plots
-#     fig, ax = plt.subplots()
-#     ax.plot(t,Xcs)
-#     ax.plot(t[idx1:idx2], YU.squeeze())
-
-#     yu = YU
-#     ym = YM
-# else:
-# %%
-
-t = np.arange(0,Ts*CU.size , Ts)
+# %%% DAC Output
 YU = generate_dac_output(CU, YQ)  # using ideal, uniform levels
 tu = t
 
