@@ -35,7 +35,7 @@ from lin_method_ilc import get_control, learning_matrices
 from lin_method_ilc_simple import ilc_simple
 # from lin_method_mpc import MPC, dq, gen_ML, gen_C, gen_DO
 
-from spice_utils import run_spice_sim, run_spice_sim_parallell, generate_spice_batch_file, read_spice_bin_file
+from spice_utils import run_spice_sim, run_spice_sim_parallel, generate_spice_batch_file, read_spice_bin_file
 
 class lin_method:
     BASELINE = 1  # baseline
@@ -52,6 +52,49 @@ class lin_method:
 class sinad_comp:
     FFT = 1  # FFT based
     CFIT = 2  # curve fit
+
+
+class sim_config:
+    def __init__(self, lin_method, dac_model, fs, fc, carrier_scale, carrier_freq):
+        self.lin_method = lin_method
+        self.dac_model = dac_model
+        self.fs = fs
+        self.fc = fc
+        self.carrier_scale = carrier_scale
+        self.carrier_freq = carrier_freq
+    def __str__(self):
+        s = ''
+        match self.lin_method:
+            case lin_method.BASELINE:
+                s = s + 'baseline'
+            case lin_method.PHYSCAL:
+                s = s + 'physical level calibration'
+            case lin_method.DEM:
+                s = s + 'dynamic element matching'
+            case lin_method.NSDCAL:
+                s = s + 'digital calibration'
+            case lin_method.SHPD:
+                s = s + 'noise dither'
+            case lin_method.PHFD:
+                s = s + 'periodic dither'
+            case lin_method.MPC:
+                s = s + 'mpc'
+            case lin_method.ILC:
+                s = s + 'ilc'
+            case lin_method.ILC_SIMP:
+                s = s + 'ilc simple'
+
+        if self.dac_model == 1:
+            s = s + '\nstatic model'
+        elif self.dac_model == 2:
+            s = s + '\nspice model'
+
+        s = s + '\nFs=' + str(self.fs)
+        s = s + '\nFc=' + str(self.fc)
+        s = s + '\nXs=' + str(self.carrier_scale)
+        s = s + '\nFx=' + str(self.carrier_freq)
+
+        return s + '\n'
 
 
 def test_signal(SCALE, MAXAMP, FREQ, OFFSET, t):
@@ -155,12 +198,12 @@ Fc_lp = 25e3  # cut-off frequency in hertz
 N_lp = 3  # filter order
 
 # Sampling rate
-Fs = 1e6  # sampling rate (over-sampling) in hertz
+Fs = 2e6  # sampling rate (over-sampling) in hertz
 Ts = 1/Fs  # sampling time
 
 # Carrier signal (to be recovered on the output)
 Xcs_SCALE = 100  # %
-Xcs_FREQ = 99  # Hz
+Xcs_FREQ = 999  # Hz
 
 # Set quantiser model
 QConfig = quantiser_word_size.w_16bit_SPICE
@@ -179,6 +222,8 @@ Np = Np + 2*Npt
 
 t_end = Np/Xcs_FREQ  # time vector duration
 t = np.arange(0, t_end, Ts)  # time vector
+
+SC = sim_config(RUN_LIN_METHOD, DAC_MODEL, Fs, Fc_lp, Xcs_SCALE, Xcs_FREQ)
 
 # %% Generate carrier/test signal
 SIGNAL_MAXAMP = Rng/2 - Qstep  # make headroom for noise dither (see below)
@@ -570,6 +615,15 @@ else:
             
             outdir = 'spice_output/' + timestamp + '/'
 
+            if os.path.exists(outdir):
+                print('Putting output files in existing directory: ' + timestamp)
+            else:
+                os.mkdir(outdir)
+            
+            configf = 'sim_config.txt'
+            with open(outdir + configf, 'w') as fout:
+                fout.write(SC.__str__())
+
             spicef_list = []
             outputf_list = []
             
@@ -580,21 +634,25 @@ else:
                 spicef_list.append(spicef)
                 outputf_list.append(outputf)
             
-            spice_path = '/home/eielsen/ngspice_files/bin/ngspice'  # newest ver., fastest (local)
+            if False:  # run SPICE
+                spice_path = '/home/eielsen/ngspice_files/bin/ngspice'  # newest ver., fastest (local)
 
-            if False:
+                if False:
+                    for k in range(0,Nch):
+                        run_spice_sim(spicef_list[k], outputf_list[k], outdir, spice_path)
+                else:
+                    run_spice_sim_parallel(spicef_list, outputf_list, outdir, spice_path)
+                
+                YM = np.zeros([Nch, t.size])
+                tm = t
                 for k in range(0,Nch):
-                    run_spice_sim(spicef_list[k], outputf_list[k], outdir, spice_path)
-            else:
-                run_spice_sim_parallell(spicef_list, outputf_list, outdir, spice_path)
-            
-            YM = np.zeros([Nch, t.size])
-            tm = t
-            for k in range(0,Nch):
-                t_spice, y_spice = read_spice_bin_file(outdir, outputf_list[k] + '.bin')
-                y_resamp = np.interp(t, t_spice, y_spice)  # re-sample
-                YM[k,:] = y_resamp
-        
+                    t_spice, y_spice = read_spice_bin_file(outdir, outputf_list[k] + '.bin')
+                    y_resamp = np.interp(t, t_spice, y_spice)  # re-sample
+                    YM[k,:] = y_resamp
+            else:  # leave files for later
+                sys.exit('Files generated, exiting...')
+
+
 # %% Summation stage
 if RUN_LIN_METHOD == lin_method.DEM:
     K = np.ones((Nch,1))

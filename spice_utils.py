@@ -116,7 +116,7 @@ def run_spice_sim(spicef, outputf, outdir='spice_output/', spice_path='ngspice')
     subprocess.run(cmd)
 
 
-def run_spice_sim_parallell(spicef_list, outputf_list, outdir='spice_output/', spice_path='ngspice'):
+def run_spice_sim_parallel(spicef_list, outputf_list, outdir='spice_output/', spice_path='ngspice'):
     """
     Run SPICE simulaton using provided filenames
 
