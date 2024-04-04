@@ -15,8 +15,39 @@ import fileinput
 import subprocess
 import datetime
 from scipy import signal
+import pickle
 
+from lin_method_util import lm, dm
+from figures_of_merit import FFT_SINAD, TS_SINAD
 from quantiser_configurations import quantiser_word_size
+
+
+class sinad_comp:
+    FFT = 1  # FFT based
+    CFIT = 2  # curve fit
+
+
+class sim_config:
+    def __init__(self, lin, dac, fs, t, fc, nf, carrier_scale, carrier_freq):
+        self.lin = lin
+        self.dac = dac
+        self.fs = fs
+        self.t = t
+        self.fc = fc
+        self.nf = nf
+        self.carrier_scale = carrier_scale
+        self.carrier_freq = carrier_freq
+    
+    def __str__(self):
+        s = str(self.lin) + '\n'
+        s = s + str(self.dac) + '\n'
+        s = s + 'Fs=' + str(self.fs) + '\n'
+        s = s + 'Fc=' + str(self.fc) + '\n'
+        s = s + 'Nf=' + str(self.nf) + '\n'
+        s = s + 'Xs=' + str(self.carrier_scale) + '\n'
+        s = s + 'Fx=' + str(self.carrier_freq) + '\n'
+
+        return s + '\n'
 
 
 def addtexttofile(filename, text):
@@ -156,9 +187,10 @@ def generate_spice_batch_file(c, Nb, t, Ts, QConfig, seed, timestamp, seq):
     nsamples = len(c)
     waveformfile = 'waveform_for_spice_sim.txt'
     
-    tempdir = 'spice_temp/'
-    circdir = 'spice_circuits/'
-    outdir = 'spice_output/' + timestamp + '/'
+    tempdir = 'spice_temp'
+    circdir = 'spice_circuits'
+    
+    outdir = os.path.join('spice_output', timestamp)
 
     if os.path.exists(outdir):
         print('Putting output files in existing directory: ' + timestamp)
@@ -209,12 +241,14 @@ def generate_spice_batch_file(c, Nb, t, Ts, QConfig, seed, timestamp, seq):
 
             ctrl_str = '\n' + '.save v(out)' + '\n' + '.tran 10u ' + str(t[-1]) + '\n'
 
-    addtexttofile(tempdir + waveformfile, t1 + t2)
+    addtexttofile(os.path.join(tempdir, waveformfile), t1 + t2)
 
-    addtexttofile(tempdir + 'spice_cmds.txt', ctrl_str)
+    addtexttofile(os.path.join(tempdir, 'spice_cmds.txt'), ctrl_str)
 
-    with open(outdir + spicef, 'w') as fout:
-        fins = [circdir + circf, tempdir + waveformfile, tempdir + 'spice_cmds.txt']
+    with open(os.path.join(outdir, spicef), 'w') as fout:
+        fins = [os.path.join(circdir, circf),
+                os.path.join(tempdir, waveformfile),
+                os.path.join(tempdir, 'spice_cmds.txt')]
         fin = fileinput.input(fins)
         for line in fin:
             fout.write(line)
@@ -229,12 +263,13 @@ def generate_spice_batch_file(c, Nb, t, Ts, QConfig, seed, timestamp, seq):
     return spicef, outputf
 
 
-def read_spice_bin_file(path, fname):
+def read_spice_bin_file(fdir, fname):
     """
     Read a given SPICE ouput file (assuming a certain format, i.e. not general)
     """
 
-    fid = open(path + fname, 'rb')
+    fpath = os.path.join(fdir, fname)
+    fid = open(fpath, 'rb')
     # print("Opening file: " + fname)
 
     read_new_line = True
@@ -261,34 +296,92 @@ def read_spice_bin_file(path, fname):
     return t_spice, y_spice
 
 
-def read_spice_bin_file_with_most_recent_timestamp(path):
+def read_spice_bin_file_with_most_recent_timestamp(fdir):
     """
     Read SPICE ouput file (assuming a certain format, i.e. not general)
     """
 
-    binfiles = [file for file in os.listdir(path) if file.endswith('.bin')]
+    binfiles = [file for file in os.listdir(fdir) if file.endswith('.bin')]
     binfiles.sort()
     fname = binfiles[-1]
     
-    t_spice, y_spice = read_spice_bin_file(path, fname)
+    t_spice, y_spice = read_spice_bin_file(fdir, fname)
 
     return t_spice, y_spice
 
 
+def process_sim_output(t, y, Fc, Nf, TRANSOFF, SINAD_COMP_SEL, descr=''):
+    # Filter the output using a reconstruction (output) filter
+    Wc = 2*np.pi*Fc
+    b, a = signal.butter(Nf, Wc, 'lowpass', analog=True)  # filter coefficients
+    Wlp = signal.lti(b, a)  # filter LTI system instance
+
+    y = y.reshape(-1, 1)  # ensure the vector is a column vector
+    y_avg_out = signal.lsim(Wlp, y, t, X0=None, interp=False) # filter the ideal output
+    y_avg = y_avg_out[1] # extract the filtered data; lsim returns (T, y, x) tuple, want output y
+
+    match SINAD_COMP_SEL:
+        case sinad_comp.FFT:  # use FFT based method to detemine SINAD
+            R = FFT_SINAD(y_avg[TRANSOFF:-TRANSOFF], Fs, descr)
+        case sinad_comp.CFIT:  # use time-series sine fitting based method to detemine SINAD
+            R = TS_SINAD(y_avg[TRANSOFF:-TRANSOFF], t[TRANSOFF:-TRANSOFF], descr)
+
+    ENOB = (R - 1.76)/6.02
+
+    # Print FOM
+    print(descr + ' SINAD: {}'.format(R))
+    print(descr + ' ENOB: {}'.format(ENOB))
+
+    return y_avg, ENOB
+
 def main():
     """
-    Testing 
+    Read results 
     """
-    path = './spice_output/'
+    outdir = 'spice_output'
+    rundir = '20240403T113147'
+    rundir = '20240403T160028'
+    path = os.path.join(outdir, rundir)
+
+    binfiles = [file for file in os.listdir(path) if file.endswith('.bin')]
+    binfiles.sort()
+
+    with open(os.path.join(path, 'sim_config.pickle'), 'rb') as fin:
+        sim_config = pickle.load(fin)
+
+    Nch = len(binfiles)  # one file per channel
+
+    t = sim_config.t
+    Fs = sim_config.fs
+    Fx = sim_config.carrier_freq
+
+    TRANSOFF = np.floor(1*Fs/Fx).astype(int)  # remove transient effects from output
+
+    YM = np.zeros([Nch, t.size])
+
+    for k in range(0,Nch):
+        t_spice, y_spice = read_spice_bin_file(path, binfiles[k])
+        y_resamp = np.interp(t, t_spice, y_spice)  # re-sample
+        YM[k,:] = y_resamp
+
+    K = 1/Nch
+
+    ym = np.sum(K*YM, 0)
 
 
-    t_spice, y_spice = read_spice_bin_file_with_most_recent_timestamp(path)
-    YM = np.zeros([1,y_spice.size])
-    YM[0,:] = y_spice
+    Fc = sim_config.fc
+    Nf = sim_config.nf
 
-    plt.plot(y_spice)
+    ym_avg, ENOB_M = process_sim_output(t, ym, Fc, Nf, TRANSOFF, sinad_comp.CFIT, 'SPICE')
 
-    print(YM)
+    plt.plot(t,ym)
+    plt.plot(t,ym_avg)
+
+    #t_spice, y_spice = read_spice_bin_file_with_most_recent_timestamp(path)
+    #YM = np.zeros([1,y_spice.size])
+    #YM[0,:] = y_spice
+    #plt.plot(y_spice)
+    #print(YM)
 
 
 if __name__ == "__main__":

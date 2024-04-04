@@ -19,7 +19,7 @@ from psd_measurements import find_psd_peak
 from fit_sinusoid import fit_sinusoid, sin_p
 
 
-def TS_SINAD(x, t):
+def TS_SINAD(x, t, plot_label=''):
     """
     Take a time-series for computation of the SINAD using a curve-fitting method.
     Use at least 5 periods of the fundamental carrier signal for a good estimate
@@ -30,7 +30,7 @@ def TS_SINAD(x, t):
     print("p_opt: ", p_opt)  # fitted params.
     x_fit = sin_p(t, *p_opt)
 
-    plt.plot(t, x, 'r--')
+    plt.plot(t, x, 'r--', label=plot_label)
     plt.plot(t, x_fit, 'g--', label='fit: A=%5.3f, f=%5.3f, phi=%5.3f, C=%5.3f' % tuple(p_opt))
 
     plt.xlabel('t')
