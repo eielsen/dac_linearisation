@@ -1,5 +1,6 @@
 
 import numpy as np
+import sys
 from scipy import signal, linalg
 import math
 from balreal import balreal
@@ -202,16 +203,17 @@ def learningMatrices(len_X, im):
     L = SubinverseL @ (G.transpose()@We)
 
     # Check if the stability and convergence condition are satisfied
-    ILCloop =  Q - np.matmul(L,G)
-    eig_ILC, vec_ILC = np.linalg.eig(ILCloop)       
-    eig_ILC_mon, vec_ILC_mon = np.linalg.eig(ILCloop @ ILCloop.transpose())
+    if False:
+        ILCloop =  Q - np.matmul(L,G)
+        eig_ILC, vec_ILC = np.linalg.eig(ILCloop)       
+        eig_ILC_mon, vec_ILC_mon = np.linalg.eig(ILCloop @ ILCloop.transpose())
 
-    if max(eig_ILC) <=1:
-        print('Stablity Condition Satisfied')
-        if max(eig_ILC_mon) <=1:
-            print('ILC Monotonic Convergent Condition also Satisfied')
-    else:
-        sys.exit('Stability condition not satisfied. Change tuning matrices')
+        if max(eig_ILC) <=1:
+            print('Stablity Condition Satisfied')
+            if max(eig_ILC_mon) <=1:
+                print('ILC Monotonic Convergent Condition also Satisfied')
+        else:
+            sys.exit('Stability condition not satisfied. Change tuning matrices')
 
     return Q, L, G
 

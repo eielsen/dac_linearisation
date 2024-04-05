@@ -19,7 +19,7 @@ from psd_measurements import find_psd_peak
 from fit_sinusoid import fit_sinusoid, sin_p
 
 
-def TS_SINAD(x, t, plot_label=''):
+def TS_SINAD(x, t, make_plot=False, plot_label=''):
     """
     Take a time-series for computation of the SINAD using a curve-fitting method.
     Use at least 5 periods of the fundamental carrier signal for a good estimate
@@ -30,13 +30,14 @@ def TS_SINAD(x, t, plot_label=''):
     print("p_opt: ", p_opt)  # fitted params.
     x_fit = sin_p(t, *p_opt)
 
-    plt.plot(t, x, 'r--', label=plot_label)
-    plt.plot(t, x_fit, 'g--', label='fit: A=%5.3f, f=%5.3f, phi=%5.3f, C=%5.3f' % tuple(p_opt))
+    if make_plot:
+        plt.plot(t, x, 'r--', label=plot_label)
+        plt.plot(t, x_fit, 'g--', label='fit: A=%5.3f, f=%5.3f, phi=%5.3f, C=%5.3f' % tuple(p_opt))
 
-    plt.xlabel('t')
-    plt.ylabel('out')
-    plt.legend()
-    plt.show()
+        plt.xlabel('t')
+        plt.ylabel('out')
+        plt.legend()
+        plt.show()
 
     error = x - x_fit
 
@@ -49,7 +50,7 @@ def TS_SINAD(x, t, plot_label=''):
     return SINAD
 
 
-def FFT_SINAD(x, Fs, plot_label=''):
+def FFT_SINAD(x, Fs, make_plot=False, plot_label=''):
     """
     Take a time-series for computation of the SINAD using an FFT-based method.
     Typically needs a farily long time-series for sufficient frequency resolution.
@@ -77,11 +78,12 @@ def FFT_SINAD(x, Fs, plot_label=''):
     # equiv. noise bandwidth
     EQNBW = (np.mean(WIN**2)/((np.mean(WIN))**2))*(Fs/M)
     
-    plt.loglog(f, Pxx, lw=0.5, label=plot_label)
-    plt.xlabel('Frequency (Hz)')
-    plt.ylabel('Power (V$^2$/Hz)')
-    plt.grid()
-    plt.legend()
+    if make_plot:
+        plt.loglog(f, Pxx, lw=0.5, label=plot_label)
+        plt.xlabel('Frequency (Hz)')
+        plt.ylabel('Power (V$^2$/Hz)')
+        plt.grid()
+        plt.legend()
     
     power_c = 0
 
@@ -90,15 +92,17 @@ def FFT_SINAD(x, Fs, plot_label=''):
             # make an artificial peak at DC to detect and remove
             Pxx[0] = 0.99*np.max(Pxx)
             power_dc, peak_f_dc, k_max_dc, k_left_dc, k_right_dc = find_psd_peak(Pxx, f, EQNBW, 0)
-            plt.vlines(x = f[k_max_dc], ymin = Pxx[k_right_dc], ymax = Pxx[k_max_dc], color = "r", lw=0.25)
-            plt.hlines(y = Pxx[k_right_dc], xmin = f[k_left_dc], xmax = f[k_right_dc], color = "r")
+            if make_plot:
+                plt.vlines(x = f[k_max_dc], ymin = Pxx[k_right_dc], ymax = Pxx[k_max_dc], color = "r", lw=0.25)
+                plt.hlines(y = Pxx[k_right_dc], xmin = f[k_left_dc], xmax = f[k_right_dc], color = "r")
             # setting to zero to eliminate adding to the total noise power
             Pxx[k_left_dc:k_right_dc] = 0
 
             # find the maximal peak in the PSD and assume this is the carrier
             power_c, peak_f_c, k_max_c, k_left_c, k_right_c = find_psd_peak(Pxx, f, EQNBW)
-            plt.vlines(x = f[k_max_c], ymin = Pxx[k_left_c], ymax = Pxx[k_max_c], color = "r", lw=0.25)
-            plt.hlines(y = Pxx[k_left_c], xmin = f[k_left_c], xmax = f[k_right_c], color = "r")
+            if make_plot:
+                plt.vlines(x = f[k_max_c], ymin = Pxx[k_left_c], ymax = Pxx[k_max_c], color = "r", lw=0.25)
+                plt.hlines(y = Pxx[k_left_c], xmin = f[k_left_c], xmax = f[k_right_c], color = "r")
             # setting to zero to eliminate adding to the total noise power
             Pxx[k_left_c:k_right_c] = 0
 
@@ -112,13 +116,16 @@ def FFT_SINAD(x, Fs, plot_label=''):
             rel_th = noise_floor/(np.max(Pxx) - noise_floor)
             pk_width = np.floor(EQNBW/df)
             pks, pk_props = signal.find_peaks(Pxx, width=pk_width, prominence=th, rel_height=1-rel_th)
+            
+            if make_plot:
+                plt.loglog(f[pks], Pxx[pks], "x")
 
-            plt.loglog(f[pks], Pxx[pks], "x")
-
-            plt.vlines(x=f[pks], ymin=(Pxx[pks] - pk_props["prominences"]), ymax=Pxx[pks], color = "C1", lw=0.25)
+            if make_plot:
+                plt.vlines(x=f[pks], ymin=(Pxx[pks] - pk_props["prominences"]), ymax=Pxx[pks], color = "C1", lw=0.25)
             left_ips = np.floor(pk_props["left_ips"]).astype(int)
             right_ips = np.ceil(pk_props["right_ips"]).astype(int)
-            plt.hlines(y=pk_props["width_heights"], xmin=f[left_ips], xmax=f[right_ips], color = "C1")
+            if make_plot:
+                plt.hlines(y=pk_props["width_heights"], xmin=f[left_ips], xmax=f[right_ips], color = "C1")
             
             k_left_dc = left_ips[0]  # assume first peak is DC
             k_right_dc = right_ips[0]
@@ -131,7 +138,8 @@ def FFT_SINAD(x, Fs, plot_label=''):
             # setting to zero to eliminate adding to the total noise power
             Pxx[k_left_c:k_right_c] = 0
     
-    plt.show()
+    if make_plot:
+        plt.show()
     
     # compute the remaining harmonic and noise distortion.
     power_noise = integrate.simpson(y=Pxx, x=f)

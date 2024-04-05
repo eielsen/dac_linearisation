@@ -1,4 +1,4 @@
 /.vscode
 /__pycache__
 /spice_temp
-/spice_output
+/spice_output*

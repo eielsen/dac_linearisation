@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""
-File wrangling for SPICE simulations.
+"""File wrangling for SPICE simulations.
 
 @author: Trond Ytterdal, Bikash Adhikari, Arnfinn Eielsen
 @date: 19.03.2024
@@ -15,7 +14,9 @@ import fileinput
 import subprocess
 import datetime
 from scipy import signal
+from scipy import interpolate
 import pickle
+from prefixed import Float
 
 from lin_method_util import lm, dm
 from figures_of_merit import FFT_SINAD, TS_SINAD
@@ -41,11 +42,11 @@ class sim_config:
     def __str__(self):
         s = str(self.lin) + '\n'
         s = s + str(self.dac) + '\n'
-        s = s + 'Fs=' + str(self.fs) + '\n'
-        s = s + 'Fc=' + str(self.fc) + '\n'
-        s = s + 'Nf=' + str(self.nf) + '\n'
-        s = s + 'Xs=' + str(self.carrier_scale) + '\n'
-        s = s + 'Fx=' + str(self.carrier_freq) + '\n'
+        s = s + 'Fs=' + f'{Float(self.fs):.0h}' + '\n'
+        s = s + 'Fc=' + f'{Float(self.fc):.0h}' + '\n'
+        s = s + 'Nf=' + f'{Float(self.nf):.0h}' + '\n'
+        s = s + 'Xs=' + f'{Float(self.carrier_scale):.0h}' + '\n'
+        s = s + 'Fx=' + f'{Float(self.carrier_freq):.0h}' + '\n'
 
         return s + '\n'
 
@@ -139,7 +140,7 @@ def run_spice_sim(spicef, outputf, outdir='spice_output/', spice_path='ngspice')
     print(outputf)
 
     cmd = [spice_path, '-o', outdir + outputf + '.log',
-                    '-r', outdir + outputf + '.bin',
+                    # '-r', outdir + outputf + '.bin',
                     '-b', outdir + spicef]
 
     print(cmd)
@@ -159,7 +160,7 @@ def run_spice_sim_parallel(spicef_list, outputf_list, outdir='spice_output/', sp
     cmd_list = []
     for k in range(0, len(spicef_list)):
         cmd = [spice_path, '-o', outdir + outputf_list[k] + '.log',
-            '-r', outdir + outputf_list[k] + '.bin',
+            #'-r', outdir + outputf_list[k] + '.bin',
             '-b', outdir + spicef_list[k]]
         print(cmd)
         cmd_list.append(cmd)
@@ -215,6 +216,8 @@ def generate_spice_batch_file(c, Nb, t, Ts, QConfig, seed, timestamp, seq):
             circf = 'cs_dac_06bit_ngspice.cir'  # circuit description
             spicef = 'cs_dac_06bit_ngspice_batch.cir'  # complete spice input file
 
+            outputf = 'cs_dac_16bit_ngspice_batch_' + str(seq)
+            
             ctrl_str = '\n' + '.save v(outf)' + '\n' + '.tran 10u ' + str(t[-1]) + '\n'
 
         case quantiser_word_size.w_16bit_SPICE:  # 16 bit DAC
@@ -239,22 +242,37 @@ def generate_spice_batch_file(c, Nb, t, Ts, QConfig, seed, timestamp, seq):
             # spice input file
             spicef = 'cs_dac_16bit_ngspice_batch_' + str(seq) + '.cir'
 
-            ctrl_str = '\n' + '.save v(out)' + '\n' + '.tran 10u ' + str(t[-1]) + '\n'
+            # ctrl_str = '\n' + '.save v(out)' + '\n' + '.tran 10u ' + str(t[-1]) + '\n'
 
-    addtexttofile(os.path.join(tempdir, waveformfile), t1 + t2)
+            outputf = 'cs_dac_16bit_ngspice_batch_' + str(seq)
+            
+            ctrl_str = ''
+
+            if seed == 1:
+                #ctrl_str = '\n.option method=trap XMU=0.495 gmin=1e-19 reltol=200u abstol=100f vntol=100n seed=1\n'
+                ctrl_str = '\n.option method=trap TRTOL=5 gmin=1e-19 reltol=200u abstol=100f vntol=100n seed=1\n'
+            elif seed == 2:
+                #ctrl_str = '\n.option method=trap XMU=0.495 gmin=1e-19 reltol=200u abstol=100f vntol=100n seed=2\n'
+                ctrl_str = '\n.option method=trap TRTOL=5 gmin=1e-19 reltol=200u abstol=100f vntol=100n seed=2\n'
+            
+            ctrl_str = ctrl_str + \
+                '\n.control\n' + \
+                'tran 10u ' + str(t[-1]) + '\n' + \
+                'write $inputdir/' + outputf + '.bin' + ' v(out)\n' + \
+                '.endc\n'
 
     addtexttofile(os.path.join(tempdir, 'spice_cmds.txt'), ctrl_str)
 
+    addtexttofile(os.path.join(tempdir, waveformfile), t1 + t2)
+
     with open(os.path.join(outdir, spicef), 'w') as fout:
         fins = [os.path.join(circdir, circf),
-                os.path.join(tempdir, waveformfile),
-                os.path.join(tempdir, 'spice_cmds.txt')]
+                os.path.join(tempdir, 'spice_cmds.txt'),
+                os.path.join(tempdir, waveformfile)]
         fin = fileinput.input(fins)
         for line in fin:
             fout.write(line)
         fin.close()
-
-    outputf = 'output_' + str(seq)
 
     print(circf)
     print(spicef)
@@ -310,7 +328,7 @@ def read_spice_bin_file_with_most_recent_timestamp(fdir):
     return t_spice, y_spice
 
 
-def process_sim_output(t, y, Fc, Nf, TRANSOFF, SINAD_COMP_SEL, descr=''):
+def process_sim_output(t, y, Fc, Nf, TRANSOFF, SINAD_COMP_SEL, plot=False, descr=''):
     # Filter the output using a reconstruction (output) filter
     Wc = 2*np.pi*Fc
     b, a = signal.butter(Nf, Wc, 'lowpass', analog=True)  # filter coefficients
@@ -322,9 +340,9 @@ def process_sim_output(t, y, Fc, Nf, TRANSOFF, SINAD_COMP_SEL, descr=''):
 
     match SINAD_COMP_SEL:
         case sinad_comp.FFT:  # use FFT based method to detemine SINAD
-            R = FFT_SINAD(y_avg[TRANSOFF:-TRANSOFF], Fs, descr)
+            R = FFT_SINAD(y_avg[TRANSOFF:-TRANSOFF], Fs, plot, descr)
         case sinad_comp.CFIT:  # use time-series sine fitting based method to detemine SINAD
-            R = TS_SINAD(y_avg[TRANSOFF:-TRANSOFF], t[TRANSOFF:-TRANSOFF], descr)
+            R = TS_SINAD(y_avg[TRANSOFF:-TRANSOFF], t[TRANSOFF:-TRANSOFF], plot, descr)
 
     ENOB = (R - 1.76)/6.02
 
@@ -339,49 +357,90 @@ def main():
     Read results 
     """
     outdir = 'spice_output'
-    rundir = '20240403T113147'
-    rundir = '20240403T160028'
+
+    rundirs = os.listdir(outdir)
+    rundirs.sort()
+
+    rundir = rundirs[5]
+
     path = os.path.join(outdir, rundir)
 
     binfiles = [file for file in os.listdir(path) if file.endswith('.bin')]
     binfiles.sort()
 
-    with open(os.path.join(path, 'sim_config.pickle'), 'rb') as fin:
-        sim_config = pickle.load(fin)
+    if True:
+        with open(os.path.join(path, 'sim_config.pickle'), 'rb') as fin:
+            SC = pickle.load(fin)
 
-    Nch = len(binfiles)  # one file per channel
+        Nch = len(binfiles)  # one file per channel
 
-    t = sim_config.t
-    Fs = sim_config.fs
-    Fx = sim_config.carrier_freq
+        t = SC.t
+        Fs = SC.fs
+        Fx = SC.carrier_freq
 
-    TRANSOFF = np.floor(1*Fs/Fx).astype(int)  # remove transient effects from output
+        t_end = 3/Fx  # time vector duration
+        Fs_ = Fs*72  # 
+        print(f'Fs: {Float(Fs):.0h}')
+        t_ = np.arange(0, t_end, 1/Fs_)  # time vector
 
-    YM = np.zeros([Nch, t.size])
+        YM = np.zeros([Nch, t_.size])
 
-    for k in range(0,Nch):
-        t_spice, y_spice = read_spice_bin_file(path, binfiles[k])
-        y_resamp = np.interp(t, t_spice, y_spice)  # re-sample
-        YM[k,:] = y_resamp
+        for k in range(0,Nch):
+            print(os.path.join(path, binfiles[k]))
+            t_spice, y_spice = read_spice_bin_file(path, binfiles[k])
+            min_t = np.min(np.diff(t_spice))
+            print(f'Fs_max: {Float(1/min_t):.0h}')
+            match 1:
+                case 1:
+                    y_resamp = np.interp(t_, t_spice, y_spice)  # re-sample
+                case 2:
+                    #y_resamp = interpolate.CubicSpline(t_spice, y_spice)(t_)
+                    y_resamp = interpolate.Akima1DInterpolator(t_spice, y_spice)(t_)
+                    #y_resamp = interpolate.PchipInterpolator(t_spice, y_spice)(t_)
+            YM[k,:] = y_resamp
 
-    K = 1/Nch
+        # Summation stage
+        if SC.lin.method == lm.DEM:
+            K = np.ones((Nch,1))
+        if SC.lin.method == lm.PHYSCAL:
+            K = np.ones((Nch,1))
+            K[1] = 1e-2
+        else:
+            K = 1/Nch
 
-    ym = np.sum(K*YM, 0)
+        ym_ = np.sum(K*YM, 0)
 
+        if False:
+            #ym = np.interp(t, t_, ym_)  # re-sample
+            #ym = interpolate.Akima1DInterpolator(t_, ym_)(t)
+            ym = interpolate.PchipInterpolator(t_, ym_)(t)
+            #ym = signal.resample(ym_, t.size)
+            TRANSOFF = np.floor(0.5*Fs/Fx).astype(int)  # remove transient effects from output
+        else:
+            ym = ym_
+            t = t_
+            TRANSOFF = np.floor(0.25*Fs_/Fx).astype(int)  # remove transient effects from output
 
-    Fc = sim_config.fc
-    Nf = sim_config.nf
+        Fc = SC.fc
+        Nf = SC.nf
 
-    ym_avg, ENOB_M = process_sim_output(t, ym, Fc, Nf, TRANSOFF, sinad_comp.CFIT, 'SPICE')
+        ym_avg, ENOB_M = process_sim_output(t, ym, Fc, Nf, TRANSOFF, sinad_comp.CFIT, False, 'SPICE')
 
-    plt.plot(t,ym)
-    plt.plot(t,ym_avg)
+        #plt.plot(t,ym)
+        #plt.plot(t,ym_avg)
 
-    #t_spice, y_spice = read_spice_bin_file_with_most_recent_timestamp(path)
-    #YM = np.zeros([1,y_spice.size])
-    #YM[0,:] = y_spice
-    #plt.plot(y_spice)
-    #print(YM)
+        from tabulate import tabulate
+
+        results = [['Method', 'Model', 'Fs', 'Fc', 'Fx', 'ENOB'],
+                [str(SC.lin), str(SC.dac), f'{Float(SC.fs):.0h}', f'{Float(SC.fc):.0h}', f'{Float(SC.carrier_freq):.1h}', f'{Float(ENOB_M):.3h}']]
+
+        print(tabulate(results))
+
+        #t_spice, y_spice = read_spice_bin_file_with_most_recent_timestamp(path)
+        #YM = np.zeros([1,y_spice.size])
+        #YM[0,:] = y_spice
+        #plt.plot(y_spice)
+        #print(YM)
 
 
 if __name__ == "__main__":

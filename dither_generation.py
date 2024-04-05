@@ -21,6 +21,30 @@ class adf: #  amplitude distribution function (periodic)
     cauchy = 3  # when triangle wave amplitude is ±pi/2
     gaussian = 4
 
+
+def gen_shaped_noise(Nsamp, Nch, W, pdf_type):
+    """
+    Stochastic dither signal generation
+
+    Parameters
+    ----------
+    Nsamp
+        number of samples
+    Nch
+        number of channels (independent dithers)
+    W
+        dither amplitude
+    pdf_type
+        chose the dither pdf (probability distribution function)
+
+    Returns
+    -------
+    dn
+        the dither signal
+    """
+
+    # load from mat file and return
+
 def gen_stochastic(Nsamp, Nch, W, pdf_type):
     """
     Stochastic dither signal generation

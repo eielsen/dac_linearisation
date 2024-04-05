@@ -1,6 +1,6 @@
 current-steering dac core
 
-.option gmin=1e-19 reltol=200u abstol=100f vntol=100n seed=1
+* .option gmin=1e-19 reltol=200u abstol=100f vntol=100n seed=1
 
 .param mc_mm_switch = 1
 .param vdd = 1.5

@@ -7,10 +7,10 @@
 @license: BSD 3-Clause
 """
 
-# %reload_ext autoreload
-# %autoreload 2
+%reload_ext autoreload
+%autoreload 2
 
-#  %%Imports
+# Imports
 import sys
 import numpy as np
 from numpy import matlib
@@ -120,14 +120,14 @@ def get_output_levels(lmethod):
     return ML
 
 
-# %% Configuration
+# Configuration
 
 # Choose which linearization method you want to test
 # RUN_LM = lm.BASELINE
 # RUN_LM = lm.PHYSCAL
-RUN_LM = lm.PHFD
+# RUN_LM = lm.PHFD
 # RUN_LM = lm.SHPD
-# RUN_LM = lm.NSDCAL
+RUN_LM = lm.NSDCAL
 # RUN_LM = lm.DEM
 # RUN_LM = lm.MPC
 # RUN_LM = lm.ILC
@@ -142,22 +142,23 @@ dac = dm(dm.SPICE)  # use SPICE to simulate DAC output
 SINAD_COMP_SEL = sinad_comp.CFIT
 
 # Output low-pass filter configuration
-Fc_lp = 25e3  # cut-off frequency in hertz
+Fc_lp = 100e3  # cut-off frequency in hertz
 N_lp = 3  # filter order
 
 # Sampling rate
-Fs = 50e6  # sampling rate (over-sampling) in hertz
+#Fs = 1e6  # sampling rate (over-sampling) in hertz
+Fs = 25e6  # sampling rate (over-sampling) in hertz
 Ts = 1/Fs  # sampling time
 
 # Carrier signal (to be recovered on the output)
 Xcs_SCALE = 100  # %
-Xcs_FREQ = 9999  # Hz
+Xcs_FREQ = 999  # Hz
 
 # Set quantiser model
 QConfig = quantiser_word_size.w_16bit_SPICE
 Nb, Mq, Vmin, Vmax, Rng, Qstep, YQ, Qtype = quantiser_configurations(QConfig)
 
-# %% Generate time vector
+# Generate time vector
 match 2:
     case 1:  # specify duration as number of samples and find number of periods
         Nts = 1e6  # no. of time samples
@@ -165,7 +166,7 @@ match 2:
     case 2:  # specify duration as number of periods of carrier
         Np = 2  # no. of periods for carrier
         
-Npt = 1  # no. of carrier periods to use to account for transients
+Npt = 1/2  # no. of carrier periods to use to account for transients
 Np = Np + 2*Npt
 
 t_end = Np/Xcs_FREQ  # time vector duration
@@ -173,17 +174,17 @@ t = np.arange(0, t_end, Ts)  # time vector
 
 SC = sim_config(lin, dac, Fs, t, Fc_lp, N_lp, Xcs_SCALE, Xcs_FREQ)
 
-# %% Generate carrier/test signal
+# Generate carrier/test signal
 SIGNAL_MAXAMP = Rng/2 - Qstep  # make headroom for noise dither (see below)
 SIGNAL_OFFSET = -Qstep/2  # try to center given quantiser type
 Xcs = test_signal(Xcs_SCALE, SIGNAL_MAXAMP, Xcs_FREQ, SIGNAL_OFFSET, t)
 
-# %% Linearisation methods
+# Linearisation methods
 match SC.lin.method:
     case lm.BASELINE:  # baseline, only carrier
         # Generate unmodified DAC output without any corrections.
 
-        Nch = 2  # number of channels to use (averaging to reduce noise floor)
+        Nch = 1  # number of channels to use (averaging to reduce noise floor)
 
         # Quantisation dither
         Dq = dither_generation.gen_stochastic(t.size, Nch, Qstep, dither_generation.pdf.triangular_hp)
@@ -239,6 +240,7 @@ match SC.lin.method:
         C = dem(X, Rng, Nb)
             
         # two identical, ideal channels
+        Nch = 2  # number of physical channels
         YQ = matlib.repmat(YQ, 2, 1)
 
     case lm.NSDCAL:  # noise shaping with digital calibration
@@ -260,13 +262,13 @@ match SC.lin.method:
         HEADROOM = 1  # %
         X = ((100-HEADROOM)/100)*Xcs  # input
         
-        ML = get_output_levels(SC.lin)  # TODO: Redundant re-calling below in this case
+        ML = get_output_levels(lm.NSDCAL)  # TODO: Redundant re-calling below in this case
 
         YQns = YQ[0]  # ideal ouput levels
         MLns = ML[0]  # measured ouput levels (convert from 2d to 1d)
 
         # introducing some "measurement/model error" in the levels
-        MLns_err = np.random.uniform(-Qstep/2, Qstep/2, MLns.shape)
+        MLns_err = np.random.uniform(-Qstep/1, Qstep/1, MLns.shape)
         MLns = MLns + MLns_err
 
         QMODEL = 2  # 1: no calibration, 2: use calibration
@@ -286,19 +288,24 @@ match SC.lin.method:
         Xcs = matlib.repmat(Xcs, Nch, 1)
 
         # Large high-pass dither set-up
-        Xscale = 80  # carrier to dither ratio (between 0% and 100%)
+        Xscale = 50  # carrier to dither ratio (between 0% and 100%)
 
         Dmaxamp = Rng/2  # maximum dither amplitude (volt)
-        Dscale = 60  # %
+        Dscale = 150  # %
         Ds = dither_generation.gen_stochastic(t.size, Nch, Dmaxamp/2, dither_generation.pdf.uniform)
-
+        
         N_hf = 2
-        Fc_hf = 150e3
+        Fc_hf = 100e3
 
         b, a = signal.butter(N_hf, Fc_hf/(Fs/2), btype='high', analog=False)#, fs=Fs)
 
         Dsf = signal.filtfilt(b, a, Ds, method="gust")
         
+        # for k in range(0,Nch):
+        #     dsf = Dsf[k,:]
+        #     dsf = 2.*(dsf - np.min(dsf))/np.ptp(dsf) - 1
+        #     Dsf[k,:] = dsf
+
         X = (Xscale/100)*Xcs + (Dscale/100)*Dsf + Dq
 
         print(np.max(X))
@@ -332,8 +339,9 @@ match SC.lin.method:
         # Scaling dither with respect to the carrier
         Xscale = 50  # carrier to dither ratio (between 0% and 100%)
         Dscale = 100 - Xscale  # dither to carrier ratio
-        #Dfreq = 359e3  # Hz
-        Dfreq = 549e3  # Hz
+        
+        #Dfreq = 1.592e6 # Fs10MHz
+        Dfreq = 2.99e6 # Fs25Mhz
         Dadf = dither_generation.adf.uniform  # amplitude distr. funct. (ADF)
         # Generate periodic dither
         Dmaxamp = Rng/2  # maximum dither amplitude (volt)
@@ -372,7 +380,7 @@ match SC.lin.method:
 
         # Measured level dictionary - Generated randomly for test 
         # ML_dict = generate_ML(Nb, Qstep, Q_levels)
-        ML_values = get_output_levels(SC.lin_method)
+        ML_values = get_output_levels(SC.lin.method)
         ML_dict = dict(zip(level_codes, ML_values[0,:]))
 
         # % #  Reconstruction Filter
@@ -439,55 +447,62 @@ match SC.lin.method:
         #     writer.writerows(datalist)   
 
     case lm.ILC:  # iterative learning control (with INL model, only periodic signals)
-    #     # sys.exit("Not implemented yet - ILC")
 
         Nch = 1
+        
         # Quantisation dither
         Dq = dither_generation.gen_stochastic(t.size, Nch, Qstep, dither_generation.pdf.triangular_hp)
         # Ideal Levels
         ILns = YQ.squeeze()
         # % Measured Levels
-        ML = get_output_levels(4)
+        ML = get_output_levels(lm.ILC)
         MLns = ML[0] # one channel only
 
-        # % Reconstruction filter 
+        # Reconstruction filter
+        if False:
+            Wn = Fc_lp/(Fs/2)
+            b1, a1 = signal.butter(2, Wn )
+            l_dlti = signal.dlti(b1, a1, dt = Ts)
+        else:
+            Wc = 2*np.pi*Fc_lp
+            b, a = signal.butter(N_lp, Wc, 'lowpass', analog=True)  # filter coefficients
+            Wlp = signal.lti(b, a)  # filter LTI system instance
+            l_dlti = Wlp.to_discrete(dt=Ts, method='zoh')  # exact
+
         len_X = len(Xcs)
-        Wn = Fc_lp/(Fs/2)
-        b1, a1 = signal.butter(2, Wn )
-        l_dlti = signal.dlti(b1, a1, dt = Ts)
         ft, fi = signal.dimpulse(l_dlti, n = 2*len_X)
 
-        # % Learning and Output Matrices
+        # Learning and Output Matrices
         Q, L, G = learningMatrices(len_X, fi)
 
-        # % ILC with DSM
+        # ILC with DSM
         itr = 10
 
-        # % Get ILC output codes
-        CU1 = get_ILC_control(Nb, Xcs, Dq.squeeze(),  Q, L, G, itr, b1, a1, Qstep, Vmin,  Qtype, YQ,  ILns)
-        CM1 = get_ILC_control(Nb, Xcs, Dq.squeeze(),  Q, L, G, itr, b1, a1, Qstep, Vmin,  Qtype, YQ,  MLns)
+        # Get ILC output codes
+        #CU1 = get_ILC_control(Nb, Xcs, Dq.squeeze(), Q, L, G, itr, b1, a1, Qstep, Vmin, Qtype, YQ, ILns)
+        CM1 = get_ILC_control(Nb, Xcs, Dq.squeeze(), Q, L, G, itr, b1, a1, Qstep, Vmin, Qtype, YQ, MLns)
 
         # Silce 1 - 1 from the front and back to remove the transient
         N_padding = int(len_X/Np)
-        CU1 = CU1.reshape(1,-1)
+        #CU1 = CU1.reshape(1,-1)
         CM1 = CM1.reshape(1,-1)
         # Reshape into column vector
-        CU1 = CU1[:,N_padding:-N_padding]
+        #CU1 = CU1[:,N_padding:-N_padding]
         CM1 = CM1[:,N_padding:-N_padding]
 
         # Add multiple periods
-        CU = [] 
+        #CU = [] 
         CM = []
         for i in range(5):
-            CU = np.append(CU, CU1[0, :-1])
+            #CU = np.append(CU, CU1[0, :-1])
             CM = np.append(CM, CM1[0, :-1])
-        CU = np.append(CU, CU1[0,-1]).astype(int)
+        #CU = np.append(CU, CU1[0,-1]).astype(int)
         CM = np.append(CM, CM1[0,-1]).astype(int)
-        CU  = CU.reshape(1,-1)
+        #CU  = CU.reshape(1,-1)
         CM  = CM.reshape(1,-1)
-
-        t = np.arange(0,Ts*CU.size , Ts)
-    case lin_method.ILC_SIMP:  # iterative learning control, basic implementation
+        C = CM
+        t = np.arange(0,Ts*C.size , Ts)
+    case lm.ILC_SIMP:  # iterative learning control, basic implementation
         
         Nch = 1  # number of channels to use
 
@@ -524,87 +539,85 @@ match SC.lin.method:
         C = np.array([c_])
         print('** ILC simple end **')
 
-# %%% DAC Output
-YU = generate_dac_output(CU, YQ)  # using ideal, uniform levels
+# DAC Output
+# TODO: Fix to have same variable for all methods
+YU = generate_dac_output(C, YQ)  # using ideal, uniform levels
 tu = t
 
-    match SC.dac.model:
-        case dm.STATIC:  # use static non-linear quantiser model to simulate DAC
-            ML = get_output_levels(SC.lin)
-            YM = generate_dac_output(C, ML)  # using measured or randomised levels
-            tm = t
-        case dm.SPICE:  # use SPICE to simulate DAC output
-            timestamp = datetime.datetime.now().strftime("%Y%m%dT%H%M%S")
-            
-            outdir = 'spice_output/' + timestamp + '/'
+run_SPICE = False
 
-            if os.path.exists(outdir):
-                print('Putting output files in existing directory: ' + timestamp)
-            else:
-                os.mkdir(outdir)
-            
-            configf = 'sim_config'
-            with open(os.path.join(outdir, configf + '.txt'), 'w') as fout:
-                fout.write(SC.__str__())
+match SC.dac.model:
+    case dm.STATIC:  # use static non-linear quantiser model to simulate DAC
+        ML = get_output_levels(SC.lin)
+        YM = generate_dac_output(C, ML)  # using measured or randomised levels
+        tm = t
+    case dm.SPICE:  # use SPICE to simulate DAC output
+        timestamp = datetime.datetime.now().strftime("%Y%m%dT%H%M%S")
+        
+        outdir = 'spice_output/' + timestamp + '/'
 
-            with open(os.path.join(outdir, configf + '.pickle'), 'wb') as fout:
-                pickle.dump(SC, fout)
-            
-            spicef_list = []
-            outputf_list = []
-            
-            for k in range(0,Nch):
-                c = C[k,:]
-                seed = k + 1
-                spicef, outputf = generate_spice_batch_file(c, Nb, t, Ts, QConfig, seed, timestamp, k)
-                spicef_list.append(spicef)
-                outputf_list.append(outputf)
-            
-            if True:  # run SPICE
-                #spice_path = '/home/eielsen/ngspice_files/bin/ngspice'  # newest ver., fastest (local)
-                spice_path = 'ngspice'  # 
+        if os.path.exists(outdir):
+            print('Putting output files in existing directory: ' + timestamp)
+        else:
+            os.mkdir(outdir)
+        
+        configf = 'sim_config'
+        with open(os.path.join(outdir, configf + '.txt'), 'w') as fout:
+            fout.write(SC.__str__())
 
-                if False:
-                    for k in range(0,Nch):
-                        run_spice_sim(spicef_list[k], outputf_list[k], outdir, spice_path)
-                else:
-                    run_spice_sim_parallel(spicef_list, outputf_list, outdir, spice_path)
-                
-                YM = np.zeros([Nch, t.size])
-                tm = t
+        with open(os.path.join(outdir, configf + '.pickle'), 'wb') as fout:
+            pickle.dump(SC, fout)
+        
+        spicef_list = []
+        outputf_list = []
+        
+        for k in range(0,Nch):
+            c = C[k,:]
+            seed = k + 1
+            spicef, outputf = generate_spice_batch_file(c, Nb, t, Ts, QConfig, seed, timestamp, k)
+            spicef_list.append(spicef)
+            outputf_list.append(outputf)
+        
+        if run_SPICE:  # run SPICE
+            spice_path = '/home/eielsen/ngspice_files/bin/ngspice'  # newest ver., fastest (local)
+            #spice_path = 'ngspice'  # 
+
+            if False:
                 for k in range(0,Nch):
-                    t_spice, y_spice = read_spice_bin_file(outdir, outputf_list[k] + '.bin')
-                    y_resamp = np.interp(t, t_spice, y_spice)  # re-sample
-                    YM[k,:] = y_resamp
-            else:  # leave files for later
-                sys.exit('Files generated, exiting...')
+                    run_spice_sim(spicef_list[k], outputf_list[k], outdir, spice_path)
+            else:
+                run_spice_sim_parallel(spicef_list, outputf_list, outdir, spice_path)
+            
+            YM = np.zeros([Nch, t.size])
+            tm = t
+            for k in range(0,Nch):
+                t_spice, y_spice = read_spice_bin_file(outdir, outputf_list[k] + '.bin')
+                y_resamp = np.interp(t, t_spice, y_spice)  # re-sample
+                YM[k,:] = y_resamp
 
+if run_SPICE or SC.dac.model == dm.STATIC:
+    # Summation stage
+    if SC.lin.method == lm.DEM:
+        K = np.ones((Nch,1))
+    if SC.lin.method == lm.PHYSCAL:
+        K = np.ones((Nch,1))
+        K[1] = 1e-2
+    else:
+        K = 1/Nch
 
-# %% Summation stage
-if SC.lin.method == lm.DEM:
-    K = np.ones((Nch,1))
-if SC.lin.method == lm.PHYSCAL:
-    K = np.ones((Nch,1))
-    K[1] = 1e-2
-else:
-    K = 1/Nch
+    yu = np.sum(K*YU, 0)
+    ym = np.sum(K*YM, 0)
 
-yu = np.sum(K*YU, 0)
-ym = np.sum(K*YM, 0)
+    TRANSOFF = np.floor(Npt*Fs/Xcs_FREQ).astype(int)  # remove transient effects from output
+    yu_avg, ENOB_U = process_sim_output(tu, yu, Fc_lp, N_lp, TRANSOFF, SINAD_COMP_SEL, False, 'uniform')
+    ym_avg, ENOB_M = process_sim_output(tm, ym, Fc_lp, N_lp, TRANSOFF, SINAD_COMP_SEL, True, 'non-linear')
 
-# plt.plot(tu, yu)
-# plt.show()
+    from tabulate import tabulate
 
-TRANSOFF = np.floor(Npt*Fs/Xcs_FREQ).astype(int)  # remove transient effects from output
-yu_avg, ENOB_U = process_sim_output(tu, yu, Fc_lp, N_lp, TRANSOFF, SINAD_COMP_SEL, 'uniform')
-ym_avg, ENOB_M = process_sim_output(tm, ym, Fc_lp, N_lp, TRANSOFF, SINAD_COMP_SEL, 'non-linear')
+    results = [['Method', 'Model', 'Fs', 'Fc', 'Fx', 'ENOB'],
+            [str(SC.lin), str(SC.dac), f'{Float(SC.fs):.0h}', f'{Float(SC.fc):.0h}', f'{Float(SC.carrier_freq):.1h}', f'{Float(ENOB_M):.3h}']]
 
-from tabulate import tabulate
-
-results = [['Method', 'Model', 'Fs', 'Fc', 'Fx', 'ENOB'],
-           [str(SC.lin), str(SC.dac), f'{Float(SC.fs):.0h}', f'{Float(SC.fc):.0h}', f'{Float(SC.carrier_freq):.3h}', f'{Float(ENOB_M):.3h}']]
-
-print(tabulate(results))
+    print(tabulate(results))
 
 
 # # %% Filter the output using a reconstruction (output) filter
