@@ -35,7 +35,7 @@ from lin_method_nsdcal import nsdcal
 from lin_method_dem import dem
 # from lin_method_ilc import get_control, learning_matrices
 # from lin_method_ilc_simple import ilc_simple
-# from lin_method_mpc import MPC, dq, gen_ML, gen_C, gen_DO
+from lin_method_mpc import MPC, dq, gen_ML, gen_C, gen_DO
 from lin_method_ILC_DSM import learningMatrices, get_ILC_control
 
 from lin_method_util import lm, dm
@@ -129,8 +129,8 @@ def get_output_levels(lmethod):
 # RUN_LM = lm.SHPD
 # RUN_LM = lm.NSDCAL
 # RUN_LM = lm.DEM
-# RUN_LM = lm.MPC
-RUN_LM = lm.ILC
+RUN_LM = lm.MPC
+# RUN_LM = lm.ILC
 # RUN_LM = lm.ILC_SIMP
 
 lin = lm(RUN_LM)
@@ -268,8 +268,8 @@ match SC.lin.method:
         MLns = ML[0]  # measured ouput levels (convert from 2d to 1d)
 
         # introducing some "measurement/model error" in the levels
-        MLns_err = np.random.uniform(-Qstep/1, Qstep/1, MLns.shape)
-        MLns = MLns + MLns_err
+        MLns_err = np.random.uniform(-Qstep*1, Qstep*1, MLns.shape)
+        MLns = MLns + 0*MLns_err
 
         QMODEL = 2  # 1: no calibration, 2: use calibration
         C = nsdcal(X, Dq, YQns, MLns, Qstep, Vmin, Nb, QMODEL)
@@ -404,14 +404,14 @@ match SC.lin.method:
         # Scale up the input signal 
         X = Xcs + Dq
         Xcs1 = X + Rng/2                  
-        Xcs_new =  ((2**Nb) * (Xcs1 /Rng)) 
+        Xcs_new = ((2**Nb) * (Xcs1/Rng)) 
 
         for i in tqdm.tqdm(range(len_MPC)):
             Xcs_i = Xcs_new[i:i+N_PRED]
 
             # Get MPC control
             Q_MPC_Xcs_N = MPC(Nb, Xcs_i, N_PRED, x0, A, B, C, D)
-            Q_MPC_Xcs_N =  Q_MPC_Xcs_N.astype(int)
+            Q_MPC_Xcs_N = Q_MPC_Xcs_N.astype(int)
 
             """
             CHOOSE- 
@@ -449,6 +449,12 @@ match SC.lin.method:
     case lm.ILC:  # iterative learning control (with INL model, only periodic signals)
 
         Nch = 1
+
+        # The feedback generates an actuation signal that may cause the
+        # quantiser to saturate if there is no "headroom"
+        # Also need room for re-quantisation dither
+        HEADROOM = 1  # %
+        Xcs = ((100-HEADROOM)/100)*Xcs  # input
         
         # Quantisation dither
         Dq = dither_generation.gen_stochastic(t.size, Nch, Qstep, dither_generation.pdf.triangular_hp)
@@ -459,19 +465,26 @@ match SC.lin.method:
         MLns = ML[0] # one channel only
 
         # Reconstruction filter
-        if True:
-            Wn = Fc_lp/(Fs/2)
-            b1, a1 = signal.butter(2, Wn )
-            l_dlti = signal.dlti(b1, a1, dt = Ts)
-        else:
-            Wc = 2*np.pi*Fc_lp
-            b1, a1 = signal.butter(N_lp, Wc, 'lowpass', analog=True)  # filter coefficients
-            Wlp = signal.lti(b1, a1)  # filter LTI system instance
-            l_dlti = Wlp.to_discrete(dt=Ts, method='zoh')  # exact
+        match 2:
+            case 1:
+                Wn = Fc_lp/(Fs/2)
+                b1, a1 = signal.butter(2, Wn)
+                l_dlti = signal.dlti(b1, a1, dt=Ts)
+            case 2:
+                Wn = Fc_lp/(Fs/2)
+                #b1, a1 = signal.butter(N_lp, Wn, btype='low', analog=False, output='ba', fs=1/Ts)
+                b1, a1 = signal.butter(N_lp, Wn)
+                l_dlti = signal.dlti(b1, a1, dt=Ts)
+            case 3:
+                Wc = 2*np.pi*Fc_lp
+                b1, a1 = signal.butter(N_lp, Wc, 'lowpass', analog=True)  # filter coefficients
+                Wlp = signal.lti(b1, a1)  # filter LTI system instance
+                l_dlti = Wlp.to_discrete(dt=Ts, method='zoh')  # exact
 
         
         len_X = len(Xcs)
-        ft, fi = signal.dimpulse(l_dlti, n = 2*len_X)
+        ft, fi = signal.dimpulse(l_dlti, n=2*len_X)
+        #plt.plot(ft, fi[0].squeeze())
 
         # Learning and Output Matrices
         Q, L, G = learningMatrices(len_X, fi)
@@ -494,7 +507,7 @@ match SC.lin.method:
         # Add multiple periods
         #CU = [] 
         CM = []
-        for i in range(Np):
+        for i in range(round(Np)):
             #CU = np.append(CU, CU1[0, :-1])
             CM = np.append(CM, CM1[0, :-1])
         #CU = np.append(CU, CU1[0,-1]).astype(int)

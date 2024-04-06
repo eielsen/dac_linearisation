@@ -1,3 +1,5 @@
+# 16-bit DAC
+
 --------  ------  ---  ----  -----  ------
 Method    Model   Fs   Fc    Fx     ENOB
 baseline  static  50M  100k  999.0  11.132
@@ -35,5 +37,8 @@ physical level calibration  spice  25M  100k  999.0  16.111
 Method               Model  Fs   Fc    Fx     ENOB
 digital calibration  spice  25M  100k  999.0  18.183
 -------------------  -----  ---  ----  -----  ------
-
+------------------------  -----  ---  ----  -----  -----
+Method                    Model  Fs   Fc    Fx     ENOB
+dynamic element matching  spice  25M  100k  999.0  7.250
+------------------------  -----  ---  ----  -----  -----
 

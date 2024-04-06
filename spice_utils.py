@@ -362,7 +362,7 @@ def main():
     rundirs.sort()
 
     print('No. dirs.: ' + str(len(rundirs)))
-    rundir = rundirs[7]  # pick run
+    rundir = rundirs[8]  # pick run
 
     path = os.path.join(outdir, rundir)
 
