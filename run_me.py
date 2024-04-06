@@ -127,16 +127,16 @@ def get_output_levels(lmethod):
 # RUN_LM = lm.PHYSCAL
 # RUN_LM = lm.PHFD
 # RUN_LM = lm.SHPD
-RUN_LM = lm.NSDCAL
+# RUN_LM = lm.NSDCAL
 # RUN_LM = lm.DEM
 # RUN_LM = lm.MPC
-# RUN_LM = lm.ILC
+RUN_LM = lm.ILC
 # RUN_LM = lm.ILC_SIMP
 
 lin = lm(RUN_LM)
 
-# dac = dm(dm.STATIC)  # use static non-linear quantiser model to simulate DAC
-dac = dm(dm.SPICE)  # use SPICE to simulate DAC output
+dac = dm(dm.STATIC)  # use static non-linear quantiser model to simulate DAC
+# dac = dm(dm.SPICE)  # use SPICE to simulate DAC output
 
 # Chose how to compute SINAD
 SINAD_COMP_SEL = sinad_comp.CFIT
@@ -146,8 +146,8 @@ Fc_lp = 100e3  # cut-off frequency in hertz
 N_lp = 3  # filter order
 
 # Sampling rate
-#Fs = 1e6  # sampling rate (over-sampling) in hertz
-Fs = 25e6  # sampling rate (over-sampling) in hertz
+Fs = 1e6  # sampling rate (over-sampling) in hertz
+#Fs = 25e6  # sampling rate (over-sampling) in hertz
 Ts = 1/Fs  # sampling time
 
 # Carrier signal (to be recovered on the output)
@@ -459,16 +459,17 @@ match SC.lin.method:
         MLns = ML[0] # one channel only
 
         # Reconstruction filter
-        if False:
+        if True:
             Wn = Fc_lp/(Fs/2)
             b1, a1 = signal.butter(2, Wn )
             l_dlti = signal.dlti(b1, a1, dt = Ts)
         else:
             Wc = 2*np.pi*Fc_lp
-            b, a = signal.butter(N_lp, Wc, 'lowpass', analog=True)  # filter coefficients
-            Wlp = signal.lti(b, a)  # filter LTI system instance
+            b1, a1 = signal.butter(N_lp, Wc, 'lowpass', analog=True)  # filter coefficients
+            Wlp = signal.lti(b1, a1)  # filter LTI system instance
             l_dlti = Wlp.to_discrete(dt=Ts, method='zoh')  # exact
 
+        
         len_X = len(Xcs)
         ft, fi = signal.dimpulse(l_dlti, n = 2*len_X)
 
@@ -493,7 +494,7 @@ match SC.lin.method:
         # Add multiple periods
         #CU = [] 
         CM = []
-        for i in range(5):
+        for i in range(Np):
             #CU = np.append(CU, CU1[0, :-1])
             CM = np.append(CM, CM1[0, :-1])
         #CU = np.append(CU, CU1[0,-1]).astype(int)

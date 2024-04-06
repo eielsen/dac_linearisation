@@ -16,9 +16,8 @@ digital calibration  static  25M  100k  999.0  19.249
 -------------------  ------  ---  ----  -----  ------
 ------------------------  ------  ---  ----  -----  -----
 Method                    Model   Fs   Fc    Fx     ENOB
-dynamic element matching  static  25M  100k  999.0  7.186
+dynamic element matching  static  25M  100k  999.0  7.215
 ------------------------  ------  ---  ----  -----  -----
-
 
 --------  -----  ---  ----  -----  ------
 Method    Model  Fs   Fc    Fx     ENOB
@@ -28,3 +27,13 @@ baseline  spice  25M  100k  999.0  11.136
 Method           Model  Fs   Fc    Fx     ENOB
 periodic dither  spice  25M  100k  999.0  15.123
 ---------------  -----  ---  ----  -----  ------
+--------------------------  -----  ---  ----  -----  ------
+Method                      Model  Fs   Fc    Fx     ENOB
+physical level calibration  spice  25M  100k  999.0  16.111
+--------------------------  -----  ---  ----  -----  ------
+-------------------  -----  ---  ----  -----  ------
+Method               Model  Fs   Fc    Fx     ENOB
+digital calibration  spice  25M  100k  999.0  18.183
+-------------------  -----  ---  ----  -----  ------
+
+

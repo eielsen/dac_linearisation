@@ -361,7 +361,8 @@ def main():
     rundirs = os.listdir(outdir)
     rundirs.sort()
 
-    rundir = rundirs[5]
+    print('No. dirs.: ' + str(len(rundirs)))
+    rundir = rundirs[7]  # pick run
 
     path = os.path.join(outdir, rundir)
 
@@ -371,6 +372,8 @@ def main():
     if True:
         with open(os.path.join(path, 'sim_config.pickle'), 'rb') as fin:
             SC = pickle.load(fin)
+        
+        print(SC.lin)
 
         Nch = len(binfiles)  # one file per channel
 
