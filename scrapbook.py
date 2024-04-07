@@ -19,13 +19,13 @@ N_lp = 3
 Wn = 2*np.pi*Fc_lp
 b, a = signal.butter(N_lp, Wn, 'lowpass', analog=True)
 Wlp = signal.lti(b, a)  # filter LTI system instance
-#Wlp_ss = Wlp.to_ss()
+Wlp_ss = Wlp.to_ss()
 dt = 1e-3
-#Wlp_ss_d = signal.cont2discrete((Wlp_ss.A, Wlp_ss.B, Wlp_ss.C, Wlp_ss.D), dt, method='zoh')
-#Ad = Wlp_ss_d[0]
-#Bd = Wlp_ss_d[1]
-#Cd = Wlp_ss_d[2]
-#Dd = Wlp_ss_d[3]
+Wlp_ss_d = signal.cont2discrete((Wlp_ss.A, Wlp_ss.B, Wlp_ss.C, Wlp_ss.D), dt, method='zoh')
+Ad = Wlp_ss_d[0]
+Bd = Wlp_ss_d[1]
+Cd = Wlp_ss_d[2]
+Dd = Wlp_ss_d[3]
 
 G = Wlp.to_discrete(dt, method='zoh')
 

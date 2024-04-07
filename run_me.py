@@ -385,37 +385,38 @@ match SC.lin.method:
         ML_dict = dict(zip(level_codes, ML_values[0,:]))
 
         # % #  Reconstruction Filter
-        b, a = signal.butter(2, Fc_lp/(Fs/2)) 
+        #b, a = signal.butter(2, Fc_lp/(Fs/2)) 
         # but = signal.dlti(b,a,dt = Ts)
         # ft, fi = signal.dimpulse(but, n = 2*len(Xcs))
-        A, B, C, D = signal.tf2ss(b,a) # Transfer function to StateSpace
+        #A, B, C, D = signal.tf2ss(b,a) # Transfer function to StateSpace
 
 
 
         # Reconstruction filter
-        match 2:
+        match 1:
             case 1:
                 Wn = Fc_lp/(Fs/2)
                 b1, a1 = signal.butter(2, Wn)
+                A, B, C, D = signal.tf2ss(b1,a1) # Transfer function to StateSpace
             case 2:  # bilinear transf., seems to work ok, not a perfect match to physics
                 Wn = Fc_lp/(Fs/2)
                 b1, a1 = signal.butter(N_lp, Wn)
+                A, B, C, D = signal.tf2ss(b1,a1) # Transfer function to StateSpace
             case 3:  # zoh interp. matches physics, SciPi impl. causes numerical problems??
-                Wc = 2*np.pi*Fc_lp
-                b1, a1 = signal.butter(N_lp, Wc, 'lowpass', analog=True)  # filter coefficients
-                Wlp = signal.lti(b1, a1)  # filter LTI system instance
-                l_dlti = Wlp.to_discrete(dt=Ts, method='zoh')  # exact
-        
+                Wn = 2*np.pi*Fc_lp
+                b1, a1 = signal.butter(N_lp, Wn, 'lowpass', analog=True)
+                Wlp = signal.TransferFunction(b1, a1)  # filter LTI system instance
+                Wlp_ss = Wlp.to_ss()
+                dt = Ts
+                Wlp_ss_d = signal.cont2discrete((Wlp_ss.A, Wlp_ss.B, Wlp_ss.C, Wlp_ss.D), dt, method='zoh')
+                Ad = Wlp_ss_d[0]
+                Bd = Wlp_ss_d[1]
+                Cd = Wlp_ss_d[2]
+                Dd = Wlp_ss_d[3]
+                from balreal import balreal
+                A, B, C, D = balreal(Ad, Bd, Cd, Dd)
 
-
-        A, B, C, D = signal.tf2ss(b1,a1) # Transfer function to StateSpace
-
-        signal.TransferFunction([2, -1], [1, 0, 0], dt=1)
-        Ad, Bd, Cd, Dd = balreal(Mns.A, Mns.B, Mns.C, Mns.D)
-
-
-
-        N_PRED = 2     # prediction horizon
+        N_PRED = 2  # prediction horizon
 
         # Initial Condition
         x0 = np.zeros(2).reshape(-1,1)
