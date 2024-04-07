@@ -7,6 +7,7 @@
 @license: BSD 3-Clause
 """
 
+import numpy as np
 from scipy import linalg
 
 
@@ -78,33 +79,65 @@ def main():
     """
     Test the method.
     """
-    
+
     from scipy import signal
     import control as ct
     from matplotlib import pyplot as plt
-    
-    if True:
-        sys = ct.drss(outputs=1, inputs=1)  # random, stable LTI system        
-    else:
-        b, a = signal.butter(3, 0.25, 'lowpass', analog=False)
-        Wlp = signal.lti(b, a)  # filter LTI system instance
-        sys = Wlp.to_ss()
 
-    A = sys.A
-    B = sys.B
-    C = sys.C
-    D = sys.D
+    match 2:
+        case 1:
+            if False:
+                sys = ct.drss(4, outputs=1, inputs=1)  # random, stable LTI system
+            else:
+                b, a = signal.butter(3, 0.25, 'lowpass', analog=False)
+                Wlp = signal.dlti(b, a, dt=1)  # filter LTI system instance
+                sys = Wlp.to_ss()
 
-    A_, B_, C_, D_ = balreal(A,B,C,D)
+            A = sys.A
+            B = sys.B
+            C = sys.C
+            D = sys.D
 
-    sys_init = signal.dlti(A, B, C, D, dt=1)
-    sys_bal = signal.dlti(A_, B_, C_, D_, dt=1)
+            A_, B_, C_, D_ = balreal(A,B,C,D)
 
-    t, y = signal.dlti.step(sys_init)
-    plt.plot(t, y[0])
+            sys_init = signal.dlti(A, B, C, D, dt=1)
+            sys_bal = signal.dlti(A_, B_, C_, D_, dt=1)
 
-    t, y = signal.dlti.step(sys_bal)
-    plt.plot(t, y[0])
+            ti, yi = signal.dlti.step(sys_init)
+            tb, yb = signal.dlti.step(sys_bal)
+            yi = yi[0]
+            yb = yb[0]
+        case 2:
+            if False:
+                sys = ct.rss(4, outputs=1, inputs=1)  # random, stable LTI system
+                A = sys.A
+                B = sys.B
+                C = sys.C
+                D = sys.D
+            else:
+                Wn = 2*np.pi*1000e3
+                b, a = signal.butter(3, 1, 'lowpass', analog=True)
+                Wlp = signal.lti(b, a)  # filter LTI system instance
+                sys = Wlp.to_ss()
+
+                A = sys.A
+                B = sys.B
+                C = sys.C
+                D = sys.D
+                
+                A = Wn*A  # scale to get correct cut-off
+                B = Wn*B
+                
+            A_, B_, C_, D_ = balreal_ct(A,B,C,D)
+
+            sys_init = signal.lti(A, B, C, D)
+            sys_bal = signal.lti(A_, B_, C_, D_)
+
+            ti, yi = signal.lti.step(sys_init)
+            tb, yb = signal.lti.step(sys_bal)
+
+    plt.plot(ti, yi)
+    plt.plot(tb, yb)
 
     plt.xlabel('Time [s]')
     plt.ylabel('Amplitude')

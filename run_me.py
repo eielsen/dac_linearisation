@@ -130,8 +130,8 @@ def get_output_levels(lmethod):
 # RUN_LM = lm.SHPD
 # RUN_LM = lm.NSDCAL
 # RUN_LM = lm.DEM
-RUN_LM = lm.MPC
-# RUN_LM = lm.ILC
+# RUN_LM = lm.MPC
+RUN_LM = lm.ILC
 # RUN_LM = lm.ILC_SIMP
 
 lin = lm(RUN_LM)
@@ -510,11 +510,20 @@ match SC.lin.method:
                 b1, a1 = signal.butter(N_lp, Wn)
                 l_dlti = signal.dlti(b1, a1, dt=Ts)
             case 3:  # zoh interp. matches physics, SciPi impl. causes numerical problems??
-                Wc = 2*np.pi*Fc_lp
-                b1, a1 = signal.butter(N_lp, Wc, 'lowpass', analog=True)  # filter coefficients
+                Wn = 2*np.pi*Fc_lp
+                b1, a1 = signal.butter(N_lp, 1, 'lowpass', analog=True)
                 Wlp = signal.lti(b1, a1)  # filter LTI system instance
-                l_dlti = Wlp.to_discrete(dt=Ts, method='zoh')  # exact
+                Wlp_ss = Wlp.to_ss()  # controllable canonical form
+                Ac = Wlp_ss.A
+                Bc = Wlp_ss.B
+                Cc = Wlp_ss.C
+                Dc = Wlp_ss.D
+                Ac = Wn*Ac  # scale to get correct cut-off /SciPi garbage butter workaround
+                Bc = Wn*Bc
 
+                A_, B_, C_, D_ = balreal_ct(Ac, Bc, Cc, Dc)
+                l_lti = signal.lti(A_, B_, C_, D_)
+                l_dlti = l_lti.to_discrete(dt=1e-6, method='zoh')
         
         len_X = len(Xcs)
         ft, fi = signal.dimpulse(l_dlti, n=2*len_X)
