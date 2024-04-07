@@ -122,7 +122,7 @@ def get_output_levels(lmethod):
 
 # Configuration
 
-# Choose which linearization method you want to test
+##### METHOD CHOICE - Choose which linearization method you want to test
 # RUN_LM = lm.BASELINE
 # RUN_LM = lm.PHYSCAL
 # RUN_LM = lm.PHFD
@@ -135,6 +135,7 @@ RUN_LM = lm.MPC
 
 lin = lm(RUN_LM)
 
+##### MODEL CHOICE
 dac = dm(dm.STATIC)  # use static non-linear quantiser model to simulate DAC
 # dac = dm(dm.SPICE)  # use SPICE to simulate DAC output
 
@@ -147,7 +148,7 @@ N_lp = 3  # filter order
 
 # Sampling rate
 Fs = 1e6  # sampling rate (over-sampling) in hertz
-#Fs = 25e6  # sampling rate (over-sampling) in hertz
+# Fs = 25e6  # sampling rate (over-sampling) in hertz
 Ts = 1/Fs  # sampling time
 
 # Carrier signal (to be recovered on the output)
@@ -268,8 +269,8 @@ match SC.lin.method:
         MLns = ML[0]  # measured ouput levels (convert from 2d to 1d)
 
         # introducing some "measurement/model error" in the levels
-        MLns_err = np.random.uniform(-Qstep*1, Qstep*1, MLns.shape)
-        MLns = MLns + 0*MLns_err
+        MLns_err = np.random.uniform(-Qstep, Qstep, MLns.shape)
+        MLns = MLns + MLns_err
 
         QMODEL = 2  # 1: no calibration, 2: use calibration
         C = nsdcal(X, Dq, YQns, MLns, Qstep, Vmin, Nb, QMODEL)
@@ -389,6 +390,31 @@ match SC.lin.method:
         # ft, fi = signal.dimpulse(but, n = 2*len(Xcs))
         A, B, C, D = signal.tf2ss(b,a) # Transfer function to StateSpace
 
+
+
+        # Reconstruction filter
+        match 2:
+            case 1:
+                Wn = Fc_lp/(Fs/2)
+                b1, a1 = signal.butter(2, Wn)
+            case 2:  # bilinear transf., seems to work ok, not a perfect match to physics
+                Wn = Fc_lp/(Fs/2)
+                b1, a1 = signal.butter(N_lp, Wn)
+            case 3:  # zoh interp. matches physics, SciPi impl. causes numerical problems??
+                Wc = 2*np.pi*Fc_lp
+                b1, a1 = signal.butter(N_lp, Wc, 'lowpass', analog=True)  # filter coefficients
+                Wlp = signal.lti(b1, a1)  # filter LTI system instance
+                l_dlti = Wlp.to_discrete(dt=Ts, method='zoh')  # exact
+        
+
+
+        A, B, C, D = signal.tf2ss(b1,a1) # Transfer function to StateSpace
+
+        signal.TransferFunction([2, -1], [1, 0, 0], dt=1)
+        Ad, Bd, Cd, Dd = balreal(Mns.A, Mns.B, Mns.C, Mns.D)
+
+
+
         N_PRED = 2     # prediction horizon
 
         # Initial Condition
@@ -463,19 +489,23 @@ match SC.lin.method:
         # % Measured Levels
         ML = get_output_levels(lm.ILC)
         MLns = ML[0] # one channel only
-
+        
+        # Adding "measurement error"
+        MLns_err = np.random.uniform(-Qstep, Qstep, MLns.shape)
+        MLns = MLns + MLns_err
+    
         # Reconstruction filter
         match 2:
             case 1:
                 Wn = Fc_lp/(Fs/2)
                 b1, a1 = signal.butter(2, Wn)
                 l_dlti = signal.dlti(b1, a1, dt=Ts)
-            case 2:
+            case 2:  # bilinear transf., seems to work ok, not a perfect match to physics
                 Wn = Fc_lp/(Fs/2)
                 #b1, a1 = signal.butter(N_lp, Wn, btype='low', analog=False, output='ba', fs=1/Ts)
                 b1, a1 = signal.butter(N_lp, Wn)
                 l_dlti = signal.dlti(b1, a1, dt=Ts)
-            case 3:
+            case 3:  # zoh interp. matches physics, SciPi impl. causes numerical problems??
                 Wc = 2*np.pi*Fc_lp
                 b1, a1 = signal.butter(N_lp, Wc, 'lowpass', analog=True)  # filter coefficients
                 Wlp = signal.lti(b1, a1)  # filter LTI system instance
@@ -629,7 +659,7 @@ if run_SPICE or SC.dac.model == dm.STATIC:
     from tabulate import tabulate
 
     results = [['Method', 'Model', 'Fs', 'Fc', 'Fx', 'ENOB'],
-            [str(SC.lin), str(SC.dac), f'{Float(SC.fs):.0h}', f'{Float(SC.fc):.0h}', f'{Float(SC.carrier_freq):.1h}', f'{Float(ENOB_M):.3h}']]
+            [str(SC.lin), str(SC.dac), f'{Float(SC.fs):.1h}', f'{Float(SC.fc):.1h}', f'{Float(SC.carrier_freq):.1h}', f'{Float(ENOB_M):.3h}']]
 
     print(tabulate(results))
 

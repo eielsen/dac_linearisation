@@ -17,6 +17,7 @@ from scipy import signal
 from scipy import interpolate
 import pickle
 from prefixed import Float
+from tabulate import tabulate
 
 from lin_method_util import lm, dm
 from figures_of_merit import FFT_SINAD, TS_SINAD
@@ -362,19 +363,24 @@ def main():
     rundirs.sort()
 
     print('No. dirs.: ' + str(len(rundirs)))
-    rundir = rundirs[8]  # pick run
+    rundir = rundirs[11]  # pick run
 
-    path = os.path.join(outdir, rundir)
+    bindir = os.path.join(outdir, rundir)
 
-    binfiles = [file for file in os.listdir(path) if file.endswith('.bin')]
+    with open(os.path.join(bindir, 'sim_config.pickle'), 'rb') as fin:
+        SC = pickle.load(fin)
+    
+    print(bindir)
+
+    run_info = [['Method', 'Model', 'Fs', 'Fc', 'Fx'],
+                [str(SC.lin), str(SC.dac), f'{Float(SC.fs):.0h}', f'{Float(SC.fc):.0h}', f'{Float(SC.carrier_freq):.1h}']]
+
+    print(tabulate(run_info))
+
+    binfiles = [file for file in os.listdir(bindir) if file.endswith('.bin')]
     binfiles.sort()
 
     if True:
-        with open(os.path.join(path, 'sim_config.pickle'), 'rb') as fin:
-            SC = pickle.load(fin)
-        
-        print(SC.lin)
-
         Nch = len(binfiles)  # one file per channel
 
         t = SC.t
@@ -389,8 +395,8 @@ def main():
         YM = np.zeros([Nch, t_.size])
 
         for k in range(0,Nch):
-            print(os.path.join(path, binfiles[k]))
-            t_spice, y_spice = read_spice_bin_file(path, binfiles[k])
+            print(os.path.join(bindir, binfiles[k]))
+            t_spice, y_spice = read_spice_bin_file(bindir, binfiles[k])
             min_t = np.min(np.diff(t_spice))
             print(f'Fs_max: {Float(1/min_t):.0h}')
             match 1:
@@ -431,11 +437,9 @@ def main():
 
         #plt.plot(t,ym)
         #plt.plot(t,ym_avg)
-
-        from tabulate import tabulate
-
+        
         results = [['Method', 'Model', 'Fs', 'Fc', 'Fx', 'ENOB'],
-                [str(SC.lin), str(SC.dac), f'{Float(SC.fs):.0h}', f'{Float(SC.fc):.0h}', f'{Float(SC.carrier_freq):.1h}', f'{Float(ENOB_M):.3h}']]
+                [str(SC.lin), str(SC.dac), f'{Float(SC.fs):.1h}', f'{Float(SC.fc):.1h}', f'{Float(SC.carrier_freq):.1h}', f'{Float(ENOB_M):.3h}']]
 
         print(tabulate(results))
 

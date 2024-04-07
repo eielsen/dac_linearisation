@@ -14,12 +14,13 @@ periodic dither  static  25M  100k  999.0  15.201
 ---------------  ------  ---  ----  -----  ------
 -------------------  ------  ---  ----  -----  ------
 Method               Model   Fs   Fc    Fx     ENOB
-digital calibration  static  25M  100k  999.0  19.249
+digital calibration  static  25M  100k  999.0  18.236
 -------------------  ------  ---  ----  -----  ------
 ------------------------  ------  ---  ----  -----  -----
 Method                    Model   Fs   Fc    Fx     ENOB
 dynamic element matching  static  25M  100k  999.0  7.215
 ------------------------  ------  ---  ----  -----  -----
+
 
 --------  -----  ---  ----  -----  ------
 Method    Model  Fs   Fc    Fx     ENOB
@@ -33,12 +34,32 @@ periodic dither  spice  25M  100k  999.0  15.123
 Method                      Model  Fs   Fc    Fx     ENOB
 physical level calibration  spice  25M  100k  999.0  16.111
 --------------------------  -----  ---  ----  -----  ------
--------------------  -----  ---  ----  -----  ------
-Method               Model  Fs   Fc    Fx     ENOB
-digital calibration  spice  25M  100k  999.0  18.183
--------------------  -----  ---  ----  -----  ------
+-------------------  -----  ---  ----  ---  ------
+Method               Model  Fs   Fc    Fx   ENOB
+digital calibration  spice  25M  100k  999  18.252
+-------------------  -----  ---  ----  ---  ------
 ------------------------  -----  ---  ----  -----  -----
 Method                    Model  Fs   Fc    Fx     ENOB
 dynamic element matching  spice  25M  100k  999.0  7.250
 ------------------------  -----  ---  ----  -----  -----
+
+
+
+-------------------  ------  ----  ------  -----  ------
+Method               Model   Fs    Fc      Fx     ENOB
+digital calibration  static  1.0M  100.0k  999.0  14.311
+-------------------  ------  ----  ------  -----  ------
+------  ------  ----  ------  -----  ------
+Method  Model   Fs    Fc      Fx     ENOB
+ilc     static  1.0M  100.0k  999.0  14.798
+------  ------  ----  ------  -----  ------
+
+-------------------  -----  ----  ------  -----  ------
+Method               Model  Fs    Fc      Fx     ENOB
+digital calibration  spice  1.0M  100.0k  999.0  14.252
+-------------------  -----  ----  ------  -----  ------
+------  -----  ----  ------  -----  ------
+Method  Model  Fs    Fc      Fx     ENOB
+ilc     spice  1.0M  100.0k  999.0  14.646
+------  -----  ----  ------  -----  ------
 
