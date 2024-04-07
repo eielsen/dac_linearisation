@@ -83,6 +83,10 @@ def get_levels_from_file(config):
             ML = np.load('SPICE_levels_16bit.npy')  # measured levels
             PRILVLS = ML[0,:]
             SECLVLS = 1e-2*ML[1,:]
+        case 4:
+            ML = np.load('SPICE_levels_ARTI_6bit.npy')  # measured levels
+            PRILVLS = ML[0,:]
+            SECLVLS = 7.5e-2*ML[1,:]
     
     return PRILVLS, SECLVLS
 
@@ -95,6 +99,12 @@ def generate_physical_level_calibration_look_up_table(QConfig=4, FConfig=2, SAVE
 
     # Quantiser model
     Nb, Mq, Vmin, Vmax, Rng, Qstep, YQ, Qtype = quantiser_configurations(QConfig)
+
+    from tabulate import tabulate
+
+    qconfig = [[Nb, Mq, Vmin, Vmax, Rng, Qstep, YQ, Qtype]]
+
+    print(tabulate(qconfig))
 
     PRILVLS, SECLVLS = get_levels_from_file(FConfig)
     PRILVLS = np.array(PRILVLS)

@@ -21,7 +21,7 @@ from tabulate import tabulate
 
 from lin_method_util import lm, dm
 from figures_of_merit import FFT_SINAD, TS_SINAD
-from quantiser_configurations import quantiser_word_size
+from quantiser_configurations import qws
 
 
 class sinad_comp:
@@ -203,7 +203,7 @@ def generate_spice_batch_file(c, Nb, t, Ts, QConfig, seed, timestamp, seq):
     t2 = "\n"
 
     match QConfig:
-        case quantiser_word_size.w_06bit:  # 6 bit DAC
+        case qws.w_06bit:  # 6 bit DAC
             vbpc = "3.28"
             vdd = "5.0"
             Tr = 1e-3  # the rise-time for edges, in µs
@@ -221,7 +221,7 @@ def generate_spice_batch_file(c, Nb, t, Ts, QConfig, seed, timestamp, seq):
             
             ctrl_str = '\n' + '.save v(outf)' + '\n' + '.tran 10u ' + str(t[-1]) + '\n'
 
-        case quantiser_word_size.w_16bit_SPICE:  # 16 bit DAC
+        case qws.w_16bit_SPICE:  # 16 bit DAC
             vbpc = "0"
             vdd = "1.5"
             Tr = 1e-3  # the rise-time for edges, in µs

@@ -27,7 +27,7 @@ import pickle
 from prefixed import Float
 
 import dither_generation
-from quantiser_configurations import quantiser_configurations, quantiser_word_size
+from quantiser_configurations import quantiser_configurations, qws
 from static_dac_model import generate_dac_output, quantise_signal, generate_codes, quantiser_type
 from figures_of_merit import FFT_SINAD, TS_SINAD
 from balreal import balreal_ct
@@ -66,7 +66,7 @@ def get_output_levels(lmethod):
     Load measured or generated output levels.
     """
     # TODO: This is a bit of a mess
-    match 3:
+    match 4:
         case 1:  # load some generated levels
             infile_1 = os.path.join(os.getcwd(),
                                     'generated_output_levels',
@@ -117,7 +117,9 @@ def get_output_levels(lmethod):
                     # static DAC model output levels, one channel per row
                     ML = np.stack((ML_1, ML_2))
         case 3:
-            ML = np.load("SPICE_levels_16bit.npy") 
+            ML = np.load("SPICE_levels_16bit.npy")
+        case 4:
+            ML = np.load("SPICE_levels_ARTI_6bit.npy")
     return ML
 
 
@@ -129,9 +131,9 @@ def get_output_levels(lmethod):
 # RUN_LM = lm.PHFD
 # RUN_LM = lm.SHPD
 # RUN_LM = lm.NSDCAL
-# RUN_LM = lm.DEM
+RUN_LM = lm.DEM
 # RUN_LM = lm.MPC
-RUN_LM = lm.ILC
+# RUN_LM = lm.ILC
 # RUN_LM = lm.ILC_SIMP
 
 lin = lm(RUN_LM)
@@ -148,8 +150,8 @@ Fc_lp = 100e3  # cut-off frequency in hertz
 N_lp = 3  # filter order
 
 # Sampling rate
-Fs = 1e6  # sampling rate (over-sampling) in hertz
-# Fs = 25e6  # sampling rate (over-sampling) in hertz
+# Fs = 1e6  # sampling rate (over-sampling) in hertz
+Fs = 250e6  # sampling rate (over-sampling) in hertz
 Ts = 1/Fs  # sampling time
 
 # Carrier signal (to be recovered on the output)
@@ -157,7 +159,8 @@ Xcs_SCALE = 100  # %
 Xcs_FREQ = 999  # Hz
 
 # Set quantiser model
-QConfig = quantiser_word_size.w_16bit_SPICE
+#QConfig = qws.w_16bit_SPICE
+QConfig = qws.w_6bit_ARTI
 Nb, Mq, Vmin, Vmax, Rng, Qstep, YQ, Qtype = quantiser_configurations(QConfig)
 
 # Generate time vector
@@ -261,7 +264,8 @@ match SC.lin.method:
         # The feedback generates an actuation signal that may cause the
         # quantiser to saturate if there is no "headroom"
         # Also need room for re-quantisation dither
-        HEADROOM = 1  # %
+        #HEADROOM = 1  # 16 bit DAC
+        HEADROOM = 17.5  # 6 bit DAC
         X = ((100-HEADROOM)/100)*Xcs  # input
         
         ML = get_output_levels(lm.NSDCAL)  # TODO: Redundant re-calling below in this case
@@ -270,7 +274,8 @@ match SC.lin.method:
         MLns = ML[0]  # measured ouput levels (convert from 2d to 1d)
 
         # introducing some "measurement/model error" in the levels
-        MLns_err = np.random.uniform(-Qstep, Qstep, MLns.shape)
+        MLns_err = np.random.uniform(-Qstep, Qstep, MLns.shape)  # 16 bit DAC
+        MLns_err = np.random.uniform(-Qstep/1024, Qstep/1024, MLns.shape)  # 6 bit DAC
         MLns = MLns + MLns_err
 
         QMODEL = 2  # 1: no calibration, 2: use calibration
@@ -342,8 +347,9 @@ match SC.lin.method:
         Xscale = 50  # carrier to dither ratio (between 0% and 100%)
         Dscale = 100 - Xscale  # dither to carrier ratio
         
-        #Dfreq = 1.592e6 # Fs10MHz
-        Dfreq = 2.99e6 # Fs25Mhz
+        #Dfreq = 1.592e6 # Fs10MHz - 16bit
+        Dfreq = 2.99e6 # Fs25Mhz - 16bit
+        Dfreq = 2.98e6 # Fs250Mhz - 6 bit
         Dadf = dither_generation.adf.uniform  # amplitude distr. funct. (ADF)
         # Generate periodic dither
         Dmaxamp = Rng/2  # maximum dither amplitude (volt)
@@ -390,7 +396,7 @@ match SC.lin.method:
         # but = signal.dlti(b,a,dt = Ts)
         # ft, fi = signal.dimpulse(but, n = 2*len(Xcs))
         #A, B, C, D = signal.tf2ss(b,a) # Transfer function to StateSpace
-        
+
         # Reconstruction filter
         match 2:
             case 1:
@@ -597,8 +603,8 @@ match SC.lin.method:
 
 # DAC Output
 # TODO: Fix to have same variable for all methods
-YU = generate_dac_output(C, YQ)  # using ideal, uniform levels
-tu = t
+#YU = generate_dac_output(C, YQ)  # using ideal, uniform levels
+#tu = t
 
 run_SPICE = False
 
@@ -657,15 +663,16 @@ if run_SPICE or SC.dac.model == dm.STATIC:
         K = np.ones((Nch,1))
     if SC.lin.method == lm.PHYSCAL:
         K = np.ones((Nch,1))
-        K[1] = 1e-2
+        # K[1] = 1e-2  # 16 bit DAC
+        K[1] = 7.5e-2  # 6 bit DAC
     else:
         K = 1/Nch
 
-    yu = np.sum(K*YU, 0)
+    #yu = np.sum(K*YU, 0)
     ym = np.sum(K*YM, 0)
 
     TRANSOFF = np.floor(Npt*Fs/Xcs_FREQ).astype(int)  # remove transient effects from output
-    yu_avg, ENOB_U = process_sim_output(tu, yu, Fc_lp, Fs, N_lp, TRANSOFF, SINAD_COMP_SEL, False, 'uniform')
+    #yu_avg, ENOB_U = process_sim_output(tu, yu, Fc_lp, Fs, N_lp, TRANSOFF, SINAD_COMP_SEL, False, 'uniform')
     ym_avg, ENOB_M = process_sim_output(tm, ym, Fc_lp, Fs, N_lp, TRANSOFF, SINAD_COMP_SEL, True, 'non-linear')
 
     from tabulate import tabulate

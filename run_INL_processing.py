@@ -21,8 +21,9 @@ from INL_processing import generate_random_output_levels
 
 from spice_utils import run_spice_sim, read_spice_bin_file_with_most_recent_timestamp
 
-generate_physical_level_calibration_look_up_table(QConfig=5, FConfig=3, SAVE_LUT=1)
+#generate_physical_level_calibration_look_up_table(QConfig=5, FConfig=3, SAVE_LUT=1) # Trond 16bit
 #generate_physical_level_calibration_look_up_table(QConfig=4, FConfig=2, SAVE_LUT=1)
+generate_physical_level_calibration_look_up_table(QConfig=6, FConfig=4, SAVE_LUT=1) # ARTI 6b
 
 #generate_random_output_levels(QuantizerConfig=4)
 
@@ -53,7 +54,7 @@ generate_physical_level_calibration_look_up_table(QConfig=5, FConfig=3, SAVE_LUT
 # outfile = 'SPICE_levels_16bit_seed_1'
 # np.save(outfile, ML)
 
-
+# ML = np.load('SPICE_levels_ARTI_6bit.npy')  # measured levels
 
 def read_csv_levels():
     codes = []
@@ -61,12 +62,16 @@ def read_csv_levels():
     actual_1 = []
     actual_2 = []
 
-    with open('measurements_and_data/cs_dac_16bit_04_levels.csv', newline='') as csv_file:
+    #infile = 'measurements_and_data/cs_dac_16bit_04_levels.csv'
+    infile = 'measurements_and_data/ARTI_cs_dac_6b_levels.csv'
+
+    with open(infile, newline='') as csv_file:
         #csv_reader = csv.reader(csv_file, quoting=csv.QUOTE_NONNUMERIC)
         csv_reader = csv.reader(csv_file)
         line_count = 0    
         for row in csv_reader:
-            if line_count > 1:
+            #if line_count > 1:
+            if line_count > 0:
                 codes.append(int(row[0]))
                 nominal.append(float(row[1]))
                 actual_1.append(float(row[2]))
@@ -83,5 +88,7 @@ def read_csv_levels():
 
     ML = np.array([actual_1, actual_2])
 
-    outfile = 'SPICE_levels_16bit'
+    #outfile = 'SPICE_levels_16bit'
+    outfile = 'SPICE_levels_ARTI_6bit'
+
     np.save(outfile, ML)

@@ -12,12 +12,13 @@ import numpy as np
 
 from static_dac_model import quantiser_type
 
-class quantiser_word_size:
+class qws:  # quantiser_word_size
     w_04bit = 1
     w_06bit = 2
     w_12bit = 3
     w_16bit_NI_card = 4
     w_16bit_SPICE = 5
+    w_6bit_ARTI = 6
 
 
 def quantiser_configurations(QConfig):
@@ -26,35 +27,41 @@ def quantiser_configurations(QConfig):
     """
     
     match QConfig:
-        case quantiser_word_size.w_04bit:
+        case qws.w_04bit:
             Nb = 4 # word-size
             Mq = 2**Nb - 1; # max. code
             Vmin = -1 # volt
             Vmax = 1 # volt
             Qtype = quantiser_type.midtread
-        case quantiser_word_size.w_06bit:
+        case qws.w_06bit:
             Nb = 6 # word-size
             Mq = 2**Nb - 1; # max. code
             Vmin = -0.3 # volt
             Vmax = 0.3 # volt
             Qtype = quantiser_type.midtread
-        case quantiser_word_size.w_12bit:
+        case qws.w_12bit:
             Nb = 12 # word-size
             Mq = 2**Nb - 1; # max. code
             Vmin = -5 # volt
             Vmax = 5 # volt
             Qtype = quantiser_type.midtread
-        case quantiser_word_size.w_16bit_NI_card:
+        case qws.w_16bit_NI_card:
             Nb = 16 # word-size
             Mq = 2**Nb - 1 # max. code
             Vmin = -10 # volt
             Vmax = 10 # volt
             Qtype = quantiser_type.midtread
-        case quantiser_word_size.w_16bit_SPICE:
+        case qws.w_16bit_SPICE:
             Nb = 16 # word-size
             Mq = 2**Nb - 1 # max. code
             Vmin = -8 # volt
             Vmax = 8 # volt
+            Qtype = quantiser_type.midtread
+        case qws.w_6bit_ARTI:
+            Nb = 6 # word-size
+            Mq = 2**Nb - 1; # max. code
+            Vmin =  0.020651606 # volt
+            Vmax = -0.019920569 # volt
             Qtype = quantiser_type.midtread
         case _:
             sys.exit("Invalid quantiser configuration selected.")
