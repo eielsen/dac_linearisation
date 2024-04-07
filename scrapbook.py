@@ -11,23 +11,57 @@ import control as ct
 
 from quantiser_configurations import quantiser_configurations
 
-from balreal import balreal
+from balreal import balreal, balreal_ct
+
+%reload_ext autoreload
+%autoreload 2
 
 Fc_lp = 10e3
 N_lp = 3
 
-Wn = 2*np.pi*Fc_lp
-b, a = signal.butter(N_lp, Wn, 'lowpass', analog=True)
-Wlp = signal.lti(b, a)  # filter LTI system instance
-Wlp_ss = Wlp.to_ss()
-dt = 1e-3
-Wlp_ss_d = signal.cont2discrete((Wlp_ss.A, Wlp_ss.B, Wlp_ss.C, Wlp_ss.D), dt, method='zoh')
-Ad = Wlp_ss_d[0]
-Bd = Wlp_ss_d[1]
-Cd = Wlp_ss_d[2]
-Dd = Wlp_ss_d[3]
 
-G = Wlp.to_discrete(dt, method='zoh')
+Wn = 2*np.pi*Fc_lp
+b1, a1 = signal.butter(N_lp, Wn, 'lowpass', analog=True)
+Wlp = signal.TransferFunction(b1, a1)  # filter LTI system instance
+Wlp_ss = Wlp.to_ss()  # controllable canonical form
+A = Wlp_ss.A
+B = Wlp_ss.B
+C = Wlp_ss.C
+D = Wlp_ss.D
+A_, B_, C_, D_ = balreal_ct(A, B, C, D)
+Wlp_ss_d = signal.cont2discrete((A_, B_, C_, D_), dt=1e-6, method='zoh')
+
+
+#dt = 1e-6
+#A = np.eye(3, k=-1) 
+#A[0,:] = a1[1:4]
+#B = np.eye(3,1, k=0)
+#C = np.zeros((1,3))
+#C[0,2] = b1[-1]
+#D = np.array([0])
+
+#Wlp_ss = Wlp.to_ss()
+#Wlp_ss_d = signal.cont2discrete((Wlp_ss.A, Wlp_ss.B, Wlp_ss.C, Wlp_ss.D), dt, method='zoh')
+#Ad = Wlp_ss_d[0]
+#Bd = Wlp_ss_d[1]
+#Cd = Wlp_ss_d[2]
+#Dd = Wlp_ss_d[3]
+#A, B, C, D = balreal(Ad, Bd, Cd, Dd)
+
+
+
+# Wn = 2*np.pi*Fc_lp
+# b, a = signal.butter(N_lp, Wn, 'lowpass', analog=True)
+# Wlp = signal.lti(b, a)  # filter LTI system instance
+# Wlp_ss = Wlp.to_ss()
+# dt = 1e-3
+# Wlp_ss_d = signal.cont2discrete((Wlp_ss.A, Wlp_ss.B, Wlp_ss.C, Wlp_ss.D), dt, method='zoh')
+# Ad = Wlp_ss_d[0]
+# Bd = Wlp_ss_d[1]
+# Cd = Wlp_ss_d[2]
+# Dd = Wlp_ss_d[3]
+
+# G = Wlp.to_discrete(dt, method='zoh')
 
 #Ad, Bd, Cd, Dd = balreal(Wlp_ss_d[0], Wlp_ss_d[1], Wlp_ss_d[2], Wlp_ss_d[3])
 

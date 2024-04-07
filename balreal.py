@@ -23,7 +23,39 @@ def balreal(A,B,C,D):
     """
 
     Wr = linalg.solve_discrete_lyapunov(A, B@B.T)
-    Wo = linalg.solve_discrete_lyapunov(A.T, C.T@C, method=None)
+    Wo = linalg.solve_discrete_lyapunov(A.T, C.T@C)#, method=None)
+
+    Lr = linalg.cholesky(Wr, lower=True)
+    Lo = linalg.cholesky(Wo, lower=True)
+
+    U, s, Vh = linalg.svd(Lo.T@Lr)
+    S = linalg.diagsvd(s, A.shape[0], A.shape[1])
+    
+    T = Lr@Vh.T@linalg.sqrtm(linalg.inv(S))
+
+    A_ = linalg.inv(T)@A@T
+    B_ = linalg.inv(T)@B
+    C_ = C@T
+    D_ = D
+
+    return A_, B_, C_, D_
+
+
+
+def balreal_ct(A,B,C,D):
+    """
+    Straight forward implementation of a Gramian-based balanced realisation
+    using SciPy linear algebra library.
+
+    This is for continuous time systems.
+
+    [1] A. Laub, M. Heath, C. Paige, and R. Ward, 
+    ‘Computation of System Balancing Transformations and Other Applications of Simultaneous Diagonalization Algorithms’,
+    IEEE Transactions on Automatic Control, vol. AC-32, no. 2, pp. 115–122, Feb. 1987.
+    """
+
+    Wr = linalg.solve_continuous_lyapunov(A, -B@B.T)
+    Wo = linalg.solve_continuous_lyapunov(A.T, -C.T@C)
 
     Lr = linalg.cholesky(Wr, lower=True)
     Lo = linalg.cholesky(Wo, lower=True)

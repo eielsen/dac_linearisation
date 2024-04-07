@@ -30,6 +30,7 @@ import dither_generation
 from quantiser_configurations import quantiser_configurations, quantiser_word_size
 from static_dac_model import generate_dac_output, quantise_signal, generate_codes, quantiser_type
 from figures_of_merit import FFT_SINAD, TS_SINAD
+from balreal import balreal_ct
 
 from lin_method_nsdcal import nsdcal
 from lin_method_dem import dem
@@ -406,15 +407,17 @@ match SC.lin.method:
                 Wn = 2*np.pi*Fc_lp
                 b1, a1 = signal.butter(N_lp, Wn, 'lowpass', analog=True)
                 Wlp = signal.TransferFunction(b1, a1)  # filter LTI system instance
-                Wlp_ss = Wlp.to_ss()
-                dt = Ts
-                Wlp_ss_d = signal.cont2discrete((Wlp_ss.A, Wlp_ss.B, Wlp_ss.C, Wlp_ss.D), dt, method='zoh')
-                Ad = Wlp_ss_d[0]
-                Bd = Wlp_ss_d[1]
-                Cd = Wlp_ss_d[2]
-                Dd = Wlp_ss_d[3]
-                from balreal import balreal
-                A, B, C, D = balreal(Ad, Bd, Cd, Dd)
+                Wlp_ss = Wlp.to_ss()  # controllable canonical form
+                Ac = Wlp_ss.A
+                Bc = Wlp_ss.B
+                Cc = Wlp_ss.C
+                Dc = Wlp_ss.D
+                A_, B_, C_, D_ = balreal_ct(Ac, Bc, Cc, Dc)
+                Wlp_ss_d = signal.cont2discrete((A_, B_, C_, D_), dt=1e-6, method='zoh')
+                A = Wlp_ss_d.A
+                B = Wlp_ss_d.B
+                C = Wlp_ss_d.C
+                D = Wlp_ss_d.D
 
         N_PRED = 2  # prediction horizon
 
