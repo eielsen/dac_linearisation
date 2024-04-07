@@ -390,11 +390,9 @@ match SC.lin.method:
         # but = signal.dlti(b,a,dt = Ts)
         # ft, fi = signal.dimpulse(but, n = 2*len(Xcs))
         #A, B, C, D = signal.tf2ss(b,a) # Transfer function to StateSpace
-
-
-
+        
         # Reconstruction filter
-        match 1:
+        match 2:
             case 1:
                 Wn = Fc_lp/(Fs/2)
                 b1, a1 = signal.butter(2, Wn)
@@ -523,10 +521,11 @@ match SC.lin.method:
 
                 A_, B_, C_, D_ = balreal_ct(Ac, Bc, Cc, Dc)
                 l_lti = signal.lti(A_, B_, C_, D_)
-                l_dlti = l_lti.to_discrete(dt=1e-6, method='zoh')
+                l_dlti = l_lti.to_discrete(dt=Ts, method='zoh')
         
         len_X = len(Xcs)
         ft, fi = signal.dimpulse(l_dlti, n=2*len_X)
+        
         #plt.plot(ft, fi[0].squeeze())
 
         # Learning and Output Matrices
@@ -666,8 +665,8 @@ if run_SPICE or SC.dac.model == dm.STATIC:
     ym = np.sum(K*YM, 0)
 
     TRANSOFF = np.floor(Npt*Fs/Xcs_FREQ).astype(int)  # remove transient effects from output
-    yu_avg, ENOB_U = process_sim_output(tu, yu, Fc_lp, N_lp, TRANSOFF, SINAD_COMP_SEL, False, 'uniform')
-    ym_avg, ENOB_M = process_sim_output(tm, ym, Fc_lp, N_lp, TRANSOFF, SINAD_COMP_SEL, True, 'non-linear')
+    yu_avg, ENOB_U = process_sim_output(tu, yu, Fc_lp, Fs, N_lp, TRANSOFF, SINAD_COMP_SEL, False, 'uniform')
+    ym_avg, ENOB_M = process_sim_output(tm, ym, Fc_lp, Fs, N_lp, TRANSOFF, SINAD_COMP_SEL, True, 'non-linear')
 
     from tabulate import tabulate
 

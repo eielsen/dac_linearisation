@@ -16,20 +16,36 @@ from balreal import balreal, balreal_ct
 %reload_ext autoreload
 %autoreload 2
 
-Fc_lp = 10e3
-N_lp = 3
+# Fc_lp = 10e3
+# N_lp = 3
 
 
-Wn = 2*np.pi*Fc_lp
-b1, a1 = signal.butter(N_lp, Wn, 'lowpass', analog=True)
-Wlp = signal.TransferFunction(b1, a1)  # filter LTI system instance
-Wlp_ss = Wlp.to_ss()  # controllable canonical form
-A = Wlp_ss.A
-B = Wlp_ss.B
-C = Wlp_ss.C
-D = Wlp_ss.D
-A_, B_, C_, D_ = balreal_ct(A, B, C, D)
-Wlp_ss_d = signal.cont2discrete((A_, B_, C_, D_), dt=1e-6, method='zoh')
+# Wn = 2*np.pi*Fc_lp
+# b1, a1 = signal.butter(N_lp, Wn, 'lowpass', analog=True)
+# Wlp = signal.TransferFunction(b1, a1)  # filter LTI system instance
+# Wlp_ss = Wlp.to_ss()  # controllable canonical form
+# A = Wlp_ss.A
+# B = Wlp_ss.B
+# C = Wlp_ss.C
+# D = Wlp_ss.D
+# A_, B_, C_, D_ = balreal_ct(A, B, C, D)
+# Wlp_ss_d = signal.cont2discrete((A_, B_, C_, D_), dt=1e-6, method='zoh')
+
+
+
+Wn = 100e3/(25e6/2)
+bd, ad = signal.butter(3, Wn)
+Wlpd = signal.dlti(bd, ad, dt=1/25e6)
+
+Nsamp = int(1e6)
+y = np.random.uniform(low=-1.0, high=1.0, size=[1,Nsamp])
+
+y = y.reshape(-1, 1)  # ensure the vector is a column vector
+
+#y_avg_out = signal.lfilter(bd, ad, y)
+
+y_avg_out = signal.dlsim(Wlpd, y) # filter the output
+y_avg = y_avg_out[1] # extract the filtered data; lsim returns (T, y, x) tuple, want output y
 
 
 #dt = 1e-6
