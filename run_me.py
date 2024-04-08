@@ -151,7 +151,7 @@ N_lp = 3  # filter order
 
 # Sampling rate
 # Fs = 1e6  # sampling rate (over-sampling) in hertz
-Fs = 261881856  # sampling rate (over-sampling) in hertz
+Fs = 130940928  # sampling rate (over-sampling) in hertz
 Ts = 1/Fs  # sampling time
 
 # Carrier signal (to be recovered on the output)
@@ -350,7 +350,7 @@ match SC.lin.method:
         #Dfreq = 1.592e6 # Fs10MHz - 16bit
         Dfreq = 2.99e6 # Fs25Mhz - 16bit
         Dfreq = 2.98e6 # Fs250Mhz - 6 bit
-        Dfreq = 3.0e6 # Fs260Mhz - 6 bit
+        Dfreq = 3.11e6 # Fs130Mhz - 6 bit
         Dadf = dither_generation.adf.uniform  # amplitude distr. funct. (ADF)
         # Generate periodic dither
         Dmaxamp = Rng/2  # maximum dither amplitude (volt)
