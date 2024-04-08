@@ -151,7 +151,7 @@ N_lp = 3  # filter order
 
 # Sampling rate
 # Fs = 1e6  # sampling rate (over-sampling) in hertz
-Fs = 250e6  # sampling rate (over-sampling) in hertz
+Fs = 261881856  # sampling rate (over-sampling) in hertz
 Ts = 1/Fs  # sampling time
 
 # Carrier signal (to be recovered on the output)
@@ -169,7 +169,7 @@ match 2:
         Nts = 1e6  # no. of time samples
         Np = np.ceil(Xcs_FREQ*Ts*Nts).astype(int) # no. of periods for carrier
     case 2:  # specify duration as number of periods of carrier
-        Np = 2  # no. of periods for carrier
+        Np = 3  # no. of periods for carrier
         
 Npt = 1/2  # no. of carrier periods to use to account for transients
 Np = Np + 2*Npt
@@ -350,6 +350,7 @@ match SC.lin.method:
         #Dfreq = 1.592e6 # Fs10MHz - 16bit
         Dfreq = 2.99e6 # Fs25Mhz - 16bit
         Dfreq = 2.98e6 # Fs250Mhz - 6 bit
+        Dfreq = 3.0e6 # Fs260Mhz - 6 bit
         Dadf = dither_generation.adf.uniform  # amplitude distr. funct. (ADF)
         # Generate periodic dither
         Dmaxamp = Rng/2  # maximum dither amplitude (volt)
@@ -601,86 +602,87 @@ match SC.lin.method:
         C = np.array([c_])
         print('** ILC simple end **')
 
-# DAC Output
-# TODO: Fix to have same variable for all methods
-#YU = generate_dac_output(C, YQ)  # using ideal, uniform levels
-#tu = t
+### Save codes to file
 
-run_SPICE = False
+if True:  # save codes to file
+    outfile = 'generated_codes/' + str(SC.lin).replace(" ", "_")
+    np.save(outfile, C)
+else:  # generate DAC output
+    run_SPICE = False
 
-match SC.dac.model:
-    case dm.STATIC:  # use static non-linear quantiser model to simulate DAC
-        ML = get_output_levels(SC.lin)
-        YM = generate_dac_output(C, ML)  # using measured or randomised levels
-        tm = t
-    case dm.SPICE:  # use SPICE to simulate DAC output
-        timestamp = datetime.datetime.now().strftime("%Y%m%dT%H%M%S")
-        
-        outdir = 'spice_output/' + timestamp + '/'
-
-        if os.path.exists(outdir):
-            print('Putting output files in existing directory: ' + timestamp)
-        else:
-            os.mkdir(outdir)
-        
-        configf = 'sim_config'
-        with open(os.path.join(outdir, configf + '.txt'), 'w') as fout:
-            fout.write(SC.__str__())
-
-        with open(os.path.join(outdir, configf + '.pickle'), 'wb') as fout:
-            pickle.dump(SC, fout)
-        
-        spicef_list = []
-        outputf_list = []
-        
-        for k in range(0,Nch):
-            c = C[k,:]
-            seed = k + 1
-            spicef, outputf = generate_spice_batch_file(c, Nb, t, Ts, QConfig, seed, timestamp, k)
-            spicef_list.append(spicef)
-            outputf_list.append(outputf)
-        
-        if run_SPICE:  # run SPICE
-            spice_path = '/home/eielsen/ngspice_files/bin/ngspice'  # newest ver., fastest (local)
-            #spice_path = 'ngspice'  # 
-
-            if False:
-                for k in range(0,Nch):
-                    run_spice_sim(spicef_list[k], outputf_list[k], outdir, spice_path)
-            else:
-                run_spice_sim_parallel(spicef_list, outputf_list, outdir, spice_path)
-            
-            YM = np.zeros([Nch, t.size])
+    match SC.dac.model:
+        case dm.STATIC:  # use static non-linear quantiser model to simulate DAC
+            ML = get_output_levels(SC.lin)
+            YM = generate_dac_output(C, ML)  # using measured or randomised levels
             tm = t
+        case dm.SPICE:  # use SPICE to simulate DAC output
+            timestamp = datetime.datetime.now().strftime("%Y%m%dT%H%M%S")
+            
+            outdir = 'spice_output/' + timestamp + '/'
+
+            if os.path.exists(outdir):
+                print('Putting output files in existing directory: ' + timestamp)
+            else:
+                os.mkdir(outdir)
+            
+            configf = 'sim_config'
+            with open(os.path.join(outdir, configf + '.txt'), 'w') as fout:
+                fout.write(SC.__str__())
+
+            with open(os.path.join(outdir, configf + '.pickle'), 'wb') as fout:
+                pickle.dump(SC, fout)
+            
+            spicef_list = []
+            outputf_list = []
+            
             for k in range(0,Nch):
-                t_spice, y_spice = read_spice_bin_file(outdir, outputf_list[k] + '.bin')
-                y_resamp = np.interp(t, t_spice, y_spice)  # re-sample
-                YM[k,:] = y_resamp
+                c = C[k,:]
+                seed = k + 1
+                spicef, outputf = generate_spice_batch_file(c, Nb, t, Ts, QConfig, seed, timestamp, k)
+                spicef_list.append(spicef)
+                outputf_list.append(outputf)
+            
+            if run_SPICE:  # run SPICE
+                spice_path = '/home/eielsen/ngspice_files/bin/ngspice'  # newest ver., fastest (local)
+                #spice_path = 'ngspice'  # 
 
-if run_SPICE or SC.dac.model == dm.STATIC:
-    # Summation stage
-    if SC.lin.method == lm.DEM:
-        K = np.ones((Nch,1))
-    if SC.lin.method == lm.PHYSCAL:
-        K = np.ones((Nch,1))
-        # K[1] = 1e-2  # 16 bit DAC
-        K[1] = 7.5e-2  # 6 bit DAC
-    else:
-        K = 1/Nch
+                if False:
+                    for k in range(0,Nch):
+                        run_spice_sim(spicef_list[k], outputf_list[k], outdir, spice_path)
+                else:
+                    run_spice_sim_parallel(spicef_list, outputf_list, outdir, spice_path)
+                
+                YM = np.zeros([Nch, t.size])
+                tm = t
+                for k in range(0,Nch):
+                    t_spice, y_spice = read_spice_bin_file(outdir, outputf_list[k] + '.bin')
+                    y_resamp = np.interp(t, t_spice, y_spice)  # re-sample
+                    YM[k,:] = y_resamp
 
-    #yu = np.sum(K*YU, 0)
-    ym = np.sum(K*YM, 0)
+    if run_SPICE or SC.dac.model == dm.STATIC:
+        # Summation stage
+        if SC.lin.method == lm.DEM:
+            K = np.ones((Nch,1))
+        if SC.lin.method == lm.PHYSCAL:
+            K = np.ones((Nch,1))
+            # K[1] = 1e-2  # 16 bit DAC
+            K[1] = 7.5e-2  # 6 bit DAC
+        else:
+            K = 1/Nch
 
-    TRANSOFF = np.floor(Npt*Fs/Xcs_FREQ).astype(int)  # remove transient effects from output
-    #yu_avg, ENOB_U = process_sim_output(tu, yu, Fc_lp, Fs, N_lp, TRANSOFF, SINAD_COMP_SEL, False, 'uniform')
-    ym_avg, ENOB_M = process_sim_output(tm, ym, Fc_lp, Fs, N_lp, TRANSOFF, SINAD_COMP_SEL, True, 'non-linear')
+        #yu = np.sum(K*YU, 0)
+        ym = np.sum(K*YM, 0)
 
-    from tabulate import tabulate
+        TRANSOFF = np.floor(Npt*Fs/Xcs_FREQ).astype(int)  # remove transient effects from output
+        #yu_avg, ENOB_U = process_sim_output(tu, yu, Fc_lp, Fs, N_lp, TRANSOFF, SINAD_COMP_SEL, False, 'uniform')
+        ym_avg, ENOB_M = process_sim_output(tm, ym, Fc_lp, Fs, N_lp, TRANSOFF, SINAD_COMP_SEL, True, 'non-linear')
 
-    results = [['Method', 'Model', 'Fs', 'Fc', 'Fx', 'ENOB'],
-            [str(SC.lin), str(SC.dac), f'{Float(SC.fs):.1h}', f'{Float(SC.fc):.1h}', f'{Float(SC.carrier_freq):.1h}', f'{Float(ENOB_M):.3h}']]
+        from tabulate import tabulate
 
-    print(tabulate(results))
+        results = [['Method', 'Model', 'Fs', 'Fc', 'Fx', 'ENOB'],
+                [str(SC.lin), str(SC.dac), f'{Float(SC.fs):.1h}', f'{Float(SC.fc):.1h}', f'{Float(SC.carrier_freq):.1h}', f'{Float(ENOB_M):.3h}']]
+
+        print(tabulate(results))
 
 
 # # %% Filter the output using a reconstruction (output) filter
