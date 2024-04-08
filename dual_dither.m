@@ -150,6 +150,9 @@ S_fir_fr = S_num; %freqz(R_win,R_beta,w); % frequency response samples
 % figure(45)
 % plot(w/(2*pi), 10*log10(abs(S_fr)), w/(2*pi), 10*log10(abs(S_fir_fr)))
 
+R_win = S_num
+
+
 %% compute phi
 R_win_ = 0.999*R_win/(norm(R_win,Inf)+sqrt(eps));
 
