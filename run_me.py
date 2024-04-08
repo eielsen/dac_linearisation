@@ -7,9 +7,9 @@
 @license: BSD 3-Clause
 """
 
-%reload_ext autoreload
-%autoreload 2
-
+# %reload_ext autoreload
+# %autoreload 2
+# %%
 # Imports
 import sys
 import numpy as np
@@ -24,7 +24,7 @@ import math
 import csv
 import datetime
 import pickle
-from prefixed import Float
+# from prefixed import Float
 
 import dither_generation
 from quantiser_configurations import quantiser_configurations, qws
@@ -36,7 +36,7 @@ from lin_method_nsdcal import nsdcal
 from lin_method_dem import dem
 # from lin_method_ilc import get_control, learning_matrices
 # from lin_method_ilc_simple import ilc_simple
-from lin_method_mpc import MPC, dq, gen_ML, gen_C, gen_DO
+from lin_method_mpc import MPC
 from lin_method_ILC_DSM import learningMatrices, get_ILC_control
 
 from lin_method_util import lm, dm
@@ -66,7 +66,7 @@ def get_output_levels(lmethod):
     Load measured or generated output levels.
     """
     # TODO: This is a bit of a mess
-    match 4:
+    match 3:
         case 1:  # load some generated levels
             infile_1 = os.path.join(os.getcwd(),
                                     'generated_output_levels',
@@ -131,8 +131,8 @@ def get_output_levels(lmethod):
 # RUN_LM = lm.PHFD
 # RUN_LM = lm.SHPD
 # RUN_LM = lm.NSDCAL
-RUN_LM = lm.DEM
-# RUN_LM = lm.MPC
+# RUN_LM = lm.DEM
+RUN_LM = lm.MPC
 # RUN_LM = lm.ILC
 # RUN_LM = lm.ILC_SIMP
 
@@ -146,12 +146,12 @@ dac = dm(dm.STATIC)  # use static non-linear quantiser model to simulate DAC
 SINAD_COMP_SEL = sinad_comp.CFIT
 
 # Output low-pass filter configuration
-Fc_lp = 100e3  # cut-off frequency in hertz
+Fc_lp = 10e3  # cut-off frequency in hertz
 N_lp = 3  # filter order
 
 # Sampling rate
-# Fs = 1e6  # sampling rate (over-sampling) in hertz
-Fs = 130940928  # sampling rate (over-sampling) in hertz
+Fs = 1e6  # sampling rate (over-sampling) in hertz
+# Fs = 130940928  # sampling rate (over-sampling) in hertz
 Ts = 1/Fs  # sampling time
 
 # Carrier signal (to be recovered on the output)
@@ -159,8 +159,8 @@ Xcs_SCALE = 100  # %
 Xcs_FREQ = 999  # Hz
 
 # Set quantiser model
-#QConfig = qws.w_16bit_SPICE
-QConfig = qws.w_6bit_ARTI
+QConfig = qws.w_16bit_SPICE
+# QConfig = qws.w_6bit_ARTI
 Nb, Mq, Vmin, Vmax, Rng, Qstep, YQ, Qtype = quantiser_configurations(QConfig)
 
 # Generate time vector
@@ -169,7 +169,7 @@ match 2:
         Nts = 1e6  # no. of time samples
         Np = np.ceil(Xcs_FREQ*Ts*Nts).astype(int) # no. of periods for carrier
     case 2:  # specify duration as number of periods of carrier
-        Np = 3  # no. of periods for carrier
+        Np = 2  # no. of periods for carrier
         
 Npt = 1/2  # no. of carrier periods to use to account for transients
 Np = Np + 2*Npt
@@ -384,30 +384,22 @@ match SC.lin.method:
         # Unsigned integers representing the level codes
         level_codes = np.arange(0, 2**Nb,1) # Levels:  0, 1, 2, .... 2^(Nb)
 
-        # Dictionary: Keys- Levels codes;  Values - DAC levels
-        IL_dict = dict(zip(level_codes, Qlevels ))  # Each level represent the idea DAC levels
+        ML= get_output_levels(SC.lin.method)
+        MLns = ML[0]
 
-        # Measured level dictionary - Generated randomly for test 
-        # ML_dict = generate_ML(Nb, Qstep, Q_levels)
-        ML_values = get_output_levels(SC.lin.method)
-        ML_dict = dict(zip(level_codes, ML_values[0,:]))
-
-        # % #  Reconstruction Filter
-        #b, a = signal.butter(2, Fc_lp/(Fs/2)) 
-        # but = signal.dlti(b,a,dt = Ts)
-        # ft, fi = signal.dimpulse(but, n = 2*len(Xcs))
-        #A, B, C, D = signal.tf2ss(b,a) # Transfer function to StateSpace
+        if QConfig == 6:
+            MLns = np.flip(MLns)
 
         # Reconstruction filter
-        match 2:
+        match 1:
             case 1:
                 Wn = Fc_lp/(Fs/2)
                 b1, a1 = signal.butter(2, Wn)
-                A, B, C, D = signal.tf2ss(b1,a1) # Transfer function to StateSpace
+                A1, B1, C1, D1 = signal.tf2ss(b1,a1) # Transfer function to StateSpace
             case 2:  # bilinear transf., seems to work ok, not a perfect match to physics
                 Wn = Fc_lp/(Fs/2)
                 b1, a1 = signal.butter(N_lp, Wn)
-                A, B, C, D = signal.tf2ss(b1,a1) # Transfer function to StateSpace
+                A1, B1, C1, D1 = signal.tf2ss(b1,a1) # Transfer function to StateSpace
             case 3:  # zoh interp. matches physics, SciPi impl. causes numerical problems??
                 Wn = 2*np.pi*Fc_lp
                 b1, a1 = signal.butter(N_lp, Wn, 'lowpass', analog=True)
@@ -419,67 +411,22 @@ match SC.lin.method:
                 Dc = Wlp_ss.D
                 A_, B_, C_, D_ = balreal_ct(Ac, Bc, Cc, Dc)
                 Wlp_ss_d = signal.cont2discrete((A_, B_, C_, D_), dt=1e-6, method='zoh')
-                A = Wlp_ss_d.A
-                B = Wlp_ss_d.B
-                C = Wlp_ss_d.C
-                D = Wlp_ss_d.D
+                A1, B1, C1, D1, dt = Wlp_ss_d
+                # A1 = Wlp_ss_d.A
+                # B1 = Wlp_ss_d.B
+                # C1 = Wlp_ss_d.C
+                # D1 = Wlp_ss_d.D
 
         N_PRED = 2  # prediction horizon
 
         # Initial Condition
-        x0 = np.zeros(2).reshape(-1,1)
+        x0 = np.ones(2).reshape(-1,1)
 
-        # Loop counter
-        len_MPC = len(Xcs) - N_PRED
-
-        # Storage Container
-        DAC_Q_MPC_Xcs = []
-
-        # First we need to scale up the signal due to the constraint in the optimization problem 
-        # Scale up the input signal 
+        # Add dither
         X = Xcs + Dq
-        Xcs1 = X + Rng/2                  
-        Xcs_new = ((2**Nb) * (Xcs1/Rng)) 
+        X = X.squeeze()
 
-        for i in tqdm.tqdm(range(len_MPC)):
-            Xcs_i = Xcs_new[i:i+N_PRED]
-
-            # Get MPC control
-            Q_MPC_Xcs_N = MPC(Nb, Xcs_i, N_PRED, x0, A, B, C, D)
-            Q_MPC_Xcs_N = Q_MPC_Xcs_N.astype(int)
-
-            """
-            CHOOSE- 
-                1. IL_DICT (Ideal level dictionary) FOR IDEAL DAC
-                2. ML_DICT (Measured level dictionary) FOR NONLINEAR DAC
-            """
-
-            # Generate DAC output
-            DAC_Q_MPC_Xcs_N = gen_DO(Q_MPC_Xcs_N, ML_dict)  # Generate DAC output
-        
-            # Store optimal value
-            DAC_Q_MPC_Xcs.append(DAC_Q_MPC_Xcs_N[0])
-            
-            # # State update for next horizon
-            x0_new = A @ x0 + B * (DAC_Q_MPC_Xcs_N[0] - Xcs[i])  # State Prediction
-            x0 = x0_new  # State Update
-
-        # Convert list to array
-        DAC_Q_MPC_Xcs = np.array(DAC_Q_MPC_Xcs)   
-
-        yu = DAC_Q_MPC_Xcs
-        ym = DAC_Q_MPC_Xcs
-
-        tu = t[0:len(DAC_Q_MPC_Xcs)]
-        tm = tu
-
-        # rf = Xcs[0:len(DAC_Q_MPC_Xcs)]
-        # headerlist = ["Time", "Ref", "MPC"]
-        # datalist = zip(tu, rf, DAC_Q_MPC_Xcs )
-        # with open("mpc_16bit_ml.csv", 'w') as f1:
-        #     writer = csv.writer(f1, delimiter = '\t')
-        #     writer.writerow(headerlist)
-        #     writer.writerows(datalist)   
+        C = MPC(Nb, N_PRED, X, MLns, Qstep, A1, B1, C1, D1, x0)
 
     case lm.ILC:  # iterative learning control (with INL model, only periodic signals)
 
@@ -602,8 +549,21 @@ match SC.lin.method:
         C = np.array([c_])
         print('** ILC simple end **')
 
-### Save codes to file
+# %% Uncomment this to see  MPC performance
+yu = generate_dac_output(C, YQ)
+tu = t[0:C.size]
 
+ML  = get_output_levels(SC.lin)
+ym = generate_dac_output(C, ML)
+tm =tu
+
+
+TRANSOFF = np.floor(Npt*Fs/Xcs_FREQ).astype(int)  # remove transient effects from output
+yu_avg, ENOB_U = process_sim_output(tu, yu, Fc_lp, Fs, N_lp, TRANSOFF, SINAD_COMP_SEL, False, 'uniform')
+ym_avg, ENOB_M = process_sim_output(tm, ym, Fc_lp, Fs, N_lp, TRANSOFF, SINAD_COMP_SEL, True, 'non-linear')
+
+# %%
+### Save codes to file
 if True:  # save codes to file
     outfile = 'generated_codes/' + str(SC.lin).replace(" ", "_")
     np.save(outfile, C)
@@ -739,3 +699,5 @@ else:  # generate DAC output
 # axs_wave[5].grid()
 
 # fig_wave.savefig('run_me_dither_waveforms_5.pdf', bbox_inches='tight')
+
+# %%

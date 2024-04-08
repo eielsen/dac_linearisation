@@ -16,7 +16,7 @@ import datetime
 from scipy import signal
 from scipy import interpolate
 import pickle
-from prefixed import Float
+# from prefixed import Float
 from tabulate import tabulate
 
 from lin_method_util import lm, dm
