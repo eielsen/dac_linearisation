@@ -14,71 +14,45 @@ import sys
 import random
 import gurobipy as gp
 from gurobipy import GRB
-import tqdm
 
-def MPC(Nb, N_PRED, Xcs, ML, Qstep,  A1, B1, C1, D1, x0):
-    Qstep = abs(Qstep)
-    # Scale the input and ML to make the QStep = 1
-    len_MPC = len(Xcs) - N_PRED
-    X = Xcs/Qstep
-    ML_Scaled = ML/Qstep
-    C = []
-    U_MPC_OPT = []
-    for j in tqdm.tqdm(range(len_MPC)):
-        x_dim =  x0.size
-        m = gp.Model("MPC- INL")
-        u = m.addMVar((N_PRED,1), vtype=GRB.INTEGER, name= "u", lb = -2**(Nb-1), ub =  (2**Nb-1)) # control variable
-        x = m.addMVar((x_dim*(N_PRED+1),1), vtype= GRB.CONTINUOUS, lb = -GRB.INFINITY, ub = GRB.INFINITY, name = "x")  # State varible 
+def MPC(Nb, Xcs, N_pred,  x0, A, B, C, D):
 
-        # Add objective function
-        Obj = 0
-        for i in range(N_PRED):
-            k = x_dim * i
-            st = x[k:k+x_dim]
-            con = u[i] - X[j+i]
+    # Gurobi Model
+    m = gp.Model("MPC- INL")
+    u = m.addMVar(N_pred, vtype=GRB.INTEGER, name= "u", lb = 0, ub = (2**Nb-1))  # control variable
+    x = m.addMVar((2*(N_pred+1),1), vtype= GRB.CONTINUOUS, lb = -GRB.INFINITY, ub = GRB.INFINITY, name = "x")  # State varible 
 
-            # Objective
-            e_t = C1 @ x[k:k+x_dim] + D1 * con
-            Obj = Obj + e_t * e_t
+    # Objective function
+    Obj = 0
+    m.addConstr(x[0:2,:] == x0)
+    for i in range(0, N_pred):
+        k = 2*i
+        st = x[k:k+2]
+        con = u[i]- Xcs[i]
 
-        # Add constraints
-        m.addConstr(x[0:x_dim,:] == x0)
-        for i in range(0, N_PRED):
-            k = x_dim*i
-            st = x[k:k+x_dim]
-            con = u[i]- X[j + i]
+        # Objective
+        e_t = C @ x[k:k+2] + D * con
+        Obj = Obj + e_t * e_t
+        
+        # Constraints
+        f_value = A @ st + B * con
+        st_next = x[k+2:k+4]
+        m.addConstr(st_next == f_value)
+        # m.addConstr(sum(ub[:,i]) == 1)
+    m.update
+    m.setObjective(Obj, GRB.MINIMIZE)
+    m.Params.LogToConsole = 0
+    m.optimize()
 
-            # Constraints
-            f_value = A1 @ st + B1 * con
-            st_next = x[k+x_dim:k+2*x_dim]
-            m.addConstr(st_next == f_value)
-
-        m.update
-        m.setObjective(Obj, GRB.MINIMIZE)
-        m.Params.LogToConsole = 0
-        m.optimize()
-
-        # Extract Values
-        allvars = m.getVars()
-        values = m.getAttr("X",allvars)
-        values = np.array(values)
-
-        C_MPC = values[0:N_PRED]
-        C_MPC = C_MPC.astype(int)
-        C.append(C_MPC[0])
+    # Extract Values
+    allvars = m.getVars()
+    values = m.getAttr("X",allvars)
+    values = np.array(values)
 
 
-        # Non-uniform 
-        U_opt = ML_Scaled[C_MPC[0]]
-        U_MPC_OPT.append(U_opt)
-        # # State update for next horizon
-        x0_new = A1 @ x0 + B1 * (U_opt - X[j])  # State Prediction
-        x0 = x0_new  # State Update
-    
-    C = np.array(C).reshape(1,-1)
-    return C
-
-
+    U_MPC = values[0:N_pred]  # optimal control variables
+    states_x = values[N_pred:]  # optimal state variavles
+    return U_MPC
 #######################################################################################################
 # DIRECT QUANTIZATION
 #######################################################################################################
@@ -149,9 +123,9 @@ def gen_C(q_Xcs, Qstep, Vmin, Qtype):
     q_code      - code corresponsing to the quantized values and quantizer levels
     """
     match Qtype:
-        case 1:
+        case "midtread":
             q_code = q_Xcs/Qstep - np.floor(Vmin/Qstep)
-        case 2:
+        case "midrise":
             q_code = q_Xcs/Qstep - np.floor(Vmin/Qstep) - 1/2
     return q_code.astype(int)
 
@@ -191,7 +165,7 @@ def gen_ML(Nb, Qstep, Qlevels):
     """ 
     levels = np.arange(0,2**Nb,1)
 
-    INL = Qstep*np.random.rand(2**Nb, 1)*100
+    INL = Qstep*np.random.rand(2**Nb, 1)
     # Set initial and final value to zero, to match the ideal transfer function
     INL[0] = 0 
     INL[-1] = 0
