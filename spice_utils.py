@@ -16,7 +16,7 @@ import datetime
 from scipy import signal
 from scipy import interpolate
 import pickle
-# from prefixed import Float
+from prefixed import Float
 from tabulate import tabulate
 
 from lin_method_util import lm, dm
@@ -331,8 +331,8 @@ def read_spice_bin_file_with_most_recent_timestamp(fdir):
 
 def process_sim_output(ty, y, Fc, Fs, Nf, TRANSOFF, SINAD_COMP_SEL, plot=False, descr=''):
     # Filter the output using a reconstruction (output) filter
-    print(ty.shape)
-    print(y.shape)
+    #print(ty.shape)
+    #print(y.shape)
     
     match 1:
         case 1:
@@ -377,7 +377,7 @@ def main():
     rundirs.sort()
 
     print('No. dirs.: ' + str(len(rundirs)))
-    rundir = rundirs[9]  # pick run
+    rundir = rundirs[12]  # pick run
 
     bindir = os.path.join(outdir, rundir)
 

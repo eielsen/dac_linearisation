@@ -51,7 +51,10 @@ digital calibration  static  1.0M  100.0k  999.0  14.311
 Method  Model   Fs    Fc      Fx     ENOB
 ilc     static  1.0M  100.0k  999.0  14.798
 ------  ------  ----  ------  -----  ------
-
+------  ------  ----  -----  -----  ------
+Method  Model   Fs    Fc     Fx     ENOB
+mpc     static  1.0M  10.0k  999.0  18.036
+------  ------  ----  -----  -----  ------
 -------------------  -----  ----  ------  -----  ------
 Method               Model  Fs    Fc      Fx     ENOB
 digital calibration  spice  1.0M  100.0k  999.0  14.252
@@ -60,6 +63,10 @@ digital calibration  spice  1.0M  100.0k  999.0  14.252
 Method  Model  Fs    Fc      Fx     ENOB
 ilc     spice  1.0M  100.0k  999.0  14.646
 ------  -----  ----  ------  -----  ------
+------  -----  ----  -----  -----  ------
+Method  Model  Fs    Fc     Fx     ENOB
+mpc     spice  1.0M  10.0k  999.0  14.198
+------  -----  ----  -----  -----  ------
 
 
 # 6-bit DAC

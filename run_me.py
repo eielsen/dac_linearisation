@@ -7,9 +7,9 @@
 @license: BSD 3-Clause
 """
 
-# %reload_ext autoreload
-# %autoreload 2
-# %%
+%reload_ext autoreload
+%autoreload 2
+
 # Imports
 import sys
 import numpy as np
@@ -24,7 +24,8 @@ import math
 import csv
 import datetime
 import pickle
-# from prefixed import Float
+from prefixed import Float
+from tabulate import tabulate
 
 import dither_generation
 from quantiser_configurations import quantiser_configurations, qws
@@ -151,6 +152,7 @@ N_lp = 3  # filter order
 
 # Sampling rate
 Fs = 1e6  # sampling rate (over-sampling) in hertz
+# Fs = 250e6  # sampling rate (over-sampling) in hertz
 # Fs = 130940928  # sampling rate (over-sampling) in hertz
 Ts = 1/Fs  # sampling time
 
@@ -384,14 +386,18 @@ match SC.lin.method:
         # Unsigned integers representing the level codes
         level_codes = np.arange(0, 2**Nb,1) # Levels:  0, 1, 2, .... 2^(Nb)
 
-        ML= get_output_levels(SC.lin.method)
+        ML= get_output_levels(lm.MPC)
         MLns = ML[0]
+
+        # Adding "measurement error"
+        MLns_err = np.random.uniform(-Qstep, Qstep, MLns.shape)
+        MLns = MLns + MLns_err
 
         if QConfig == 6:
             MLns = np.flip(MLns)
 
         # Reconstruction filter
-        match 1:
+        match 2:
             case 1:
                 Wn = Fc_lp/(Fs/2)
                 b1, a1 = signal.butter(2, Wn)
@@ -427,6 +433,8 @@ match SC.lin.method:
         X = X.squeeze()
 
         C = MPC(Nb, N_PRED, X, MLns, Qstep, A1, B1, C1, D1, x0)
+
+        t = t[0:C.size]
 
     case lm.ILC:  # iterative learning control (with INL model, only periodic signals)
 
@@ -549,22 +557,9 @@ match SC.lin.method:
         C = np.array([c_])
         print('** ILC simple end **')
 
-# %% Uncomment this to see  MPC performance
-yu = generate_dac_output(C, YQ)
-tu = t[0:C.size]
-
-ML  = get_output_levels(SC.lin)
-ym = generate_dac_output(C, ML)
-tm =tu
-
-
-TRANSOFF = np.floor(Npt*Fs/Xcs_FREQ).astype(int)  # remove transient effects from output
-yu_avg, ENOB_U = process_sim_output(tu, yu, Fc_lp, Fs, N_lp, TRANSOFF, SINAD_COMP_SEL, False, 'uniform')
-ym_avg, ENOB_M = process_sim_output(tm, ym, Fc_lp, Fs, N_lp, TRANSOFF, SINAD_COMP_SEL, True, 'non-linear')
-
-# %%
-### Save codes to file
-if True:  # save codes to file
+# %% Post processing
+SAVE_CODES_TO_FILE_AND_STOP = False
+if SAVE_CODES_TO_FILE_AND_STOP:  # save codes to file
     outfile = 'generated_codes/' + str(SC.lin).replace(" ", "_")
     np.save(outfile, C)
 else:  # generate DAC output
@@ -637,67 +632,11 @@ else:  # generate DAC output
         #yu_avg, ENOB_U = process_sim_output(tu, yu, Fc_lp, Fs, N_lp, TRANSOFF, SINAD_COMP_SEL, False, 'uniform')
         ym_avg, ENOB_M = process_sim_output(tm, ym, Fc_lp, Fs, N_lp, TRANSOFF, SINAD_COMP_SEL, True, 'non-linear')
 
-        from tabulate import tabulate
+        
 
         results = [['Method', 'Model', 'Fs', 'Fc', 'Fx', 'ENOB'],
                 [str(SC.lin), str(SC.dac), f'{Float(SC.fs):.1h}', f'{Float(SC.fc):.1h}', f'{Float(SC.carrier_freq):.1h}', f'{Float(ENOB_M):.3h}']]
 
         print(tabulate(results))
-
-
-# # %% Filter the output using a reconstruction (output) filter
-# # filter coefficients
-# Wn = 2*np.pi*Fc_lp
-# b, a = signal.butter(N_lp, Wn, 'lowpass', analog=True)
-# Wlp = signal.lti(b, a)  # filter LTI system instance
-
-# yu = yu.reshape(-1, 1)  # ensure the vector is a column vector
-# # filter the ideal output (using zero-order hold interp.)
-# yu_avg_out = signal.lsim(Wlp, yu, tu, X0=None, interp=False)
-
-# ym = ym.reshape(-1, 1)  # ensure the vector is a column vector
-# # filter the DAC model output (using zero-order hold interp.)
-# ym_avg_out = signal.lsim(Wlp, ym, tm, X0=None, interp=False)
-
-# # extract the filtered data; lsim returns (T, y, x) tuple, want output y
-# yu_avg = yu_avg_out[1]
-# ym_avg = ym_avg_out[1]
-
-# # %% Evaluate performance
-# TRANSOFF = np.floor(Npt*Fs/Xcs_FREQ).astype(int)  # remove transient effects from output
-# match SINAD_COMP_SEL:
-#     case sinad_comp.FFT:  # use FFT based method to detemine SINAD
-#         RU = FFT_SINAD(yu_avg[TRANSOFF:-TRANSOFF], Fs, 'Uniform')
-#         RM = FFT_SINAD(ym_avg[TRANSOFF:-TRANSOFF], Fs, 'Non-linear')
-#     case sinad_comp.CFIT:  # use time-series sine fitting based method to detemine SINAD
-#         RU = TS_SINAD(yu_avg[TRANSOFF:-TRANSOFF], t[TRANSOFF:-TRANSOFF])
-#         RM = TS_SINAD(ym_avg[TRANSOFF:-TRANSOFF], t[TRANSOFF:-TRANSOFF])
-
-# ENOB_U = (RU - 1.76)/6.02
-# ENOB_M = (RM - 1.76)/6.02
-
-# # %% Print FOM
-# print("SINAD uniform: {}".format(RU))
-# print("ENOB uniform: {}".format(ENOB_U))
-
-# print("SINAD non-linear: {}".format(RM))
-# print("ENOB non-linear: {}".format(ENOB_M))
-
-# %%
-# fig_wave, axs_wave = plt.subplots(6, 1, sharex=True)
-# axs_wave[0].plot(t, X1)
-# axs_wave[0].grid()
-# axs_wave[1].plot(t, X2)
-# axs_wave[1].grid()
-# axs_wave[2].plot(t, y_ideal)
-# axs_wave[2].grid()
-# axs_wave[3].plot(t, y_nl)
-# axs_wave[3].grid()
-# axs_wave[4].plot(t, Dq)
-# axs_wave[4].grid()
-# axs_wave[5].plot(t, Dp)
-# axs_wave[5].grid()
-
-# fig_wave.savefig('run_me_dither_waveforms_5.pdf', bbox_inches='tight')
 
 # %%
