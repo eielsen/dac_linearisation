@@ -19,6 +19,7 @@ class qws:  # quantiser_word_size
     w_16bit_NI_card = 4
     w_16bit_SPICE = 5
     w_6bit_ARTI = 6
+    w_16bit_ARTI = 7
 
 
 def quantiser_configurations(QConfig):
@@ -59,6 +60,12 @@ def quantiser_configurations(QConfig):
             Qtype = quantiser_type.midtread
         case qws.w_6bit_ARTI:
             Nb = 6 # word-size
+            Mq = 2**Nb - 1; # max. code
+            Vmin =  0.020651606 # volt
+            Vmax = -0.019920569 # volt
+            Qtype = quantiser_type.midtread
+        case qws.w_16bit_ARTI:
+            Nb = 16 # word-size
             Mq = 2**Nb - 1; # max. code
             Vmin =  0.020651606 # volt
             Vmax = -0.019920569 # volt

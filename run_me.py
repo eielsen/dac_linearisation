@@ -67,7 +67,7 @@ def get_output_levels(lmethod):
     Load measured or generated output levels.
     """
     # TODO: This is a bit of a mess
-    match 3:
+    match 5:
         case 1:  # load some generated levels
             infile_1 = os.path.join(os.getcwd(),
                                     'generated_output_levels',
@@ -121,39 +121,48 @@ def get_output_levels(lmethod):
             ML = np.load("SPICE_levels_16bit.npy")
         case 4:
             ML = np.load("SPICE_levels_ARTI_6bit.npy")
+        case 5:
+            CSV_file = 'measurements_and_data\ARTI_cs_dac_16b_levels.csv'
+            ML_file = 'SPICE_levels_ARTI_16bit.npy'
+            if (os.path.exists(ML_file) is False):
+                if (os.path.exists(CSV_file) is True):
+                    ML = np.transpose(np.genfromtxt(CSV_file, delimiter=',', skip_header=1))[2:,:]
+                    np.save(ML_file, ML)
+            else:
+                ML = np.load(ML_file)
     return ML
 
 
 # Configuration
 
 ##### METHOD CHOICE - Choose which linearization method you want to test
-# RUN_LM = lm.BASELINE
-# RUN_LM = lm.PHYSCAL
-# RUN_LM = lm.PHFD
-# RUN_LM = lm.SHPD
-# RUN_LM = lm.NSDCAL
-# RUN_LM = lm.DEM
-RUN_LM = lm.MPC
-# RUN_LM = lm.ILC
-# RUN_LM = lm.ILC_SIMP
+#RUN_LM = lm.BASELINE
+RUN_LM = lm.PHYSCAL
+#RUN_LM = lm.PHFD
+#RUN_LM = lm.SHPD
+#RUN_LM = lm.NSDCAL
+#RUN_LM = lm.DEM
+#RUN_LM = lm.MPC
+#RUN_LM = lm.ILC
+#RUN_LM = lm.ILC_SIMP
 
 lin = lm(RUN_LM)
 
 ##### MODEL CHOICE
 dac = dm(dm.STATIC)  # use static non-linear quantiser model to simulate DAC
-# dac = dm(dm.SPICE)  # use SPICE to simulate DAC output
+#dac = dm(dm.SPICE)  # use SPICE to simulate DAC output
 
 # Chose how to compute SINAD
 SINAD_COMP_SEL = sinad_comp.CFIT
 
 # Output low-pass filter configuration
-Fc_lp = 10e3  # cut-off frequency in hertz
+Fc_lp = 100e3  # cut-off frequency in hertz
 N_lp = 3  # filter order
 
 # Sampling rate
-Fs = 1e6  # sampling rate (over-sampling) in hertz
-# Fs = 250e6  # sampling rate (over-sampling) in hertz
-# Fs = 130940928  # sampling rate (over-sampling) in hertz
+#Fs = 1e6  # sampling rate (over-sampling) in hertz
+#Fs = 250e6  # sampling rate (over-sampling) in hertz
+Fs = 261881856  # sampling rate (over-sampling) in hertz
 Ts = 1/Fs  # sampling time
 
 # Carrier signal (to be recovered on the output)
@@ -161,7 +170,7 @@ Xcs_SCALE = 100  # %
 Xcs_FREQ = 999  # Hz
 
 # Set quantiser model
-QConfig = qws.w_16bit_SPICE
+QConfig = qws.w_16bit_ARTI
 # QConfig = qws.w_6bit_ARTI
 Nb, Mq, Vmin, Vmax, Rng, Qstep, YQ, Qtype = quantiser_configurations(QConfig)
 
@@ -171,7 +180,7 @@ match 2:
         Nts = 1e6  # no. of time samples
         Np = np.ceil(Xcs_FREQ*Ts*Nts).astype(int) # no. of periods for carrier
     case 2:  # specify duration as number of periods of carrier
-        Np = 2  # no. of periods for carrier
+        Np = 3  # no. of periods for carrier
         
 Npt = 1/2  # no. of carrier periods to use to account for transients
 Np = Np + 2*Npt
