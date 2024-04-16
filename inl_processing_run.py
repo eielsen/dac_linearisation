@@ -16,8 +16,8 @@ import numpy as np
 
 from matplotlib import pyplot as plt
 
-from INL_processing import generate_physical_level_calibration_look_up_table
-from INL_processing import generate_random_output_levels
+from inl_processing import generate_physical_level_calibration_look_up_table
+from inl_processing import generate_random_output_levels
 
 from spice_utils import run_spice_sim, read_spice_bin_file_with_most_recent_timestamp
 

@@ -14,18 +14,12 @@ rlp2 outp2 0 0.02
 rln2 outn2 0 0.02
 e1 out1 0 outp1 outn1 10
 rl1 out1 0 1k
-e2 out2 0 outp2 outn2 10
+e2 out out1 outp2 outn2 10
 rl2 out 0 1k
 
 .op
 
-.control
-set filetype=ascii
-set appendwrite
-run
-*write output.txt v(out1) v(out2)
-wrdata $inputdir/cs_dac_06bit_2ch_01_levels.txt v(out1) v(out2)
-.endc
+.save v(out) v(out1)
 
 .subckt pfet d g s b
 .param mfac = 1
@@ -364,4 +358,27 @@ msky130_fd_pr__pfet_01v8_lvt d g s b sky130_fd_pr__pfet_01v8_lvt__model l = {l} 
 + tku0 = 0.0
 .ends sky130_fd_pr__pfet_01v8_lvt
 
-
+vb11 b11 0 dc 0
+vb12 b12 0 dc 0
+vb13 b13 0 dc 0
+vb14 b14 0 dc 0
+vb15 b15 0 dc 0
+vb16 b16 0 dc 0
+vbb11 bb11 0 dc 1.5
+vbb12 bb12 0 dc 1.5
+vbb13 bb13 0 dc 1.5
+vbb14 bb14 0 dc 1.5
+vbb15 bb15 0 dc 1.5
+vbb16 bb16 0 dc 1.5
+vb21 b21 0 dc 0
+vb22 b22 0 dc 0
+vb23 b23 0 dc 0
+vb24 b24 0 dc 0
+vb25 b25 0 dc 0
+vb26 b26 0 dc 0
+vbb21 bb21 0 dc 1.5
+vbb22 bb22 0 dc 1.5
+vbb23 bb23 0 dc 1.5
+vbb24 bb24 0 dc 1.5
+vbb25 bb25 0 dc 1.5
+vbb26 bb26 0 dc 1.5

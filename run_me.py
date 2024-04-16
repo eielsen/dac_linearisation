@@ -28,6 +28,7 @@ from prefixed import Float
 from tabulate import tabulate
 
 import dither_generation
+from dual_dither import dual_dither, hist_and_psd
 from quantiser_configurations import quantiser_configurations, qws
 from static_dac_model import generate_dac_output, quantise_signal, generate_codes, quantiser_type
 from figures_of_merit import FFT_SINAD, TS_SINAD
@@ -129,11 +130,11 @@ def get_output_levels(lmethod):
 ##### METHOD CHOICE - Choose which linearization method you want to test
 # RUN_LM = lm.BASELINE
 # RUN_LM = lm.PHYSCAL
-# RUN_LM = lm.PHFD
-# RUN_LM = lm.SHPD
+#RUN_LM = lm.PHFD
+RUN_LM = lm.SHPD
 # RUN_LM = lm.NSDCAL
 # RUN_LM = lm.DEM
-RUN_LM = lm.MPC
+# RUN_LM = lm.MPC
 # RUN_LM = lm.ILC
 # RUN_LM = lm.ILC_SIMP
 
@@ -148,11 +149,12 @@ SINAD_COMP_SEL = sinad_comp.CFIT
 
 # Output low-pass filter configuration
 Fc_lp = 10e3  # cut-off frequency in hertz
-N_lp = 3  # filter order
+N_lp = 5  # filter order
 
 # Sampling rate
-Fs = 1e6  # sampling rate (over-sampling) in hertz
-# Fs = 250e6  # sampling rate (over-sampling) in hertz
+# Fs = 1e6  # sampling rate (over-sampling) in hertz
+Fs = 25e6  # sampling rate (over-sampling) in hertz
+Fs = 250e6  # sampling rate (over-sampling) in hertz
 # Fs = 130940928  # sampling rate (over-sampling) in hertz
 Ts = 1/Fs  # sampling time
 
@@ -299,17 +301,52 @@ match SC.lin.method:
         # Large high-pass dither set-up
         Xscale = 50  # carrier to dither ratio (between 0% and 100%)
 
-        Dmaxamp = Rng/2  # maximum dither amplitude (volt)
-        Dscale = 150  # %
-        Ds = dither_generation.gen_stochastic(t.size, Nch, Dmaxamp/2, dither_generation.pdf.uniform)
-        
-        N_hf = 2
-        Fc_hf = 100e3
+        match 2:
+            case 1:
+                Dmaxamp = Rng/2  # maximum dither amplitude (volt)
+                Dscale = 100  # %
+                Ds = dither_generation.gen_stochastic(t.size, Nch, Dmaxamp, dither_generation.pdf.uniform)
+                Dsf = Ds
+            case 2:
+                Ds = dither_generation.gen_stochastic(t.size, Nch, 1, dither_generation.pdf.uniform)
+                
+                N_hf = 1
+                Fc_hf = 150e3
 
-        b, a = signal.butter(N_hf, Fc_hf/(Fs/2), btype='high', analog=False)#, fs=Fs)
+                b, a = signal.butter(N_hf, Fc_hf/(Fs/2), btype='high', analog=False)#, fs=Fs)
 
-        Dsf = signal.filtfilt(b, a, Ds, method="gust")
+                Dsf = signal.filtfilt(b, a, Ds, method="gust")
+                Dsf[0,:] = 2.*(Dsf[0,:] - np.min(Dsf[0,:]))/np.ptp(Dsf[0,:]) - 1
+                Dsf[1,:] = 2.*(Dsf[1,:] - np.min(Dsf[1,:]))/np.ptp(Dsf[1,:]) - 1
+                
+                Dmaxamp = Rng/2  # maximum dither amplitude (volt)
+                Dscale = 50  # %
+                Dsf = Dmaxamp*Dsf
+            case 3:
+                Ds = np.random.normal(0, 1.0, [Nch, t.size])  # normally distr. noise
+
+                N_hf = 1
+                Fc_hf = 1700e3
+
+                b, a = signal.butter(N_hf, Fc_hf/(Fs/2), btype='high', analog=False)#, fs=Fs)
+
+                Dsf = signal.filtfilt(b, a, Ds, method="gust")
+                Dsf[0,:] = 2.*(Dsf[0,:] - np.min(Dsf[0,:]))/np.ptp(Dsf[0,:]) - 1
+                Dsf[1,:] = 2.*(Dsf[1,:] - np.min(Dsf[1,:]))/np.ptp(Dsf[1,:]) - 1
+                
+                Dmaxamp = Rng/2  # maximum dither amplitude (volt)
+                Dscale = 50  # %
+                Dsf = Dmaxamp*Dsf
+
+            case 4:
+                Dsf = np.zeros((Nch, t.size))
+                Dmaxamp = Rng/2  # maximum dither amplitude (volt)
+                Dscale = 100 - Xscale  # dither to carrier ratio
+                Dsf[0,:] = 0.99*Dmaxamp*dual_dither(N=t.size)
+                Dsf[1,:] = 0.99*Dmaxamp*dual_dither(N=t.size)
         
+        hist_and_psd(Dsf[0,:].squeeze())
+
         # for k in range(0,Nch):
         #     dsf = Dsf[k,:]
         #     dsf = 2.*(dsf - np.min(dsf))/np.ptp(dsf) - 1
@@ -351,8 +388,8 @@ match SC.lin.method:
         
         #Dfreq = 1.592e6 # Fs10MHz - 16bit
         Dfreq = 2.99e6 # Fs25Mhz - 16bit
-        Dfreq = 2.98e6 # Fs250Mhz - 6 bit
-        Dfreq = 3.11e6 # Fs130Mhz - 6 bit
+        #Dfreq = 2.98e6 # Fs250Mhz - 6 bit
+        #Dfreq = 3.11e6 # Fs130Mhz - 6 bit
         Dadf = dither_generation.adf.uniform  # amplitude distr. funct. (ADF)
         # Generate periodic dither
         Dmaxamp = Rng/2  # maximum dither amplitude (volt)

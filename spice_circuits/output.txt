@@ -1,0 +1,15 @@
+Title: current-steering dac inl test
+Date: Sat Apr 13 08:32:11  2024
+Plotname: Operating Point
+Flags: real
+No. Variables: 3
+No. Points: 1
+Variables:
+	0	v(vdd)	voltage
+	1	v(out1)	voltage
+	2	v(out2)	voltage
+Values:
+ 0	1.500000000000000e+00
+	-7.888851546504698e-05
+	-8.784081259997438e-05
+
