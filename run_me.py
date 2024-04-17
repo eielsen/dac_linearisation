@@ -68,7 +68,7 @@ def get_output_levels(lmethod):
     Load measured or generated output levels.
     """
     # TODO: This is a bit of a mess
-    match 6:
+    match 3:
         case 1:  # load some generated levels
             infile_1 = os.path.join(os.getcwd(),
                                     'generated_output_levels',
@@ -143,30 +143,31 @@ def get_output_levels(lmethod):
 ##### METHOD CHOICE - Choose which linearization method you want to test
 # RUN_LM = lm.BASELINE
 # RUN_LM = lm.PHYSCAL
-RUN_LM = lm.PHFD
+# RUN_LM = lm.PHFD
 # RUN_LM = lm.SHPD
 # RUN_LM = lm.NSDCAL
 # RUN_LM = lm.DEM
-# RUN_LM = lm.MPC
+RUN_LM = lm.MPC
 # RUN_LM = lm.ILC
 # RUN_LM = lm.ILC_SIMP
 
 lin = lm(RUN_LM)
 
 ##### MODEL CHOICE
-# dac = dm(dm.STATIC)  # use static non-linear quantiser model to simulate DAC
-dac = dm(dm.SPICE)  # use SPICE to simulate DAC output
+dac = dm(dm.STATIC)  # use static non-linear quantiser model to simulate DAC
+# dac = dm(dm.SPICE)  # use SPICE to simulate DAC output
 
 # Chose how to compute SINAD
 SINAD_COMP_SEL = sinad_comp.CFIT
 
 # Output low-pass filter configuration
-Fc_lp = 100e3  # cut-off frequency in hertz
+Fc_lp = 10e3  # cut-off frequency in hertz
+# Fc_lp = 100e3  # cut-off frequency in hertz
 N_lp = 3  # filter order
 
 # Sampling rate
-# Fs = 1e6  # sampling rate (over-sampling) in hertz
-Fs = 25e6  # sampling rate (over-sampling) in hertz
+Fs = 1e6  # sampling rate (over-sampling) in hertz
+# Fs = 25e6  # sampling rate (over-sampling) in hertz
 # Fs = 250e6  # sampling rate (over-sampling) in hertz
 # Fs = 130940928  # sampling rate (over-sampling) in hertz
 Ts = 1/Fs  # sampling time
@@ -176,9 +177,10 @@ Xcs_SCALE = 100  # %
 Xcs_FREQ = 999  # Hz
 
 ##### Set quantiser model
+QConfig = qws.w_16bit_SPICE
 # QConfig = qws.w_16bit_ARTI
 # QConfig = qws.w_6bit_ARTI
-QConfig = qws.w_6bit_2ch_SPICE
+# QConfig = qws.w_6bit_2ch_SPICE
 Nb, Mq, Vmin, Vmax, Rng, Qstep, YQ, Qtype = quantiser_configurations(QConfig)
 
 # Generate time vector
@@ -435,12 +437,8 @@ match SC.lin.method:
         Nch = 1
         # Quantisation dither
         Dq = dither_generation.gen_stochastic(t.size, Nch, Qstep, dither_generation.pdf.triangular_hp)
-         # Create levels dictionary
-        Qlevels = YQ.squeeze()      # make array to list 
 
-        # Unsigned integers representing the level codes
-        level_codes = np.arange(0, 2**Nb,1) # Levels:  0, 1, 2, .... 2^(Nb)
-
+        # Get Measured levels
         ML= get_output_levels(lm.MPC)
         MLns = ML[0]
 
@@ -452,7 +450,7 @@ match SC.lin.method:
             MLns = np.flip(MLns)
 
         # Reconstruction filter
-        match 2:
+        match 3:
             case 1:
                 Wn = Fc_lp/(Fs/2)
                 b1, a1 = signal.butter(2, Wn)
@@ -478,17 +476,16 @@ match SC.lin.method:
                 # C1 = Wlp_ss_d.C
                 # D1 = Wlp_ss_d.D
 
-        N_PRED = 2  # prediction horizon
+        N_PRED = 5  # prediction horizon
 
-        # Initial Condition
-        x0 = np.ones(2).reshape(-1,1)
-
-        # Add dither
+        # Add dither to input 
         X = Xcs + Dq
-        X = X.squeeze()
 
-        C = MPC(Nb, N_PRED, X, MLns, Qstep, A1, B1, C1, D1, x0)
+        # Get codes
+        mpc = MPC(Nb, Qstep, N_PRED, X, MLns, A1, B1, C1, D1)
+        C = mpc.get_codes()
 
+        # slice time samples based on the size of C
         t = t[0:C.size]
 
     case lm.ILC:  # iterative learning control (with INL model, only periodic signals)
