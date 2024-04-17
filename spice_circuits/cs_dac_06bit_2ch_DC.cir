@@ -1,6 +1,6 @@
 current-steering dac inl test
 
-.option gmin=1e-19 reltol=200u abstol=100f vntol=100n seed=1
+.option gmin=1e-19 reltol=200u abstol=100f vntol=100n seed=2
 
 .param mc_mm_switch = 1
 .param vdd = 1.5
@@ -363,5 +363,4 @@ msky130_fd_pr__pfet_01v8_lvt d g s b sky130_fd_pr__pfet_01v8_lvt__model l = {l} 
 + steta0 = 0.0
 + tku0 = 0.0
 .ends sky130_fd_pr__pfet_01v8_lvt
-
 

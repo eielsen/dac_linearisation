@@ -173,7 +173,7 @@ def run_spice_sim_parallel(spicef_list, outputf_list, outdir='spice_output/', sp
         proc.wait()
 
 
-def generate_spice_batch_file(c, Nb, t, Ts, QConfig, seed, timestamp, seq):
+def generate_spice_batch_file(C, Nb, t, Ts, QConfig, timestamp, seed=1, seq=0):
     """
     Set up SPICE simulaton for a given DAC circuit description
 
@@ -185,13 +185,12 @@ def generate_spice_batch_file(c, Nb, t, Ts, QConfig, seed, timestamp, seq):
         timestamp
         seq - sequence
     """
-    c = c.astype(int)
-    nsamples = len(c)
-    waveformfile = 'waveform_for_spice_sim.txt'
+    
+    wavf = 'spice_pwl_wav.txt'
+    cmdf = 'spice_cmds.txt'
     
     tempdir = 'spice_temp'
     circdir = 'spice_circuits'
-    
     outdir = os.path.join('spice_output', timestamp)
 
     if os.path.exists(outdir):
@@ -199,21 +198,26 @@ def generate_spice_batch_file(c, Nb, t, Ts, QConfig, seed, timestamp, seq):
     else:
         os.mkdir(outdir) 
 
-    t1 = "\n"
-    t2 = "\n"
-
+    wav_str = ''
+    
     match QConfig:
         case qws.w_06bit:  # 6 bit DAC
-            vbpc = "3.28"
-            vdd = "5.0"
+            c = C.astype(int)
+            nsamples = len(c)
+
+            t1 = '\n'
+            t2 = '\n'
+            vbpc = '3.28'
+            vdd = '5.0'
             Tr = 1e-3  # the rise-time for edges, in µs
             for k in range(0, Nb):  # generate PWL strings
                 k_str = str(k)
-                t1 += "vdp" + k_str + " data" + k_str + " 0 pwl " + \
+                t1 += 'vdp' + k_str + ' data' + k_str + ' 0 pwl ' + \
                     get_pwl_string(c, Ts, nsamples, k, vbpc, vdd, Tr)
-                t2 += "vdn" + k_str + " datai" + k_str + " 0 pwl " + \
+                t2 += 'vdn' + k_str + ' datai' + k_str + ' 0 pwl ' + \
                     get_inverted_pwl_string(c, Ts, nsamples, k, vbpc, vdd, Tr)
-            
+            wav_str = t1 + t2
+
             circf = 'cs_dac_06bit_ngspice.cir'  # circuit description
             spicef = 'cs_dac_06bit_ngspice_batch.cir'  # complete spice input file
 
@@ -222,8 +226,13 @@ def generate_spice_batch_file(c, Nb, t, Ts, QConfig, seed, timestamp, seq):
             ctrl_str = '\n' + '.save v(outf)' + '\n' + '.tran 10u ' + str(t[-1]) + '\n'
 
         case qws.w_16bit_SPICE:  # 16 bit DAC
-            vbpc = "0"
-            vdd = "1.5"
+            c = C.astype(int)
+            nsamples = len(c)
+
+            t1 = '\n'
+            t2 = '\n'
+            vbpc = '0'
+            vdd = '1.5'
             Tr = 1e-3  # the rise-time for edges, in µs
             for k in range(0, Nb):  # generate PWL strings
                 k_str = str(k+1)
@@ -231,6 +240,7 @@ def generate_spice_batch_file(c, Nb, t, Ts, QConfig, seed, timestamp, seq):
                     get_pwl_string(c, Ts, nsamples, k, vbpc, vdd, Tr)
                 t2 += "vbb" + k_str + " bb" + k_str + " 0 pwl " + \
                     get_inverted_pwl_string(c, Ts, nsamples, k, vbpc, vdd, Tr)
+            wav_str = t1 + t2
 
             seed_str = ''
             if seed == 1:
@@ -261,15 +271,51 @@ def generate_spice_batch_file(c, Nb, t, Ts, QConfig, seed, timestamp, seq):
                 'tran 10u ' + str(t[-1]) + '\n' + \
                 'write $inputdir/' + outputf + '.bin' + ' v(out)\n' + \
                 '.endc\n'
+        case qws.w_6bit_2ch_SPICE:  # 6 bit DAC, 2 channels
+            c1 = C[0,:].astype(int)
+            c2 = C[1,:].astype(int)
+            nsamples1 = len(c1)
+            nsamples2 = len(c2)
 
-    addtexttofile(os.path.join(tempdir, 'spice_cmds.txt'), ctrl_str)
+            tvb1 = '\n'
+            tvb2 = '\n'
+            tvbb1 = '\n'
+            tvbb2 = '\n'
+            vbpc = '0'
+            vdd = '1.5'
+            Tr = 1e-3  # the rise-time for edges, in µs
+            for k in range(0, Nb):  # generate PWL strings
+                k_str = str(k + 1)
+                tvb1 += 'vb1' + k_str + ' b1' + k_str + ' 0 pwl ' + \
+                    get_pwl_string(c1, Ts, nsamples1, k, vbpc, vdd, Tr)
+                tvbb1 += 'vbb1' + k_str + ' bb1' + k_str + ' 0 pwl ' + \
+                    get_inverted_pwl_string(c1, Ts, nsamples1, k, vbpc, vdd, Tr)
+                tvb2 += 'vb2' + k_str + ' b2' + k_str + ' 0 pwl ' + \
+                    get_pwl_string(c2, Ts, nsamples2, k, vbpc, vdd, Tr)
+                tvbb2 += 'vbb2' + k_str + ' bb2' + k_str + ' 0 pwl ' + \
+                    get_inverted_pwl_string(c2, Ts, nsamples2, k, vbpc, vdd, Tr)
+            wav_str = tvb1 + tvbb1 + tvb2 + tvbb2
 
-    addtexttofile(os.path.join(tempdir, waveformfile), t1 + t2)
+            circf = 'cs_dac_06bit_2ch_TRAN.cir'  # circuit description
+            spicef = 'cs_dac_06bit_2ch_TRAN_ngspice_batch.cir'  # complete spice input file
+
+            outputf = 'cs_dac_06bit_2ch_TRAN_ngspice_batch'
+            
+            ctrl_str = '\n.option method=trap TRTOL=5 gmin=1e-19 reltol=200u abstol=100f vntol=100n seed=2\n'
+            ctrl_str = ctrl_str + \
+                '\n.control\n' + \
+                'tran 10u ' + str(t[-1]) + '\n' + \
+                'write $inputdir/' + outputf + '.bin' + ' v(out1) v(out2)\n' + \
+                '.endc\n'
+
+    addtexttofile(os.path.join(tempdir, cmdf), ctrl_str)
+
+    addtexttofile(os.path.join(tempdir, wavf), wav_str)
 
     with open(os.path.join(outdir, spicef), 'w') as fout:
         fins = [os.path.join(circdir, circf),
-                os.path.join(tempdir, 'spice_cmds.txt'),
-                os.path.join(tempdir, waveformfile)]
+                os.path.join(tempdir, cmdf),
+                os.path.join(tempdir, wavf)]
         fin = fileinput.input(fins)
         for line in fin:
             fout.write(line)
@@ -284,7 +330,9 @@ def generate_spice_batch_file(c, Nb, t, Ts, QConfig, seed, timestamp, seq):
 
 def read_spice_bin_file(fdir, fname):
     """
-    Read a given SPICE ouput file (assuming a certain format, i.e. not general)
+    Read a given ngspice binary output file.
+    Accounts for number of variables.
+    Assumes variables are interleaved, with time vector first.
     """
 
     fpath = os.path.join(fdir, fname)
@@ -292,26 +340,26 @@ def read_spice_bin_file(fdir, fname):
     # print("Opening file: " + fname)
 
     read_new_line = True
-    count = 0
     while read_new_line:
         tline = fid.readline()
 
-        if b'Binary:' in tline:
+        if b'Binary:' in tline:  # marker for binary data to start
             read_new_line = False
 
         if b'No. Variables: ' in tline:
             nvars = int(tline.split(b':')[1])
+            print(nvars)
 
         if b'No. Points: ' in tline:
             npoints = int(tline.split(b':')[1])
-            
+            print(npoints)
+    
     data = np.fromfile(fid, dtype='float64')
-    t_spice = data[::2]
-    y_spice = data[1::2]
-
-    # plt.plot(t_spice, y_spice)
-    # plt.show()
-
+    t_spice = np.array(data[::nvars])
+    y_spice = np.zeros((nvars-1,npoints))
+    for k in range(1, nvars):
+        y_spice[k-1:] = data[k::nvars]
+    
     return t_spice, y_spice
 
 
@@ -377,8 +425,8 @@ def main():
     rundirs.sort()
 
     print('No. dirs.: ' + str(len(rundirs)))
-    rundir = rundirs[12]  # pick run
-
+    rundir = rundirs[16]  # pick run
+    
     bindir = os.path.join(outdir, rundir)
 
     with open(os.path.join(bindir, 'sim_config.pickle'), 'rb') as fin:
@@ -395,43 +443,54 @@ def main():
     binfiles.sort()
 
     if True:
-        Nch = len(binfiles)  # one file per channel
+        Nbf = len(binfiles)  # one file per channel
 
         t = SC.t
         Fs = SC.fs
         Fx = SC.carrier_freq
 
         t_end = 3/Fx  # time vector duration
-        Fs_ = Fs*72  # 
+        Fs_ = Fs*72  # semi-optimal factor for most sims with different non-uniform sampling per file
+        Fs_ = Fs
         print(f'Fs: {Float(Fs):.0h}')
         t_ = np.arange(0, t_end, 1/Fs_)  # time vector
+        
+        if Nbf == 1:  # may contain several channels in ngspice bin file
+            print(os.path.join(bindir, binfiles[0]))
+            t_spice, y_spice = read_spice_bin_file(bindir, binfiles[0])
+            Nch = y_spice.shape[0]
+            
+            # Summation stage
+            if SC.lin.method == lm.DEM:
+                K = np.ones((Nch,1))
+            if SC.lin.method == lm.PHYSCAL:
+                K = np.ones((Nch,1))
+                K[1] = 1e-2
+            else:
+                K = 1/Nch
+            
+            y_spice_ = np.sum(K*y_spice, 0)
+            ym_ = np.interp(t_, t_spice, y_spice_)  # re-sample
 
-        YM = np.zeros([Nch, t_.size])
+        else:  # assume one channel per bin file
+            Nch = Nbf
+            YM = np.zeros([Nch, t_.size])
+            for k in range(0, Nbf):
+                print(os.path.join(bindir, binfiles[k]))
+                t_spice, y_spice = read_spice_bin_file(bindir, binfiles[k])
+                y_resamp = np.interp(t_, t_spice, y_spice)  # re-sample
+                YM[k,:] = y_resamp
 
-        for k in range(0,Nch):
-            print(os.path.join(bindir, binfiles[k]))
-            t_spice, y_spice = read_spice_bin_file(bindir, binfiles[k])
-            min_t = np.min(np.diff(t_spice))
-            print(f'Fs_max: {Float(1/min_t):.0h}')
-            match 1:
-                case 1:
-                    y_resamp = np.interp(t_, t_spice, y_spice)  # re-sample
-                case 2:
-                    #y_resamp = interpolate.CubicSpline(t_spice, y_spice)(t_)
-                    y_resamp = interpolate.Akima1DInterpolator(t_spice, y_spice)(t_)
-                    #y_resamp = interpolate.PchipInterpolator(t_spice, y_spice)(t_)
-            YM[k,:] = y_resamp
+                # Summation stage
+                if SC.lin.method == lm.DEM:
+                    K = np.ones((Nch,1))
+                if SC.lin.method == lm.PHYSCAL:
+                    K = np.ones((Nch,1))
+                    K[1] = 1e-2
+                else:
+                    K = 1/Nch
 
-        # Summation stage
-        if SC.lin.method == lm.DEM:
-            K = np.ones((Nch,1))
-        if SC.lin.method == lm.PHYSCAL:
-            K = np.ones((Nch,1))
-            K[1] = 1e-2
-        else:
-            K = 1/Nch
-
-        ym_ = np.sum(K*YM, 0)
+                ym_ = np.sum(K*YM, 0)
 
         if False:
             #ym = np.interp(t, t_, ym_)  # re-sample

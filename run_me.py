@@ -68,7 +68,7 @@ def get_output_levels(lmethod):
     Load measured or generated output levels.
     """
     # TODO: This is a bit of a mess
-    match 5:
+    match 6:
         case 1:  # load some generated levels
             infile_1 = os.path.join(os.getcwd(),
                                     'generated_output_levels',
@@ -123,7 +123,7 @@ def get_output_levels(lmethod):
         case 4:
             ML = np.load("SPICE_levels_ARTI_6bit.npy")
         case 5:
-            CSV_file = 'measurements_and_data\ARTI_cs_dac_16b_levels.csv'
+            CSV_file = os.path.join('measurements_and_data', 'ARTI_cs_dac_16b_levels.csv')
             ML_file = 'SPICE_levels_ARTI_16bit.npy'
             if (os.path.exists(ML_file) is False):
                 if (os.path.exists(CSV_file) is True):
@@ -131,6 +131,10 @@ def get_output_levels(lmethod):
                     np.save(ML_file, ML)
             else:
                 ML = np.load(ML_file)
+        case 6:  # w_6bit_2ch_SPICE
+            filepath = os.path.join('measurements_and_data', 'cs_dac_06bit_2ch_01_levels.npy')
+            ML = np.load(filepath)
+            
     return ML
 
 
@@ -139,8 +143,8 @@ def get_output_levels(lmethod):
 ##### METHOD CHOICE - Choose which linearization method you want to test
 # RUN_LM = lm.BASELINE
 # RUN_LM = lm.PHYSCAL
-#RUN_LM = lm.PHFD
-RUN_LM = lm.SHPD
+RUN_LM = lm.PHFD
+# RUN_LM = lm.SHPD
 # RUN_LM = lm.NSDCAL
 # RUN_LM = lm.DEM
 # RUN_LM = lm.MPC
@@ -150,8 +154,8 @@ RUN_LM = lm.SHPD
 lin = lm(RUN_LM)
 
 ##### MODEL CHOICE
-dac = dm(dm.STATIC)  # use static non-linear quantiser model to simulate DAC
-#dac = dm(dm.SPICE)  # use SPICE to simulate DAC output
+# dac = dm(dm.STATIC)  # use static non-linear quantiser model to simulate DAC
+dac = dm(dm.SPICE)  # use SPICE to simulate DAC output
 
 # Chose how to compute SINAD
 SINAD_COMP_SEL = sinad_comp.CFIT
@@ -163,7 +167,7 @@ N_lp = 3  # filter order
 # Sampling rate
 # Fs = 1e6  # sampling rate (over-sampling) in hertz
 Fs = 25e6  # sampling rate (over-sampling) in hertz
-Fs = 250e6  # sampling rate (over-sampling) in hertz
+# Fs = 250e6  # sampling rate (over-sampling) in hertz
 # Fs = 130940928  # sampling rate (over-sampling) in hertz
 Ts = 1/Fs  # sampling time
 
@@ -171,9 +175,10 @@ Ts = 1/Fs  # sampling time
 Xcs_SCALE = 100  # %
 Xcs_FREQ = 999  # Hz
 
-# Set quantiser model
-QConfig = qws.w_16bit_ARTI
+##### Set quantiser model
+# QConfig = qws.w_16bit_ARTI
 # QConfig = qws.w_6bit_ARTI
+QConfig = qws.w_6bit_2ch_SPICE
 Nb, Mq, Vmin, Vmax, Rng, Qstep, YQ, Qtype = quantiser_configurations(QConfig)
 
 # Generate time vector
@@ -202,8 +207,11 @@ match SC.lin.method:
     case lm.BASELINE:  # baseline, only carrier
         # Generate unmodified DAC output without any corrections.
 
-        Nch = 1  # number of channels to use (averaging to reduce noise floor)
-
+        if QConfig == qws.w_6bit_2ch_SPICE:
+            Nch = 2  # number of channels to use (averaging to reduce noise floor)
+        else:
+            Nch = 1
+        
         # Quantisation dither
         Dq = dither_generation.gen_stochastic(t.size, Nch, Qstep, dither_generation.pdf.triangular_hp)
 
@@ -396,9 +404,10 @@ match SC.lin.method:
         Dscale = 100 - Xscale  # dither to carrier ratio
         
         #Dfreq = 1.592e6 # Fs10MHz - 16bit
-        Dfreq = 2.99e6 # Fs25Mhz - 16bit
+        #Dfreq = 2.99e6 # Fs25Mhz - 16bit
         #Dfreq = 2.98e6 # Fs250Mhz - 6 bit
         #Dfreq = 3.11e6 # Fs130Mhz - 6 bit
+        Dfreq = 2.99e6 # 
         Dadf = dither_generation.adf.uniform  # amplitude distr. funct. (ADF)
         # Generate periodic dither
         Dmaxamp = Rng/2  # maximum dither amplitude (volt)
@@ -598,18 +607,18 @@ match SC.lin.method:
         kd = 20
         Niter = 50
 
-        c, y1 = ilc_simple(x, G, Qfilt, Qstep, Nb, Qtype, kp, kd, Niter)
+        c, y1 = ilc_simple(x, G, Qfilt, Qstep, Nb, Qtype, kp, kd, Niter)  # TODO: Get this running again
         c_ = c.clip(0, 2**16-1)
         C = np.array([c_])
         print('** ILC simple end **')
 
 # %% Post processing
-SAVE_CODES_TO_FILE_AND_STOP = False
+SAVE_CODES_TO_FILE_AND_STOP = False  # TODO: Messy
 if SAVE_CODES_TO_FILE_AND_STOP:  # save codes to file
     outfile = 'generated_codes/' + str(SC.lin).replace(" ", "_")
     np.save(outfile, C)
 else:  # generate DAC output
-    run_SPICE = False
+    run_SPICE = False  # TODO: Messy
 
     match SC.dac.model:
         case dm.STATIC:  # use static non-linear quantiser model to simulate DAC
@@ -636,13 +645,18 @@ else:  # generate DAC output
             spicef_list = []
             outputf_list = []
             
-            for k in range(0,Nch):
-                c = C[k,:]
-                seed = k + 1
-                spicef, outputf = generate_spice_batch_file(c, Nb, t, Ts, QConfig, seed, timestamp, k)
-                spicef_list.append(spicef)
-                outputf_list.append(outputf)
+            SEPARATE_FILE_PER_CHANNEL = False  # TODO: Mr. Tidy and Mr. Neat cannot stand a mess
+            if SEPARATE_FILE_PER_CHANNEL:
+                for k in range(0,Nch):
+                    c = C[k,:]
+                    seed = k + 1
+                    spicef, outputf = generate_spice_batch_file(c, Nb, t, Ts, QConfig, timestamp, seed, k)
+                    spicef_list.append(spicef)
+                    outputf_list.append(outputf)
+            else:
+                spicef, outputf = generate_spice_batch_file(C, Nb, t, Ts, QConfig, timestamp)
             
+
             if run_SPICE:  # run SPICE
                 spice_path = '/home/eielsen/ngspice_files/bin/ngspice'  # newest ver., fastest (local)
                 #spice_path = 'ngspice'  # 

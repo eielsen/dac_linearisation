@@ -20,6 +20,7 @@ class qws:  # quantiser_word_size
     w_16bit_SPICE = 5
     w_6bit_ARTI = 6
     w_16bit_ARTI = 7
+    w_6bit_2ch_SPICE = 8
 
 
 def quantiser_configurations(QConfig):
@@ -69,6 +70,12 @@ def quantiser_configurations(QConfig):
             Mq = 2**Nb - 1; # max. code
             Vmin =  0.022894606 # volt
             Vmax = -0.020022067 # volt
+            Qtype = quantiser_type.midtread
+        case qws.w_6bit_2ch_SPICE:
+            Nb = 6 # word-size
+            Mq = 2**Nb - 1; # max. code
+            Vmin = -8.00371104e-05 # volt
+            Vmax = 7.99005702e-05 # volt
             Qtype = quantiser_type.midtread
         case _:
             sys.exit("Invalid quantiser configuration selected.")
