@@ -69,10 +69,10 @@ def test_signal(SCALE, MAXAMP, FREQ, OFFSET, t):
 # Configuration
 
 ##### METHOD CHOICE - Choose which linearization method you want to test
-#RUN_LM = lm.BASELINE
+RUN_LM = lm.BASELINE
 #RUN_LM = lm.PHYSCAL
 #RUN_LM = lm.PHFD
-RUN_LM = lm.SHPD
+#RUN_LM = lm.SHPD
 #RUN_LM = lm.NSDCAL
 #RUN_LM = lm.DEM
 #RUN_LM = lm.MPC
@@ -90,15 +90,14 @@ SINAD_COMP_SEL = sinad_comp.CFIT
 
 # Output low-pass filter configuration
 Fc_lp = 100e3  # cut-off frequency in hertz
-# Fc_lp = 100e3  # cut-off frequency in hertz
 N_lp = 3  # filter order
 
 # Sampling rate
 #Fs = 1e6  # sampling rate (over-sampling) in hertz
-Fs = 25e6  # sampling rate (over-sampling) in hertz
+#Fs = 25e6  # sampling rate (over-sampling) in hertz
 #Fs = 250e6  # sampling rate (over-sampling) in hertz
-# Fs = 130940928  # sampling rate (over-sampling) in hertz
-# Fs = 261881856
+#Fs = 130940928  # sampling rate (over-sampling) in hertz
+Fs = 261881856
 Ts = 1/Fs  # sampling time
 
 # Punkter: 1048576
@@ -109,10 +108,14 @@ Xcs_FREQ = 999  # Hz
 
 ##### Set quantiser model
 #QConfig = qws.w_16bit_SPICE
-#QConfig = qws.w_16bit_ARTI
-QConfig = qws.w_6bit_ARTI
+QConfig = qws.w_16bit_ARTI
+#QConfig = qws.w_6bit_ARTI
 #QConfig = qws.w_6bit_2ch_SPICE
 Nb, Mq, Vmin, Vmax, Rng, Qstep, YQ, Qtype = quantiser_configurations(QConfig)
+
+SAVE_CODES_TO_FILE_AND_STOP = False  # TODO: Messy
+run_SPICE = False
+
 
 # Generate time vector
 match 2:
@@ -222,11 +225,12 @@ match SC.lin.method:
             HEADROOM = 10  # 16 bit DAC
         elif QConfig == qws.w_6bit_ARTI:
             HEADROOM = 15  # 6 bit DAC
+        elif QConfig == qws.w_16bit_ARTI:
+            HEADROOM = 10  # 6 bit DAC
         elif QConfig == qws.w_6bit_2ch_SPICE:
             HEADROOM = 10  # 6 bit DAC
         else:
             sys.exit('Fix qconfig')
-
 
         X = ((100-HEADROOM)/100)*Xcs  # input
         
@@ -236,7 +240,7 @@ match SC.lin.method:
         MLns = ML[0]  # measured ouput levels (convert from 2d to 1d)
 
         # introducing some "measurement/model error" in the levels
-        if QConfig == qws.w_16bit_SPICE:
+        if QConfig == qws.w_16bit_SPICE or QConfig == qws.w_16bit_ARTI:
             MLns_err = np.random.uniform(-Qstep, Qstep, MLns.shape)  # 16 bit DAC
         elif QConfig == qws.w_6bit_ARTI or QConfig == qws.w_6bit_2ch_SPICE:
             MLns_err = np.random.uniform(-Qstep/1024, Qstep/1024, MLns.shape)  # 6 bit DAC
@@ -277,7 +281,7 @@ match SC.lin.method:
                 Ds = np.random.normal(0, 1.0, [Nch, t.size])  # normally distr. noise
 
                 N_hf = 1
-                Fc_hf = 150e3
+                Fc_hf = 160e3
 
                 b, a = signal.butter(N_hf, Fc_hf/(Fs/2), btype='high', analog=False)#, fs=Fs)
 
@@ -286,7 +290,7 @@ match SC.lin.method:
                 Dsf[1,:] = 2.*(Dsf[1,:] - np.min(Dsf[1,:]))/np.ptp(Dsf[1,:]) - 1
                 
                 Dmaxamp = Rng/2  # maximum dither amplitude (volt)
-                Dscale = 70  # %
+                Dscale = 75  # %
                 Dsf = Dmaxamp*Dsf
             case 3:
                 ds = np.random.normal(0, 1.0, [1, t.size])  # normally distr. noise
@@ -344,12 +348,14 @@ match SC.lin.method:
         X = (Xscale/100)*Xcs + (Dscale/100)*Dsf + Dq
 
         print(np.max(X))
+        print(Vmax)
         print(np.min(X))
+        print(Vmin)
 
-        if np.max(X) > Rng/2:
-            raise ValueError('Input out of bounds.') 
-        if np.min(X) < -Rng/2:
-            raise ValueError('Input out of bounds.')
+        #if np.max(X) > Vmax:
+        #    raise ValueError('Input out of bounds.') 
+        #if np.min(X) < Vmin:
+        #    raise ValueError('Input out of bounds.')
 
         Q = quantise_signal(X, Qstep, Qtype)
         C = generate_codes(Q, Nb, Qtype)
@@ -638,13 +644,10 @@ match SC.lin.method:
 
 
 # %% Post processing
-SAVE_CODES_TO_FILE_AND_STOP = False  # TODO: Messy
 if SAVE_CODES_TO_FILE_AND_STOP:  # save codes to file
     outfile = 'generated_codes/' + str(SC.lin).replace(" ", "_")
     np.save(outfile, C)
 else:  # generate DAC output
-    run_SPICE = False  # TODO: Messy
-    
     match SC.dac.model:
         case dm.STATIC:  # use static non-linear quantiser model to simulate DAC
             ML = get_measured_levels(QConfig, SC.lin.method)
@@ -654,7 +657,7 @@ else:  # generate DAC output
             timestamp = datetime.datetime.now().strftime("%Y%m%dT%H%M%S")
             outdirname = str(SC.lin) + '_' + timestamp
 
-            outdir = 'spice_output_02/' + outdirname + '/'
+            outdir = 'spice_output/' + outdirname + '/'
 
             if os.path.exists(outdir):
                 print('Putting output files in existing directory: ' + outdirname)
@@ -686,7 +689,6 @@ else:  # generate DAC output
             else:
                 spicef, outputf = gen_spice_sim_file(C, Nb, t, Ts, QConfig, outdirname)
             
-
             if run_SPICE:  # run SPICE
                 spice_path = '/home/eielsen/ngspice_files/bin/ngspice'  # newest ver., fastest (local)
                 #spice_path = 'ngspice'  # 

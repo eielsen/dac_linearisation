@@ -421,7 +421,7 @@ def main():
     """
     Read results from a given SPICE simulation and process the data.
     """
-    outdir = 'spice_output_02'
+    outdir = 'spice_output'
 
     rundirs = os.listdir(outdir)
     rundirs.sort()

@@ -13,8 +13,10 @@ import fileinput
 import datetime
 import subprocess
 import csv
+from scipy import signal
 
 from matplotlib import pyplot as plt
+
 
 def addtexttofile(filename, text):
     f = open(filename, 'w')
@@ -48,7 +50,6 @@ def generate_dc_input(Nb, v, tempdir='spice_temp', geninputfile='input_for_spice
         tvbb2 += tvbb2_str + "\n"
 
     addtexttofile(os.path.join(tempdir, geninputfile), tvb1 + tvbb1 + tvb2 + tvbb2)
-
 
 
 def generate_and_run_dc_spice_batch_file(timestamp, circname, tempdir='spice_temp', geninputfile='input_for_spice_sim.txt'):
@@ -90,7 +91,41 @@ def generate_and_run_dc_spice_batch_file(timestamp, circname, tempdir='spice_tem
     #return 
 
 
+def read_spice_output_and_save_to_npy(circname, timestamp):
+    actual_1 = []
+    actual_2 = []
+    
+    outdir = os.path.join('spice_output_dc', circname + '_' + timestamp)
+    lvlsfile = circname + '_levels.txt'
 
+    with open(os.path.join(outdir, lvlsfile), newline='') as in_file:
+        lvlsreader = csv.reader(in_file, delimiter=' ', skipinitialspace=True)
+        for row in lvlsreader:
+            actual_1.append(float(row[1]))
+            actual_2.append(float(row[3]))
+
+
+    actual_1 = np.array(actual_1)
+    actual_2 = np.array(actual_2)
+
+    plt.plot(actual_1)
+    plt.plot(actual_2)
+    plt.show()
+
+    plt.plot(signal.detrend(actual_1))
+    plt.plot(signal.detrend(actual_2))
+
+    ML = np.array([actual_1, actual_2])
+
+    outfile = os.path.join('measurements_and_data', circname + '_levels')
+
+    np.save(outfile, ML)
+
+
+def run_dc_analysis_for_all_permutations(Nb, circname, timestamp):
+    for v in range(0, 2**Nb):  # generate all bit pattern permutations 
+        generate_dc_input(Nb, v)
+        generate_and_run_dc_spice_batch_file(timestamp, circname)
 
 
 #Nb = 6  ## no. of bits
@@ -98,51 +133,10 @@ def generate_and_run_dc_spice_batch_file(timestamp, circname, tempdir='spice_tem
 Nb = 16  ## no. of bits
 circname = 'cs_dac_16bit_2ch_DC'
 
-timestamp = datetime.datetime.now().strftime("%Y%m%dT%H%M%S")
+#timestamp = datetime.datetime.now().strftime("%Y%m%dT%H%M%S")
+#run_dc_analysis_for_all_permutations(Nb, circname, timestamp)
 
-outdir = os.path.join('spice_output_dc', timestamp)
+read_spice_output_and_save_to_npy(circname, '20240419T171216')
+#read_spice_output_and_save_to_npy(circname, '20240420T000236')
 
-if os.path.exists(outdir):
-    print('Putting output files in existing directory: ' + timestamp)
-else:
-    os.mkdir(outdir)
-
-for v in range(0, 2**Nb):  # generate all bit pattern permutations 
-    generate_dc_input(Nb, v)
-    generate_and_run_dc_spice_batch_file(timestamp, circname)
-
-
-actual_1 = []
-actual_2 = []
-
-lvlsfile = circname + '_levels.txt'
-
-with open(os.path.join(outdir, lvlsfile), newline='') as in_file:
-    lvlsreader = csv.reader(in_file, delimiter=' ', skipinitialspace=True)
-    for row in lvlsreader:
-        actual_1.append(float(row[1]))
-        actual_2.append(float(row[3]))
-
-
-actual_1 = np.array(actual_1)
-actual_2 = np.array(actual_2)
-
-plt.plot(actual_1)
-plt.plot(actual_2)
-
-ML = np.array([actual_1, actual_2])
-
-outfile = circname + '_levels'
-
-np.save(outfile, ML)
-
-                
-
-
-
-
-
-
-
-
-
+#read_spice_output_and_save_to_npy(circname, timestamp)
