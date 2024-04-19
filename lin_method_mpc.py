@@ -9,7 +9,7 @@ import tqdm
 
 
 class MPC:
-    def __init__(self, Nb, Qstep, N_PRED, Xcs, QL, A, B, C, D):
+    def __init__(self, Nb, Qstep, QMODEL,  A, B, C, D):
         """
         Constructor for the Model Predictive Controller.
         :param Nb: Number of bits 
@@ -21,9 +21,10 @@ class MPC:
         """
         self.Nb = Nb
         self.Qstep = abs(Qstep)
-        self.N_PRED = N_PRED
-        self.Xcs = Xcs
-        self.QL = QL.reshape(1,-1)
+        # self.N_PRED = N_PRED
+        # self.Xcs = Xcs
+        # self.QL = QL.reshape(1,-1)
+        self.QMODEL = QMODEL
         self.A = A
         self.B = B
         self.C = C
@@ -37,22 +38,33 @@ class MPC:
         x_iplus1 = self.A @ st + self.B * con
         return x_iplus1
 
+    def q_scaling(self, X):
+        Xs = X.squeeze() /self.Qstep  + 2**(self.Nb-1)
+        return Xs
 
-    def get_codes(self):
+
+    # def get_codes(self, Xcs, N_PRED, YQns, MLns)
+    def get_codes(self, N_PRED, Xcs, YQns, MLns ):
 
         # Scale the input to the quantizer levels to run it as an MILP
-        Xs = self.Xcs.squeeze()
-        X = Xs/self.Qstep + 2**(self.Nb-1)
+        # Xs = self.Xcs.squeeze()
+        # X = Xs/self.Qstep + 2**(self.Nb-1)
+
+        X = self.q_scaling(Xcs)
 
         #  Scale ideal levels  
-        QLS = (self.QL /self.Qstep ) + 2**(self.Nb-1)
-        QLS = QLS[0].squeeze()
-
+        # QLS = (self.QL /self.Qstep ) + 2**(self.Nb-1) -1/2
+        # QLS = QLS[0].squeeze()
+        match self.QMODEL:
+            case 1:
+                QLS = self.q_scaling(YQns.reshape(1,-1)).squeeze()
+            case 2:
+                QLS = self.q_scaling(MLns.reshape(1,-1)).squeeze()
         # Storage container for code
         C = []
 
         # Loop length
-        len_MPC = X.size - self.N_PRED
+        len_MPC = X.size - N_PRED
 
         # State dimension
         x_dim =  int(self.A.shape[0]) 
@@ -64,8 +76,8 @@ class MPC:
         for j in tqdm.tqdm(range(len_MPC)):
 
             m = gp.Model("MPC- INL")
-            u = m.addMVar(self.N_PRED, vtype=GRB.INTEGER, name= "u", lb = 0, ub =  2**self.Nb-1) # control variable
-            x = m.addMVar((x_dim*(self.N_PRED+1),1), vtype= GRB.CONTINUOUS, lb = -GRB.INFINITY, ub = GRB.INFINITY, name = "x")  # State varible 
+            u = m.addMVar(N_PRED, vtype=GRB.INTEGER, name= "u", lb = 0, ub =  2**self.Nb-1) # control variable
+            x = m.addMVar((x_dim*(N_PRED+1),1), vtype= GRB.CONTINUOUS, lb = -GRB.INFINITY, ub = GRB.INFINITY, name = "x")  # State varible 
 
 
             # Add objective function
@@ -73,7 +85,7 @@ class MPC:
 
             # Set initial constraint
             m.addConstr(x[0:x_dim,:] == init_state)
-            for i in range(self.N_PRED):
+            for i in range(N_PRED):
                 k = x_dim * i
                 st = x[k:k+x_dim]
                 con = u[i] - X[j+i]
@@ -109,7 +121,7 @@ class MPC:
             values = np.array(values)
 
             # Extract only the value of the variable "u", value of the variable "x" are not needed
-            C_MPC = values[0:self.N_PRED]
+            C_MPC = values[0:N_PRED]
 
             # Ideally they should be integral, but gurobi generally return them in floating point values according to the precision tolorence set: m.Params.IntFeasTol
             # Round off to nearest integers

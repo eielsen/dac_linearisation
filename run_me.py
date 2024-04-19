@@ -7,9 +7,9 @@
 @license: BSD 3-Clause
 """
 
-%reload_ext autoreload
-%autoreload 2
-
+# %reload_ext autoreload
+# %autoreload 2
+# %%
 # Imports
 import sys
 import numpy as np
@@ -34,13 +34,14 @@ from static_dac_model import generate_dac_output, quantise_signal, generate_code
 from figures_of_merit import FFT_SINAD, TS_SINAD
 from balreal import balreal_ct
 
+
 from lin_method_nsdcal import nsdcal
 from lin_method_dem import dem
 # from lin_method_ilc import get_control, learning_matrices
 # from lin_method_ilc_simple import ilc_simple
 from lin_method_mpc import MPC
 from lin_method_ILC_DSM import learningMatrices, get_ILC_control
-
+from lin_method_dsm_ilc import DSM_ILC
 from lin_method_util import lm, dm
 
 from spice_utils import run_spice_sim, run_spice_sim_parallel, generate_spice_batch_file, read_spice_bin_file, sim_config, process_sim_output, sinad_comp
@@ -203,7 +204,7 @@ SC = sim_config(lin, dac, Fs, t, Fc_lp, N_lp, Xcs_SCALE, Xcs_FREQ)
 SIGNAL_MAXAMP = Rng/2 - Qstep  # make headroom for noise dither (see below)
 SIGNAL_OFFSET = -Qstep/2  # try to center given quantiser type
 Xcs = test_signal(Xcs_SCALE, SIGNAL_MAXAMP, Xcs_FREQ, SIGNAL_OFFSET, t)
-
+# %%
 # Linearisation methods
 match SC.lin.method:
     case lm.BASELINE:  # baseline, only carrier
@@ -287,8 +288,8 @@ match SC.lin.method:
         # The feedback generates an actuation signal that may cause the
         # quantiser to saturate if there is no "headroom"
         # Also need room for re-quantisation dither
-        #HEADROOM = 1  # 16 bit DAC
-        HEADROOM = 17.5  # 6 bit DAC
+        HEADROOM = 1  # 16 bit DAC
+        # HEADROOM = 17.5  # 6 bit DAC
         X = ((100-HEADROOM)/100)*Xcs  # input
         
         ML = get_output_levels(lm.NSDCAL)  # TODO: Redundant re-calling below in this case
@@ -298,7 +299,7 @@ match SC.lin.method:
 
         # introducing some "measurement/model error" in the levels
         MLns_err = np.random.uniform(-Qstep, Qstep, MLns.shape)  # 16 bit DAC
-        MLns_err = np.random.uniform(-Qstep/1024, Qstep/1024, MLns.shape)  # 6 bit DAC
+        # MLns_err = np.random.uniform(-Qstep/1024, Qstep/1024, MLns.shape)  # 6 bit DAC
         MLns = MLns + MLns_err
 
         QMODEL = 2  # 1: no calibration, 2: use calibration
@@ -438,6 +439,14 @@ match SC.lin.method:
         # Quantisation dither
         Dq = dither_generation.gen_stochastic(t.size, Nch, Qstep, dither_generation.pdf.triangular_hp)
 
+
+        # Also need room for re-quantisation dither
+        HEADROOM = 1  # %
+        Xcs = ((100-HEADROOM)/100)*Xcs  # input
+
+        # Ideal Levels
+        YQns = YQ.squeeze()
+
         # Get Measured levels
         ML= get_output_levels(lm.MPC)
         MLns = ML[0]
@@ -450,7 +459,7 @@ match SC.lin.method:
             MLns = np.flip(MLns)
 
         # Reconstruction filter
-        match 3:
+        match 2:
             case 1:
                 Wn = Fc_lp/(Fs/2)
                 b1, a1 = signal.butter(2, Wn)
@@ -475,15 +484,24 @@ match SC.lin.method:
                 # B1 = Wlp_ss_d.B
                 # C1 = Wlp_ss_d.C
                 # D1 = Wlp_ss_d.D
+            case 4:
+                b1 = np.array([1, -2, 1])
+                a1 =  np.array([1, 0, 0])
+                # l_dlti = signal.dlti(b1, a1, dt=Ts)
+                A1, B1, C1, D1 = signal.tf2ss(b1,a1) # Transfer function to StateSpace
 
         N_PRED = 5  # prediction horizon
 
         # Add dither to input 
         X = Xcs + Dq
 
-        # Get codes
-        mpc = MPC(Nb, Qstep, N_PRED, X, MLns, A1, B1, C1, D1)
-        C = mpc.get_codes()
+        # Quantiser model
+        QMODEL = 2
+
+        # Get c
+        mpc = MPC(Nb, Qstep, QMODEL,  A1, B1, C1, D1)
+
+        C = mpc.get_codes(N_PRED, X, YQns, MLns)
 
         # slice time samples based on the size of C
         t = t[0:C.size]
@@ -500,8 +518,10 @@ match SC.lin.method:
         
         # Quantisation dither
         Dq = dither_generation.gen_stochastic(t.size, Nch, Qstep, dither_generation.pdf.triangular_hp)
+
         # Ideal Levels
-        ILns = YQ.squeeze()
+        YQns = YQ.squeeze()
+
         # % Measured Levels
         ML = get_output_levels(lm.ILC)
         MLns = ML[0] # one channel only
@@ -511,17 +531,21 @@ match SC.lin.method:
         MLns = MLns + MLns_err
     
         # Reconstruction filter
-        match 2:
+        match 1:
             case 1:
+                b1 = np.array([1, -2, 1])
+                a1 =  np.array([1, 0, 0])
+                l_dlti = signal.dlti(b1, a1, dt=Ts)
+            case 2:
                 Wn = Fc_lp/(Fs/2)
                 b1, a1 = signal.butter(2, Wn)
                 l_dlti = signal.dlti(b1, a1, dt=Ts)
-            case 2:  # bilinear transf., seems to work ok, not a perfect match to physics
+            case 3:  # bilinear transf., seems to work ok, not a perfect match to physics
                 Wn = Fc_lp/(Fs/2)
                 #b1, a1 = signal.butter(N_lp, Wn, btype='low', analog=False, output='ba', fs=1/Ts)
                 b1, a1 = signal.butter(N_lp, Wn)
                 l_dlti = signal.dlti(b1, a1, dt=Ts)
-            case 3:  # zoh interp. matches physics, SciPi impl. causes numerical problems??
+            case 4:  # zoh interp. matches physics, SciPi impl. causes numerical problems??
                 Wn = 2*np.pi*Fc_lp
                 b1, a1 = signal.butter(N_lp, 1, 'lowpass', analog=True)
                 Wlp = signal.lti(b1, a1)  # filter LTI system instance
@@ -540,38 +564,56 @@ match SC.lin.method:
         len_X = len(Xcs)
         ft, fi = signal.dimpulse(l_dlti, n=2*len_X)
         
-        #plt.plot(ft, fi[0].squeeze())
-
         # Learning and Output Matrices
-        Q, L, G = learningMatrices(len_X, fi)
+        # Q, L, G = learningMatrices(len_X, fi)
 
         # ILC with DSM
-        itr = 10
 
         # Get ILC output codes
         #CU1 = get_ILC_control(Nb, Xcs, Dq.squeeze(), Q, L, G, itr, b1, a1, Qstep, Vmin, Qtype, YQ, ILns)
-        CM1 = get_ILC_control(Nb, Xcs, Dq.squeeze(), Q, L, G, itr, b1, a1, Qstep, Vmin, Qtype, YQ, MLns)
+        # CM1 = get_ILC_control(Nb, Xcs, Dq.squeeze(), Q, L, G, itr, b1, a1, Qstep, Vmin, Qtype, YQ, MLns)
 
-        # Silce 1 - 1 from the front and back to remove the transient
-        N_padding = int(len_X/Np)
-        #CU1 = CU1.reshape(1,-1)
-        CM1 = CM1.reshape(1,-1)
-        # Reshape into column vector
-        #CU1 = CU1[:,N_padding:-N_padding]
-        CM1 = CM1[:,N_padding:-N_padding]
+        # # Silce 1 - 1 from the front and back to remove the transient
+        # N_padding = int(len_X/Np)
+        # #CU1 = CU1.reshape(1,-1)
+        # CM1 = CM1.reshape(1,-1)
+        # # Reshape into column vector
+        # #CU1 = CU1[:,N_padding:-N_padding]
+        # CM1 = CM1[:,N_padding:-N_padding]
 
-        # Add multiple periods
-        #CU = [] 
-        CM = []
-        for i in range(round(Np)):
-            #CU = np.append(CU, CU1[0, :-1])
-            CM = np.append(CM, CM1[0, :-1])
-        #CU = np.append(CU, CU1[0,-1]).astype(int)
-        CM = np.append(CM, CM1[0,-1]).astype(int)
-        #CU  = CU.reshape(1,-1)
-        CM  = CM.reshape(1,-1)
-        C = CM
-        t = np.arange(0,Ts*C.size , Ts)
+        # # Add multiple periods
+        # #CU = [] 
+        # CM = []
+        # for i in range(round(Np)):
+        #     #CU = np.append(CU, CU1[0, :-1])
+        #     CM = np.append(CM, CM1[0, :-1])
+        # #CU = np.append(CU, CU1[0,-1]).astype(int)
+        # CM = np.append(CM, CM1[0,-1]).astype(int)
+        # #CU  = CU.reshape(1,-1)
+        # CM  = CM.reshape(1,-1)
+        # C = CM
+        # t = np.arange(0,Ts*(C.size), Ts)
+
+        # new updated ILC implementation
+        # Quantizer model
+        # QMODEL = 1      # Ideal model
+        QMODEL = 2      # Measured/Calibrated
+
+        # Tuning matrices
+        We = np.identity(len_X)
+        Wf = np.identity(len_X)*1e-4
+        Wdf = np.identity(len_X)*1e-1
+
+        # Number of ILC iterations
+        itr = 10
+
+        dsmilc = DSM_ILC(Nb, Qstep, Vmin, Vmax, Qtype, QMODEL)
+        # Get Q filtering, learning and output matrices
+        Q, L, G = dsmilc.learningMatrices(Xcs.size, We, Wf, Wdf,fi)
+
+        # Get DSM_ILC codes
+        C = dsmilc.get_codes(Xcs, Dq, itr, YQns, MLns, Q, L, G, b1, a1)
+
     case lm.ILC_SIMP:  # iterative learning control, basic implementation
         
         Nch = 1  # number of channels to use
@@ -610,6 +652,8 @@ match SC.lin.method:
         print('** ILC simple end **')
 
 # %% Post processing
+# YU = generate_dac_output(C, YQ)
+
 SAVE_CODES_TO_FILE_AND_STOP = False  # TODO: Messy
 if SAVE_CODES_TO_FILE_AND_STOP:  # save codes to file
     outfile = 'generated_codes/' + str(SC.lin).replace(" ", "_")
@@ -621,7 +665,7 @@ else:  # generate DAC output
         case dm.STATIC:  # use static non-linear quantiser model to simulate DAC
             ML = get_output_levels(SC.lin)
             YM = generate_dac_output(C, ML)  # using measured or randomised levels
-            tm = t
+            tm = t[0:YM.size]
         case dm.SPICE:  # use SPICE to simulate DAC output
             timestamp = datetime.datetime.now().strftime("%Y%m%dT%H%M%S")
             
@@ -682,11 +726,12 @@ else:  # generate DAC output
         else:
             K = 1/Nch
 
-        #yu = np.sum(K*YU, 0)
+        # yu = np.sum(K*YU, 0)
+        # tu = tm
         ym = np.sum(K*YM, 0)
 
         TRANSOFF = np.floor(Npt*Fs/Xcs_FREQ).astype(int)  # remove transient effects from output
-        #yu_avg, ENOB_U = process_sim_output(tu, yu, Fc_lp, Fs, N_lp, TRANSOFF, SINAD_COMP_SEL, False, 'uniform')
+        # yu_avg, ENOB_U = process_sim_output(tu, yu, Fc_lp, Fs, N_lp, TRANSOFF, SINAD_COMP_SEL, False, 'uniform')
         ym_avg, ENOB_M = process_sim_output(tm, ym, Fc_lp, Fs, N_lp, TRANSOFF, SINAD_COMP_SEL, True, 'non-linear')
 
         
