@@ -417,7 +417,7 @@ def process_sim_output(ty, y, Fc, Fs, Nf, TRANSOFF, SINAD_COMP_SEL, plot=False, 
 
 def main():
     """
-    Read results 
+    Read results from a given SPICE simulation and process the data.
     """
     outdir = 'spice_output'
 
@@ -426,9 +426,11 @@ def main():
 
     print('No. dirs.: ' + str(len(rundirs)))
     rundir = rundirs[16]  # pick run
+    rundir = rundirs[-1]  # pick run
     
     bindir = os.path.join(outdir, rundir)
 
+    # read pickled (marshalled) state/config object
     with open(os.path.join(bindir, 'sim_config.pickle'), 'rb') as fin:
         SC = pickle.load(fin)
     
@@ -443,7 +445,7 @@ def main():
     binfiles.sort()
 
     if True:
-        Nbf = len(binfiles)  # one file per channel
+        Nbf = len(binfiles)  # number of bin (binary data) files
 
         t = SC.t
         Fs = SC.fs
@@ -459,16 +461,24 @@ def main():
             print(os.path.join(bindir, binfiles[0]))
             t_spice, y_spice = read_spice_bin_file(bindir, binfiles[0])
             Nch = y_spice.shape[0]
-            
+            print('No. channels:')
+            print(Nch)
+
             # Summation stage
-            if SC.lin.method == lm.DEM:
+            if SC.lin.method == lm.BASELINE:
                 K = np.ones((Nch,1))
-            if SC.lin.method == lm.PHYSCAL:
+                K[1] = 0.0  # null one channel (want single channel resp.)
+            elif SC.lin.method == lm.DEM:
+                K = np.ones((Nch,1))
+            elif SC.lin.method == lm.PHYSCAL:
                 K = np.ones((Nch,1))
                 K[1] = 1e-2
             else:
                 K = 1/Nch
             
+            print('Summing gain:')
+            print(K)
+
             y_spice_ = np.sum(K*y_spice, 0)
             ym_ = np.interp(t_, t_spice, y_spice_)  # re-sample
 

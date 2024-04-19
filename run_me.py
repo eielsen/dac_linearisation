@@ -29,7 +29,7 @@ from tabulate import tabulate
 
 import dither_generation
 from dual_dither import dual_dither, hist_and_psd
-from quantiser_configurations import quantiser_configurations, qws
+from quantiser_configurations import quantiser_configurations, get_measured_levels, qws
 from static_dac_model import generate_dac_output, quantise_signal, generate_codes, quantiser_type
 from figures_of_merit import FFT_SINAD, TS_SINAD
 from balreal import balreal_ct
@@ -42,6 +42,8 @@ from lin_method_mpc import MPC
 from lin_method_ILC_DSM import learningMatrices, get_ILC_control
 
 from lin_method_util import lm, dm
+
+from inl_processing import get_physcal_gain
 
 from spice_utils import run_spice_sim, run_spice_sim_parallel, generate_spice_batch_file, read_spice_bin_file, sim_config, process_sim_output, sinad_comp
 
@@ -63,99 +65,24 @@ def test_signal(SCALE, MAXAMP, FREQ, OFFSET, t):
     return (SCALE/100)*MAXAMP*np.cos(2*np.pi*FREQ*t) + OFFSET
 
 
-def get_output_levels(lmethod):
-    """
-    Load measured or generated output levels.
-    """
-    # TODO: This is a bit of a mess
-    match 6:
-        case 1:  # load some generated levels
-            infile_1 = os.path.join(os.getcwd(),
-                                    'generated_output_levels',
-                                    f'generated_output_levels_{Nb}_bit_{1}_QuantizerConfig_{QConfig}.npy')
-            infile_2 = os.path.join(os.getcwd(),
-                                    'generated_output_levels',
-                                    f'generated_output_levels_{Nb}_bit_{2}_QuantizerConfig_{QConfig}.npy')
-
-            if os.path.exists(infile_1):
-                ML_1 = np.load(infile_1)  # generated/"measured" levels for ch. 1
-            else:
-                # can't recover from this
-                sys.exit("YQ_1 - No level file found.")
-            if os.path.exists(infile_2):
-                ML_2 = np.load(infile_2)  # generated/"measured" levels for ch. 2
-            else:
-                # can't recover from this
-                sys.exit("YQ_2 - No level file found.")
-
-            ML = np.stack((ML_1, ML_2))
-        case 2:  # load measured levels
-            # load measured levels given linearisation method (measured for a given physical set-up)
-            match lmethod:
-                case lm.BASELINE | lm.DEM | lm.NSDCAL | lm.SHPD | lm.PHFD | lm.ILC | lm.MPC:
-                    infile = 'measurements_and_data/level_measurements.mat'
-                    fileset = 2
-                    if os.path.exists(infile):
-                        mat_file = scipy.io.loadmat(infile)
-                    else:
-                        # can't recover from this
-                        sys.exit("No level measurements file found.")
-                    
-                    # static DAC model output levels, one channel per row
-                    ML = mat_file['ML']  # measured levels
-
-                case lm.PHYSCAL:
-                    infile = 'measurements_and_data/PHYSCAL_level_measurements_set_2.mat'
-                    fileset = 2
-                    if os.path.exists(infile):
-                        mat_file = scipy.io.loadmat(infile)
-                    else:
-                        # can't recover from this
-                        sys.exit("No level measurements file found.")
-
-                    ML_1 = mat_file['PRILVLS'][0]  # measured levels for channel 1
-                    ML_2 = mat_file['SECLVLS'][0]  # measured levels for channel 2
-
-                    # static DAC model output levels, one channel per row
-                    ML = np.stack((ML_1, ML_2))
-        case 3:
-            ML = np.load("SPICE_levels_16bit.npy")
-        case 4:
-            ML = np.load("SPICE_levels_ARTI_6bit.npy")
-        case 5:
-            CSV_file = os.path.join('measurements_and_data', 'ARTI_cs_dac_16b_levels.csv')
-            ML_file = 'SPICE_levels_ARTI_16bit.npy'
-            if (os.path.exists(ML_file) is False):
-                if (os.path.exists(CSV_file) is True):
-                    ML = np.transpose(np.genfromtxt(CSV_file, delimiter=',', skip_header=1))[2:,:]
-                    np.save(ML_file, ML)
-            else:
-                ML = np.load(ML_file)
-        case 6:  # w_6bit_2ch_SPICE
-            filepath = os.path.join('measurements_and_data', 'cs_dac_06bit_2ch_01_levels.npy')
-            ML = np.load(filepath)
-            
-    return ML
-
-
 # Configuration
 
 ##### METHOD CHOICE - Choose which linearization method you want to test
 # RUN_LM = lm.BASELINE
 # RUN_LM = lm.PHYSCAL
-RUN_LM = lm.PHFD
+# RUN_LM = lm.PHFD
 # RUN_LM = lm.SHPD
 # RUN_LM = lm.NSDCAL
 # RUN_LM = lm.DEM
-# RUN_LM = lm.MPC
+RUN_LM = lm.MPC
 # RUN_LM = lm.ILC
 # RUN_LM = lm.ILC_SIMP
 
 lin = lm(RUN_LM)
 
 ##### MODEL CHOICE
-# dac = dm(dm.STATIC)  # use static non-linear quantiser model to simulate DAC
-dac = dm(dm.SPICE)  # use SPICE to simulate DAC output
+dac = dm(dm.STATIC)  # use static non-linear quantiser model to simulate DAC
+# dac = dm(dm.SPICE)  # use SPICE to simulate DAC output
 
 # Chose how to compute SINAD
 SINAD_COMP_SEL = sinad_comp.CFIT
@@ -165,19 +92,22 @@ Fc_lp = 100e3  # cut-off frequency in hertz
 N_lp = 3  # filter order
 
 # Sampling rate
-# Fs = 1e6  # sampling rate (over-sampling) in hertz
-Fs = 25e6  # sampling rate (over-sampling) in hertz
+Fs = 1e6  # sampling rate (over-sampling) in hertz
+# Fs = 25e6  # sampling rate (over-sampling) in hertz
 # Fs = 250e6  # sampling rate (over-sampling) in hertz
 # Fs = 130940928  # sampling rate (over-sampling) in hertz
+# Fs = 261881856
 Ts = 1/Fs  # sampling time
+
+# Punkter: 1048576
 
 # Carrier signal (to be recovered on the output)
 Xcs_SCALE = 100  # %
 Xcs_FREQ = 999  # Hz
 
 ##### Set quantiser model
-# QConfig = qws.w_16bit_ARTI
-# QConfig = qws.w_6bit_ARTI
+#QConfig = qws.w_16bit_ARTI
+#QConfig = qws.w_6bit_ARTI
 QConfig = qws.w_6bit_2ch_SPICE
 Nb, Mq, Vmin, Vmax, Rng, Qstep, YQ, Qtype = quantiser_configurations(QConfig)
 
@@ -223,8 +153,6 @@ match SC.lin.method:
         Q = quantise_signal(X, Qstep, Qtype)
         C = generate_codes(Q, Nb, Qtype)
 
-        YQ = matlib.repmat(YQ, Nch, 1)
-
     case lm.PHYSCAL:  # physical level calibration
         # This method relies on a main/primary DAC operating normally
         # whilst a secondary DAC with a small gain tries to correct
@@ -236,10 +164,10 @@ match SC.lin.method:
         Dq = dither_generation.gen_stochastic(t.size, Nch_in, Qstep, dither_generation.pdf.triangular_hp)
 
         X = Xcs + Dq  # quantiser input
-
-        # TODO: figure out a better way to deal with this file dependency
-        LUTcal = np.load('LUTcal.npy')  # load calibration look-up table
-
+        
+        lutfile = os.path.join('generated_physcal_luts', 'LUTcal_' + str(QConfig) + '.npy')
+        LUTcal = np.load(lutfile)  # load calibration look-up table
+        
         q = quantise_signal(X, Qstep, Qtype)
         c_pri = generate_codes(q, Nb, Qtype)
 
@@ -266,8 +194,8 @@ match SC.lin.method:
         C = dem(X, Rng, Nb)
             
         # two identical, ideal channels
-        Nch = 2  # number of physical channels
-        YQ = matlib.repmat(YQ, 2, 1)
+        # Nch = 2  # number of physical channels
+        # YQ = matlib.repmat(YQ, 2, 1)
 
     case lm.NSDCAL:  # noise shaping with digital calibration
         # Use a simple static model as an open-loop observer for a simple
@@ -289,7 +217,7 @@ match SC.lin.method:
         HEADROOM = 17.5  # 6 bit DAC
         X = ((100-HEADROOM)/100)*Xcs  # input
         
-        ML = get_output_levels(lm.NSDCAL)  # TODO: Redundant re-calling below in this case
+        ML = get_measured_levels(QConfig, SC.lin.method) # get_measured_levels(lm.NSDCAL)  # TODO: Redundant re-calling below in this case
 
         YQns = YQ[0]  # ideal ouput levels
         MLns = ML[0]  # measured ouput levels (convert from 2d to 1d)
@@ -301,6 +229,10 @@ match SC.lin.method:
 
         QMODEL = 2  # 1: no calibration, 2: use calibration
         C = nsdcal(X, Dq, YQns, MLns, Qstep, Vmin, Nb, QMODEL)
+
+        if QConfig == qws.w_6bit_2ch_SPICE:
+            #Nch = 2  # channels in file
+            C = np.stack((C[0, :], np.zeros(C.shape[1])))
         
     case lm.SHPD:  # stochastic high-pass noise dither
         # Adds a large(ish) high-pass filtered normally distributed noise dither.
@@ -316,7 +248,7 @@ match SC.lin.method:
         Xcs = matlib.repmat(Xcs, Nch, 1)
 
         # Large high-pass dither set-up
-        Xscale = 50  # carrier to dither ratio (between 0% and 100%)
+        Xscale = 25  # carrier to dither ratio (between 0% and 100%)
 
         match 2:
             case 1:
@@ -325,8 +257,9 @@ match SC.lin.method:
                 Ds = dither_generation.gen_stochastic(t.size, Nch, Dmaxamp, dither_generation.pdf.uniform)
                 Dsf = Ds
             case 2:
-                Ds = dither_generation.gen_stochastic(t.size, Nch, 1, dither_generation.pdf.uniform)
-                
+                #Ds = dither_generation.gen_stochastic(t.size, Nch, 1, dither_generation.pdf.uniform)
+                Ds = np.random.normal(0, 1.0, [Nch, t.size])  # normally distr. noise
+
                 N_hf = 1
                 Fc_hf = 150e3
 
@@ -337,9 +270,32 @@ match SC.lin.method:
                 Dsf[1,:] = 2.*(Dsf[1,:] - np.min(Dsf[1,:]))/np.ptp(Dsf[1,:]) - 1
                 
                 Dmaxamp = Rng/2  # maximum dither amplitude (volt)
-                Dscale = 50  # %
+                Dscale = 75  # %
                 Dsf = Dmaxamp*Dsf
             case 3:
+                ds = np.random.normal(0, 1.0, [1, t.size])  # normally distr. noise
+                
+                N_hf = 1
+                Fc_hf = 150e3
+
+                b, a = signal.butter(N_hf, Fc_hf/(Fs/2), btype='high', analog=False)#, fs=Fs)
+
+                dsf = signal.filtfilt(b, a, ds, method="gust")
+                dsf = dsf.squeeze()
+                dsf = 2.*(dsf - np.min(dsf))/np.ptp(dsf) - 1
+                
+                # Opposite polarity for HF dither for pri. and sec. channel
+                if Nch == 2:
+                    Dsf = np.stack((dsf, -dsf))
+                elif Nch == 4:
+                    Dsf = np.stack((dsf, -dsf, dsf, -dsf))
+                else:
+                    sys.exit("Invalid channel config. for stoch. dithering.")
+
+                Dmaxamp = Rng/2  # maximum dither amplitude (volt)
+                Dscale = 50  # %
+                Dsf = Dmaxamp*Dsf
+            case 4:
                 Ds = np.random.normal(0, 1.0, [Nch, t.size])  # normally distr. noise
 
                 N_hf = 1
@@ -355,7 +311,7 @@ match SC.lin.method:
                 Dscale = 50  # %
                 Dsf = Dmaxamp*Dsf
 
-            case 4:
+            case 5:
                 Dsf = np.zeros((Nch, t.size))
                 Dmaxamp = Rng/2  # maximum dither amplitude (volt)
                 Dscale = 100 - Xscale  # dither to carrier ratio
@@ -430,8 +386,6 @@ match SC.lin.method:
         YQ = matlib.repmat(YQ, Nch, 1)
 
     case lm.MPC:  # model predictive control (with INL model)
-        # sys.exit("Not implemented yet - MPC")
-
         Nch = 1
         # Quantisation dither
         Dq = dither_generation.gen_stochastic(t.size, Nch, Qstep, dither_generation.pdf.triangular_hp)
@@ -441,7 +395,7 @@ match SC.lin.method:
         # Unsigned integers representing the level codes
         level_codes = np.arange(0, 2**Nb,1) # Levels:  0, 1, 2, .... 2^(Nb)
 
-        ML= get_output_levels(lm.MPC)
+        ML = get_measured_levels(QConfig, SC.lin.method) # get_measured_levels(lm.MPC)
         MLns = ML[0]
 
         # Adding "measurement error"
@@ -491,6 +445,10 @@ match SC.lin.method:
 
         t = t[0:C.size]
 
+        if QConfig == qws.w_6bit_2ch_SPICE:
+            #Nch = 2  # channels in file
+            C = np.stack((C[0, :], np.zeros(C.shape[1])))
+
     case lm.ILC:  # iterative learning control (with INL model, only periodic signals)
 
         Nch = 1
@@ -506,7 +464,7 @@ match SC.lin.method:
         # Ideal Levels
         ILns = YQ.squeeze()
         # % Measured Levels
-        ML = get_output_levels(lm.ILC)
+        ML = get_measured_levels(QConfig, SC.lin.method) # get_measured_levels(lm.ILC)
         MLns = ML[0] # one channel only
         
         # Adding "measurement error"
@@ -619,10 +577,10 @@ if SAVE_CODES_TO_FILE_AND_STOP:  # save codes to file
     np.save(outfile, C)
 else:  # generate DAC output
     run_SPICE = False  # TODO: Messy
-
+    
     match SC.dac.model:
         case dm.STATIC:  # use static non-linear quantiser model to simulate DAC
-            ML = get_output_levels(SC.lin)
+            ML = get_measured_levels(QConfig, SC.lin.method)
             YM = generate_dac_output(C, ML)  # using measured or randomised levels
             tm = t
         case dm.SPICE:  # use SPICE to simulate DAC output
@@ -645,7 +603,11 @@ else:  # generate DAC output
             spicef_list = []
             outputf_list = []
             
-            SEPARATE_FILE_PER_CHANNEL = False  # TODO: Mr. Tidy and Mr. Neat cannot stand a mess
+            if QConfig == qws.w_6bit_2ch_SPICE:
+                SEPARATE_FILE_PER_CHANNEL = False  # TODO: Mr. Tidy and Mr. Neat cannot stand a mess
+            else:
+                SEPARATE_FILE_PER_CHANNEL = True
+            
             if SEPARATE_FILE_PER_CHANNEL:
                 for k in range(0,Nch):
                     c = C[k,:]
@@ -675,13 +637,18 @@ else:  # generate DAC output
                     YM[k,:] = y_resamp
 
     if run_SPICE or SC.dac.model == dm.STATIC:
-        # Summation stage
-        if SC.lin.method == lm.DEM:
+        # Summation stage TODO: This case dependent
+        if SC.lin.method == lm.BASELINE:
             K = np.ones((Nch,1))
-        if SC.lin.method == lm.PHYSCAL:
+            K[1] = 0.0  # null secondary channel (want single channel resp.)
+        elif SC.lin.method == lm.NSDCAL or lm.MPC or lm.ILC:
             K = np.ones((Nch,1))
-            # K[1] = 1e-2  # 16 bit DAC
-            K[1] = 7.5e-2  # 6 bit DAC
+            K[1] = 0.0  # secondary channel will have zero input, null to remove any noise
+        elif SC.lin.method == lm.DEM:
+            K = np.ones((Nch,1))
+        elif SC.lin.method == lm.PHYSCAL:
+            K = np.ones((Nch,1))
+            K[1] = 1e-2
         else:
             K = 1/Nch
 
@@ -699,4 +666,4 @@ else:  # generate DAC output
 
         print(tabulate(results))
 
-# %%
+

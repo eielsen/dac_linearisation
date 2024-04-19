@@ -9,6 +9,10 @@
 
 import sys
 import numpy as np
+from numpy import matlib
+import os
+from lin_method_util import lm, dm
+import scipy
 
 from static_dac_model import quantiser_type
 
@@ -16,16 +20,17 @@ class qws:  # quantiser_word_size
     w_04bit = 1
     w_06bit = 2
     w_12bit = 3
-    w_16bit_NI_card = 4
-    w_16bit_SPICE = 5
-    w_6bit_ARTI = 6
-    w_16bit_ARTI = 7
-    w_6bit_2ch_SPICE = 8
+    w_16bit = 4
+    w_16bit_NI_card = 5
+    w_16bit_SPICE = 6
+    w_6bit_ARTI = 7
+    w_16bit_ARTI = 8
+    w_6bit_2ch_SPICE = 9
 
 
 def quantiser_configurations(QConfig):
     """
-    Return specified configuration, given QConfig selector
+    Return specified quantiser model configuration, given QConfig selector.
     """
     
     match QConfig:
@@ -38,14 +43,20 @@ def quantiser_configurations(QConfig):
         case qws.w_06bit:
             Nb = 6 # word-size
             Mq = 2**Nb - 1; # max. code
-            Vmin = -0.3 # volt
-            Vmax = 0.3 # volt
+            Vmin = -1 # volt
+            Vmax = 1 # volt
             Qtype = quantiser_type.midtread
         case qws.w_12bit:
             Nb = 12 # word-size
             Mq = 2**Nb - 1; # max. code
             Vmin = -5 # volt
             Vmax = 5 # volt
+            Qtype = quantiser_type.midtread
+        case qws.w_16bit:
+            Nb = 16 # word-size
+            Mq = 2**Nb - 1; # max. code
+            Vmin = -1 # volt
+            Vmax = 1 # volt
             Qtype = quantiser_type.midtread
         case qws.w_16bit_NI_card:
             Nb = 16 # word-size
@@ -84,7 +95,101 @@ def quantiser_configurations(QConfig):
     
     Qstep = Rng/Mq  # step-size (LSB)
     
-    YQ = np.arange(Vmin,Vmax+Qstep,Qstep)  # ideal ouput levels (mid-tread quantizer)
+    YQ = np.arange(Vmin, Vmax+Qstep, Qstep)  # ideal ouput levels (mid-tread quantizer)
     YQ = np.reshape(YQ, (-1, YQ.shape[0]))  # generate 2d array with 1 row
     
     return Nb, Mq, Vmin, Vmax, Rng, Qstep, YQ, Qtype
+
+
+
+def get_measured_levels(QConfig, lmethod=lm.BASELINE):
+    """
+    Load measured or generated output levels for a given quanstiser model.
+    """
+
+    inpath = 'measurements_and_data'
+    infile = ''
+
+    match QConfig:
+        case qws.w_06bit:  # re-generate ideal levels
+            Nb, Mq, Vmin, Vmax, Rng, Qstep, YQ, Qtype = quantiser_configurations(QConfig)
+            Nch = 2
+            ML = matlib.repmat(YQ, Nch, 1)
+        case qws.w_16bit:  # re-generate ideal levels
+            Nb, Mq, Vmin, Vmax, Rng, Qstep, YQ, Qtype = quantiser_configurations(QConfig)
+            Nch = 2
+            ML = matlib.repmat(YQ, Nch, 1)
+        case qws.w_16bit_NI_card:  # load measured levels for given qconfig
+            # load measured levels given linearisation method (measured for a given physical set-up)
+            match lmethod:
+                case lm.BASELINE | lm.DEM | lm.NSDCAL | lm.SHPD | lm.PHFD | lm.ILC | lm.MPC:
+                    infile = 'level_measurements.mat'
+                    if os.path.exists(os.path.join(inpath, infile)):
+                        mat_file = scipy.io.loadmat(os.path.join(inpath, infile))
+                    else: # can't recover from this
+                        raise SystemExit('No level measurements file found.')
+                        #sys.exit('No level measurements file found.')
+                    
+                    # static DAC model output levels, one channel per row
+                    ML = mat_file['ML']  # measured levels
+
+                case lm.PHYSCAL:
+                    infile = 'PHYSCAL_level_measurements_set_2.mat'
+                    if os.path.exists(os.path.join(inpath, infile)):
+                        mat_file = scipy.io.loadmat(os.path.join(inpath, infile))
+                    else: # can't recover from this
+                        raise SystemExit('No level measurements file found.')
+
+                    ML_1 = mat_file['PRILVLS'][0]  # measured levels for channel 1
+                    ML_2 = mat_file['SECLVLS'][0]  # measured levels for channel 2
+
+                    # static DAC model output levels, one channel per row
+                    ML = np.stack((ML_1, ML_2))
+            return ML
+        case qws.w_16bit_SPICE:
+            infile = 'SPICE_levels_16bit.npy'
+        case qws.w_6bit_ARTI:
+            infile = 'SPICE_levels_ARTI_6bit.npy'
+        case qws.w_16bit_ARTI:
+            CSV_file = os.path.join(inpath, 'ARTI_cs_dac_16b_levels.csv')
+            infile = 'SPICE_levels_ARTI_16bit.npy'
+            if (os.path.exists(os.path.join(inpath, infile)) is False):
+                if (os.path.exists(CSV_file) is True):
+                    ML = np.transpose(np.genfromtxt(CSV_file, delimiter=',', skip_header=1))[2:,:]
+                    np.save(os.path.join(inpath, infile), ML)
+                    return ML
+        case qws.w_6bit_2ch_SPICE:  # w_6bit_2ch_SPICE
+            infile = 'cs_dac_06bit_2ch_01_levels.npy'
+    
+    if os.path.exists(os.path.join(inpath, infile)):
+        ML = np.load(os.path.join(inpath, infile))
+    else: # can't recover from this
+        raise SystemExit('No level measurements file found.')
+    
+    return ML
+
+
+
+
+"""
+case 1:  # load some generated levels
+            infile_1 = os.path.join(os.getcwd(),
+                                    'generated_output_levels',
+                                    f'generated_output_levels_{Nb}_bit_{1}_QuantizerConfig_{QConfig}.npy')
+            infile_2 = os.path.join(os.getcwd(),
+                                    'generated_output_levels',
+                                    f'generated_output_levels_{Nb}_bit_{2}_QuantizerConfig_{QConfig}.npy')
+
+            if os.path.exists(infile_1):
+                ML_1 = np.load(infile_1)  # generated/"measured" levels for ch. 1
+            else:
+                # can't recover from this
+                sys.exit("YQ_1 - No level file found.")
+            if os.path.exists(infile_2):
+                ML_2 = np.load(infile_2)  # generated/"measured" levels for ch. 2
+            else:
+                # can't recover from this
+                sys.exit("YQ_2 - No level file found.")
+
+            ML = np.stack((ML_1, ML_2))
+"""

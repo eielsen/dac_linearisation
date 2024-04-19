@@ -11,9 +11,11 @@ import numpy as np
 import scipy.io
 import os
 import sys
+from tabulate import tabulate
+from scipy import signal
 
 from matplotlib import pyplot as plt
-from quantiser_configurations import quantiser_configurations
+from quantiser_configurations import quantiser_configurations, get_measured_levels, qws
 
 def generate_random_output_levels(QuantizerConfig=4):
     """
@@ -57,58 +59,77 @@ def generate_random_output_levels(QuantizerConfig=4):
             break
 
 
-def get_levels_from_file(config):
-    # load level measurements (or randomly generated)
-
-    match config:
-        case 0:
-            infile = 'measurements_and_data/level_measurements.mat'
-            if os.path.exists(infile):
-                mf = scipy.io.loadmat(infile)
-            else:
-                # can't recover from this
-                sys.exit("No level measurements file found.")
-            ML = mf['ML']  # measured levels
-            PRILVLS = ML[0,:]
-            SECLVLS = ML[1,:]
-        case 1:
-            mf = scipy.io.loadmat('measurements_and_data/PHYSCAL_level_measurements_set_1.mat')  # measured levels
-            PRILVLS = mf['PRILVLS'][0]
-            SECLVLS = mf['SECLVLS'][0]
-        case 2:
-            mf = scipy.io.loadmat('measurements_and_data/PHYSCAL_level_measurements_set_2.mat')  # measured levels
-            PRILVLS = mf['PRILVLS'][0]
-            SECLVLS = mf['SECLVLS'][0]
-        case 3:
-            ML = np.load('SPICE_levels_16bit.npy')  # measured levels
-            PRILVLS = ML[0,:]
-            SECLVLS = 1e-2*ML[1,:]
-        case 4:
-            ML = np.load('SPICE_levels_ARTI_6bit.npy')  # measured levels
-            PRILVLS = ML[0,:]
-            SECLVLS = 7.5e-2*ML[1,:]
-    
-    return PRILVLS, SECLVLS
+def get_physcal_gain(QConfig):
+    match QConfig:  # gain tuning (make sure secondary DAC does not saturate)
+        case qws.w_16bit_NI_card:
+            K_SEC = 1
+        case qws.w_16bit_SPICE:
+            K_SEC = 1e-2
+        case qws.w_6bit_ARTI:
+            K_SEC = 7.5e-2
+        case qws.w_16bit_ARTI:
+            K_SEC = 1  # find out
+        case qws.w_6bit_2ch_SPICE:
+            K_SEC = 12.5e-2
+        case _:
+            K_SEC = 1
+    return K_SEC
 
 
-def generate_physical_level_calibration_look_up_table(QConfig=4, FConfig=2, SAVE_LUT=0):
+def plot_inl(QConfig=qws.w_16bit_NI_card, Ch_sel=0):
     """
+    Make an INL plot, according to best practice, i.e. removing linear trend and offset.
+    """
+
+    # Quantiser model
+    Nb, Mq, Vmin, Vmax, Rng, Qstep, YQ, Qtype = quantiser_configurations(QConfig)
+    qconfig_tab = [[Nb, Mq, Vmin, Vmax, Rng, Qstep, YQ, Qtype]]
+    print(tabulate(qconfig_tab))
+    
+    ML = get_measured_levels(QConfig)
+    
+    LVLS = np.array(ML[Ch_sel])
+    
+    qs = np.arange(-2**(Nb-1), 2**(Nb-1), 1) # possible quantisation steps/codes (recall arange() is not inclusive)
+    qs = qs.reshape(-1, 1) # ensure column vector for codes
+
+    from matplotlib import rc
+
+    from matplotlib import rc
+    #rc('font',**{'family':'sans-serif','sans-serif':['Helvetica']})
+    rc('font',**{'family':'serif','serif':['Times']})
+    rc('text', usetex=True)
+
+    plt.plot(qs, signal.detrend(LVLS)/Qstep)
+    plt.xlabel("Input code")
+    plt.ylabel("Least significant bits")
+    plt.grid()
+
+    plt.savefig('figures/INL_plot.pdf', format="pdf", bbox_inches="tight")
+    #fig.savefig('Stylized Plots.png', dpi=300, bbox_inches='tight', transparent=True)
+
+
+def gen_physcal_lut(QConfig=qws.w_16bit_NI_card, SAVE_LUT=0):
+    """
+    Generate physical level calibration look up table.
+
     Least-squares minimisation of element mismatch via a look-up table (LUT)
     to be used when a secondary calibration DAC is available
     """
 
     # Quantiser model
     Nb, Mq, Vmin, Vmax, Rng, Qstep, YQ, Qtype = quantiser_configurations(QConfig)
+    qconfig_tab = [[Nb, Mq, Vmin, Vmax, Rng, Qstep, YQ, Qtype]]
+    print(tabulate(qconfig_tab))
 
-    from tabulate import tabulate
+    ML = get_measured_levels(QConfig)
+    PRILVLS = ML[0,:]
+    SECLVLS = ML[1,:]
+    
+    K_SEC = get_physcal_gain(QConfig)
 
-    qconfig = [[Nb, Mq, Vmin, Vmax, Rng, Qstep, YQ, Qtype]]
-
-    print(tabulate(qconfig))
-
-    PRILVLS, SECLVLS = get_levels_from_file(FConfig)
     PRILVLS = np.array(PRILVLS)
-    SECLVLS = np.array(SECLVLS)
+    SECLVLS = K_SEC*np.array(SECLVLS)
 
     qs = np.arange(-2**(Nb-1), 2**(Nb-1), 1) # possible quantisation steps/codes (recall arange() is not inclusive)
     qs = qs.reshape(-1, 1) # ensure column vector for codes
@@ -156,8 +177,8 @@ def generate_physical_level_calibration_look_up_table(QConfig=4, FConfig=2, SAVE
     LUTcal = LUTcal.astype(np.uint16)  # convert to integers
 
     if SAVE_LUT:
-        outfile = "LUTcal"
-        np.save(outfile, LUTcal)
+        lutfile = os.path.join('generated_physcal_luts', 'LUTcal_' + str(QConfig))
+        np.save(lutfile, LUTcal)
 
     #%%
     plt.figure(1)
@@ -185,3 +206,5 @@ def generate_physical_level_calibration_look_up_table(QConfig=4, FConfig=2, SAVE
     plt.xlabel('Ideal output level')
     plt.ylabel('Combined voltage output')
     plt.legend()
+
+

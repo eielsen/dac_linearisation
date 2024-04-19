@@ -16,17 +16,19 @@ import numpy as np
 
 from matplotlib import pyplot as plt
 
-from inl_processing import generate_physical_level_calibration_look_up_table
-from inl_processing import generate_random_output_levels
+from inl_processing import gen_physcal_lut, plot_inl
+from quantiser_configurations import qws
 
 from spice_utils import run_spice_sim, read_spice_bin_file_with_most_recent_timestamp
 
-#generate_physical_level_calibration_look_up_table(QConfig=5, FConfig=3, SAVE_LUT=1) # Trond 16bit
-#generate_physical_level_calibration_look_up_table(QConfig=4, FConfig=2, SAVE_LUT=1)
-generate_physical_level_calibration_look_up_table(QConfig=6, FConfig=4, SAVE_LUT=1) # ARTI 6b
+#gen_physcal_lut(QConfig=5, FConfig=3, SAVE_LUT=1) # Trond 16bit
+#gen_physcal_lut(QConfig=4, FConfig=2, SAVE_LUT=1)
+#gen_physcal_lut(QConfig=qws.w_6bit_ARTI, SAVE_LUT=1) # ARTI 6bit
+#gen_physcal_lut(QConfig=qws.w_6bit_2ch_SPICE, SAVE_LUT=True) # Trond 2ch 6bit
 
 #generate_random_output_levels(QuantizerConfig=4)
 
+plot_inl(QConfig=qws.w_16bit_NI_card, Ch_sel=1)
 
 
 # Nb = 16
@@ -88,7 +90,7 @@ def read_csv_levels():
 
     ML = np.array([actual_1, actual_2])
 
-    #outfile = 'SPICE_levels_16bit'
-    outfile = 'SPICE_levels_ARTI_6bit'
+    #outfile = measurements_and_data/SPICE_levels_16bit'
+    outfile = 'measurements_and_data/SPICE_levels_ARTI_6bit'
 
     np.save(outfile, ML)
