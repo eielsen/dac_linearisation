@@ -30,8 +30,10 @@ def nsdcal(X, Dq, YQns, MLns, Qstep, Vmin, Nb, QMODEL):
             2: measured/calibrated
     """
     # Noise-shaping filter (using a simple double integrator)
-    Hns_tf = signal.TransferFunction([1, -2, 1], [1, 0, 0], dt=1)  # double integrator
-    Mns_tf = signal.TransferFunction([2, -1], [1, 0, 0], dt=1)  # Mns = 1 - Hns
+    b = np.array([1, -2, 1])
+    a = np.array([1, 0, 0])
+    Hns_tf = signal.TransferFunction(b, a, dt=1)  # double integrator
+    Mns_tf = signal.TransferFunction(a-b, a, dt=1)  # Mns = 1 - Hns
     Mns = Mns_tf.to_ss()
     # Make a balanced realisation.
     # Less sensitivity to filter coefficients in the IIR implementation.
