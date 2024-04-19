@@ -7,9 +7,9 @@
 @license: BSD 3-Clause
 """
 
-# %reload_ext autoreload
-# %autoreload 2
-# %%
+%reload_ext autoreload
+%autoreload 2
+
 # Imports
 import sys
 import numpy as np
@@ -46,7 +46,7 @@ from lin_method_util import lm, dm
 
 from inl_processing import get_physcal_gain
 
-from spice_utils import run_spice_sim, run_spice_sim_parallel, generate_spice_batch_file, read_spice_bin_file, sim_config, process_sim_output, sinad_comp
+from spice_utils import run_spice_sim, run_spice_sim_parallel, gen_spice_sim_file, read_spice_bin_file, sim_config, process_sim_output, sinad_comp
 
 
 def test_signal(SCALE, MAXAMP, FREQ, OFFSET, t):
@@ -69,15 +69,15 @@ def test_signal(SCALE, MAXAMP, FREQ, OFFSET, t):
 # Configuration
 
 ##### METHOD CHOICE - Choose which linearization method you want to test
-# RUN_LM = lm.BASELINE
-# RUN_LM = lm.PHYSCAL
-# RUN_LM = lm.PHFD
-# RUN_LM = lm.SHPD
-# RUN_LM = lm.NSDCAL
-# RUN_LM = lm.DEM
-RUN_LM = lm.MPC
-# RUN_LM = lm.ILC
-# RUN_LM = lm.ILC_SIMP
+#RUN_LM = lm.BASELINE
+#RUN_LM = lm.PHYSCAL
+#RUN_LM = lm.PHFD
+#RUN_LM = lm.SHPD
+#RUN_LM = lm.NSDCAL
+#RUN_LM = lm.DEM
+#RUN_LM = lm.MPC
+RUN_LM = lm.ILC
+#RUN_LM = lm.ILC_SIMP
 
 lin = lm(RUN_LM)
 
@@ -89,14 +89,14 @@ dac = dm(dm.STATIC)  # use static non-linear quantiser model to simulate DAC
 SINAD_COMP_SEL = sinad_comp.CFIT
 
 # Output low-pass filter configuration
-Fc_lp = 10e3  # cut-off frequency in hertz
+Fc_lp = 100e3  # cut-off frequency in hertz
 # Fc_lp = 100e3  # cut-off frequency in hertz
 N_lp = 3  # filter order
 
 # Sampling rate
 Fs = 1e6  # sampling rate (over-sampling) in hertz
-# Fs = 25e6  # sampling rate (over-sampling) in hertz
-# Fs = 250e6  # sampling rate (over-sampling) in hertz
+#Fs = 25e6  # sampling rate (over-sampling) in hertz
+#Fs = 250e6  # sampling rate (over-sampling) in hertz
 # Fs = 130940928  # sampling rate (over-sampling) in hertz
 # Fs = 261881856
 Ts = 1/Fs  # sampling time
@@ -108,10 +108,10 @@ Xcs_SCALE = 100  # %
 Xcs_FREQ = 999  # Hz
 
 ##### Set quantiser model
-QConfig = qws.w_16bit_SPICE
+#QConfig = qws.w_16bit_SPICE
 #QConfig = qws.w_16bit_ARTI
 #QConfig = qws.w_6bit_ARTI
-# QConfig = qws.w_6bit_2ch_SPICE
+QConfig = qws.w_6bit_2ch_SPICE
 Nb, Mq, Vmin, Vmax, Rng, Qstep, YQ, Qtype = quantiser_configurations(QConfig)
 
 # Generate time vector
@@ -134,7 +134,7 @@ SC = sim_config(lin, dac, Fs, t, Fc_lp, N_lp, Xcs_SCALE, Xcs_FREQ)
 SIGNAL_MAXAMP = Rng/2 - Qstep  # make headroom for noise dither (see below)
 SIGNAL_OFFSET = -Qstep/2  # try to center given quantiser type
 Xcs = test_signal(Xcs_SCALE, SIGNAL_MAXAMP, Xcs_FREQ, SIGNAL_OFFSET, t)
-# %%
+
 # Linearisation methods
 match SC.lin.method:
     case lm.BASELINE:  # baseline, only carrier
@@ -216,8 +216,18 @@ match SC.lin.method:
         # The feedback generates an actuation signal that may cause the
         # quantiser to saturate if there is no "headroom"
         # Also need room for re-quantisation dither
-        HEADROOM = 1  # 16 bit DAC
-        # HEADROOM = 17.5  # 6 bit DAC
+        #
+        
+        if QConfig == qws.w_16bit_SPICE:
+            HEADROOM = 10  # 16 bit DAC
+        elif QConfig == qws.w_6bit_ARTI:
+            HEADROOM = 15  # 6 bit DAC
+        elif QConfig == qws.w_6bit_2ch_SPICE:
+            HEADROOM = 10  # 6 bit DAC
+        else:
+            sys.exit('Fix qconfig')
+
+
         X = ((100-HEADROOM)/100)*Xcs  # input
         
         ML = get_measured_levels(QConfig, SC.lin.method) # get_measured_levels(lm.NSDCAL)  # TODO: Redundant re-calling below in this case
@@ -226,16 +236,19 @@ match SC.lin.method:
         MLns = ML[0]  # measured ouput levels (convert from 2d to 1d)
 
         # introducing some "measurement/model error" in the levels
-        MLns_err = np.random.uniform(-Qstep, Qstep, MLns.shape)  # 16 bit DAC
-        # MLns_err = np.random.uniform(-Qstep/1024, Qstep/1024, MLns.shape)  # 6 bit DAC
+        if QConfig == qws.w_16bit_SPICE:
+            MLns_err = np.random.uniform(-Qstep, Qstep, MLns.shape)  # 16 bit DAC
+        elif QConfig == qws.w_6bit_ARTI or QConfig == qws.w_6bit_2ch_SPICE:
+            MLns_err = np.random.uniform(-Qstep/1024, Qstep/1024, MLns.shape)  # 6 bit DAC
+        else:
+            sys.exit('Fix qconfig')
         MLns = MLns + MLns_err
 
         QMODEL = 2  # 1: no calibration, 2: use calibration
         C = nsdcal(X, Dq, YQns, MLns, Qstep, Vmin, Nb, QMODEL)
 
         if QConfig == qws.w_6bit_2ch_SPICE:
-            #Nch = 2  # channels in file
-            C = np.stack((C[0, :], np.zeros(C.shape[1])))
+            C = np.stack((C[0, :], np.zeros(C.shape[1])))  # zero input to sec. channel
         
     case lm.SHPD:  # stochastic high-pass noise dither
         # Adds a large(ish) high-pass filtered normally distributed noise dither.
@@ -392,6 +405,7 @@ match SC.lin.method:
         Nch = 1
         # Quantisation dither
         Dq = dither_generation.gen_stochastic(t.size, Nch, Qstep, dither_generation.pdf.triangular_hp)
+        
         # Also need room for re-quantisation dither
         HEADROOM = 1  # %
         Xcs = ((100-HEADROOM)/100)*Xcs  # input
@@ -399,9 +413,6 @@ match SC.lin.method:
         # Ideal Levels
         YQns = YQ.squeeze()
         
-        # Create levels dictionary
-        Qlevels = YQ.squeeze()      # make array to list 
-
         # Unsigned integers representing the level codes
         level_codes = np.arange(0, 2**Nb,1) # Levels:  0, 1, 2, .... 2^(Nb)
 
@@ -409,10 +420,16 @@ match SC.lin.method:
         MLns = ML[0]
 
         # Adding "measurement error"
-        MLns_err = np.random.uniform(-Qstep, Qstep, MLns.shape)
+        # introducing some "measurement/model error" in the levels
+        if QConfig == qws.w_16bit_SPICE:
+            MLns_err = np.random.uniform(-Qstep, Qstep, MLns.shape)  # 16 bit DAC
+        elif QConfig == qws.w_6bit_ARTI or QConfig == qws.w_6bit_2ch_SPICE:
+            MLns_err = np.random.uniform(-Qstep/1024, Qstep/1024, MLns.shape)  # 6 bit DAC
+        else:
+            sys.exit('Fix qconfig')
         MLns = MLns + MLns_err
 
-        if QConfig == 6:
+        if QConfig == qws.w_6bit_ARTI or QConfig == qws.w_16bit_ARTI:
             MLns = np.flip(MLns)
 
         # Reconstruction filter
@@ -464,8 +481,7 @@ match SC.lin.method:
         t = t[0:C.size]
 
         if QConfig == qws.w_6bit_2ch_SPICE:
-            #Nch = 2  # channels in file
-            C = np.stack((C[0, :], np.zeros(C.shape[1])))
+            C = np.stack((C[0, :], np.zeros(C.shape[1])))  # zero input to sec. channel
 
     case lm.ILC:  # iterative learning control (with INL model, only periodic signals)
 
@@ -474,7 +490,7 @@ match SC.lin.method:
         # The feedback generates an actuation signal that may cause the
         # quantiser to saturate if there is no "headroom"
         # Also need room for re-quantisation dither
-        HEADROOM = 1  # %
+        HEADROOM = 10  # %
         Xcs = ((100-HEADROOM)/100)*Xcs  # input
         
         # Quantisation dither
@@ -487,12 +503,17 @@ match SC.lin.method:
         ML = get_measured_levels(QConfig, SC.lin.method) # get_measured_levels(lm.ILC)
         MLns = ML[0] # one channel only
         
-        # Adding "measurement error"
-        MLns_err = np.random.uniform(-Qstep, Qstep, MLns.shape)
-        MLns = MLns + MLns_err
+        # introducing some "measurement/model error" in the levels
+        if QConfig == qws.w_16bit_SPICE:
+            MLns_err = np.random.uniform(-Qstep, Qstep, MLns.shape)  # 16 bit DAC
+        elif QConfig == qws.w_6bit_ARTI or QConfig == qws.w_6bit_2ch_SPICE:
+            MLns_err = np.random.uniform(-Qstep/1024, Qstep/1024, MLns.shape)  # 6 bit DAC
+        else:
+            sys.exit('Fix qconfig')
+        MLns = MLns + 0*MLns_err
     
         # Reconstruction filter
-        match 1:
+        match 3:
             case 1:
                 b1 = np.array([1, -2, 1])
                 a1 =  np.array([1, 0, 0])
@@ -575,6 +596,9 @@ match SC.lin.method:
         # Get DSM_ILC codes
         C = dsmilc.get_codes(Xcs, Dq, itr, YQns, MLns, Q, L, G, b1, a1)
 
+        if QConfig == qws.w_6bit_2ch_SPICE:
+            C = np.stack((C[0, :], np.zeros(C.shape[1])))  # zero input to sec. channel
+        
     case lm.ILC_SIMP:  # iterative learning control, basic implementation
         
         Nch = 1  # number of channels to use
@@ -612,9 +636,8 @@ match SC.lin.method:
         C = np.array([c_])
         print('** ILC simple end **')
 
-# %% Post processing
-# YU = generate_dac_output(C, YQ)
 
+# %% Post processing
 SAVE_CODES_TO_FILE_AND_STOP = False  # TODO: Messy
 if SAVE_CODES_TO_FILE_AND_STOP:  # save codes to file
     outfile = 'generated_codes/' + str(SC.lin).replace(" ", "_")
@@ -625,15 +648,16 @@ else:  # generate DAC output
     match SC.dac.model:
         case dm.STATIC:  # use static non-linear quantiser model to simulate DAC
             ML = get_measured_levels(QConfig, SC.lin.method)
-            YM = generate_dac_output(C, ML)  # using measured or randomised levels
+            YM = generate_dac_output(C.astype(int), ML)  # using measured or randomised levels
             tm = t[0:YM.size]
         case dm.SPICE:  # use SPICE to simulate DAC output
             timestamp = datetime.datetime.now().strftime("%Y%m%dT%H%M%S")
-            
-            outdir = 'spice_output/' + timestamp + '/'
+            outdirname = str(SC.lin) + '_' + timestamp
+
+            outdir = 'spice_output_02/' + outdirname + '/'
 
             if os.path.exists(outdir):
-                print('Putting output files in existing directory: ' + timestamp)
+                print('Putting output files in existing directory: ' + outdirname)
             else:
                 os.mkdir(outdir)
             
@@ -656,11 +680,11 @@ else:  # generate DAC output
                 for k in range(0,Nch):
                     c = C[k,:]
                     seed = k + 1
-                    spicef, outputf = generate_spice_batch_file(c, Nb, t, Ts, QConfig, timestamp, seed, k)
+                    spicef, outputf = gen_spice_sim_file(c, Nb, t, Ts, QConfig, outdirname, seed, k)
                     spicef_list.append(spicef)
                     outputf_list.append(outputf)
             else:
-                spicef, outputf = generate_spice_batch_file(C, Nb, t, Ts, QConfig, timestamp)
+                spicef, outputf = gen_spice_sim_file(C, Nb, t, Ts, QConfig, outdirname)
             
 
             if run_SPICE:  # run SPICE
@@ -683,11 +707,17 @@ else:  # generate DAC output
     if run_SPICE or SC.dac.model == dm.STATIC:
         # Summation stage TODO: This case dependent
         if SC.lin.method == lm.BASELINE:
-            K = np.ones((Nch,1))
-            K[1] = 0.0  # null secondary channel (want single channel resp.)
-        elif SC.lin.method == lm.NSDCAL or lm.MPC or lm.ILC:
-            K = np.ones((Nch,1))
-            K[1] = 0.0  # secondary channel will have zero input, null to remove any noise
+            if QConfig == qws.w_6bit_2ch_SPICE:
+                K = np.ones((Nch,1))
+                K[1] = 0.0  # null secondary channel (want single channel resp.)
+            else:
+                K = 1/Nch
+        elif SC.lin.method == lm.NSDCAL or SC.lin.method == lm.MPC or SC.lin.method == lm.ILC:
+            if QConfig == qws.w_6bit_2ch_SPICE:
+                K = np.ones((2,1))
+                K[1] = 0.0  # secondary channel will have zero input, null to remove any noise
+            else:
+                K = 1/Nch
         elif SC.lin.method == lm.DEM:
             K = np.ones((Nch,1))
         elif SC.lin.method == lm.PHYSCAL:

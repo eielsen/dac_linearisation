@@ -28,7 +28,9 @@ from spice_utils import run_spice_sim, read_spice_bin_file_with_most_recent_time
 
 #generate_random_output_levels(QuantizerConfig=4)
 
-plot_inl(QConfig=qws.w_16bit_NI_card, Ch_sel=1)
+#plot_inl(QConfig=qws.w_16bit_NI_card, Ch_sel=1)
+#plot_inl(QConfig=qws.w_16bit_ARTI, Ch_sel=0)
+plot_inl(QConfig=qws.w_6bit_ARTI, Ch_sel=1)
 
 
 # Nb = 16

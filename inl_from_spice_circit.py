@@ -58,7 +58,7 @@ def generate_and_run_dc_spice_batch_file(timestamp, tempdir='spice_temp', geninp
     
     circdir = 'spice_circuits'
     
-    outdir = os.path.join('spice_output', timestamp)
+    outdir = os.path.join('spice_output_dc', timestamp)
 
     if os.path.exists(outdir):
         print('Putting output files in existing directory: ' + timestamp)
@@ -96,7 +96,7 @@ Nb = 6  ## no. of bits
 
 timestamp = datetime.datetime.now().strftime("%Y%m%dT%H%M%S")
 
-outdir = os.path.join('spice_output', timestamp)
+outdir = os.path.join('spice_output_dc', timestamp)
 
 if os.path.exists(outdir):
     print('Putting output files in existing directory: ' + timestamp)

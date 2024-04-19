@@ -173,16 +173,18 @@ def run_spice_sim_parallel(spicef_list, outputf_list, outdir='spice_output/', sp
         proc.wait()
 
 
-def generate_spice_batch_file(C, Nb, t, Ts, QConfig, timestamp, seed=1, seq=0):
+def gen_spice_sim_file(C, Nb, t, Ts, QConfig, outdir, seed=1, seq=0):
     """
-    Set up SPICE simulaton for a given DAC circuit description
+    Set up SPICE simulaton file for a given DAC circuit description and save.
 
     Arguments
         c - codes
         Nb - no. of bit
         t - time vector
         Ts - sampling time
-        timestamp
+        QConfig - quantiser config.
+        outdirname - put files in this directory
+        seed - randomisation seed for circuit
         seq - sequence
     """
     
@@ -191,10 +193,10 @@ def generate_spice_batch_file(C, Nb, t, Ts, QConfig, timestamp, seed=1, seq=0):
     
     tempdir = 'spice_temp'
     circdir = 'spice_circuits'
-    outdir = os.path.join('spice_output', timestamp)
+    #outdir = os.path.join('spice_output', outdirname)
 
     if os.path.exists(outdir):
-        print('Putting output files in existing directory: ' + timestamp)
+        print('Putting output files in existing directory: ' + outdir)
     else:
         os.mkdir(outdir) 
 
@@ -419,7 +421,7 @@ def main():
     """
     Read results from a given SPICE simulation and process the data.
     """
-    outdir = 'spice_output'
+    outdir = 'spice_output_02'
 
     rundirs = os.listdir(outdir)
     rundirs.sort()
