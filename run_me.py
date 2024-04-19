@@ -72,11 +72,11 @@ def test_signal(SCALE, MAXAMP, FREQ, OFFSET, t):
 #RUN_LM = lm.BASELINE
 #RUN_LM = lm.PHYSCAL
 #RUN_LM = lm.PHFD
-#RUN_LM = lm.SHPD
+RUN_LM = lm.SHPD
 #RUN_LM = lm.NSDCAL
 #RUN_LM = lm.DEM
 #RUN_LM = lm.MPC
-RUN_LM = lm.ILC
+#RUN_LM = lm.ILC
 #RUN_LM = lm.ILC_SIMP
 
 lin = lm(RUN_LM)
@@ -94,8 +94,8 @@ Fc_lp = 100e3  # cut-off frequency in hertz
 N_lp = 3  # filter order
 
 # Sampling rate
-Fs = 1e6  # sampling rate (over-sampling) in hertz
-#Fs = 25e6  # sampling rate (over-sampling) in hertz
+#Fs = 1e6  # sampling rate (over-sampling) in hertz
+Fs = 25e6  # sampling rate (over-sampling) in hertz
 #Fs = 250e6  # sampling rate (over-sampling) in hertz
 # Fs = 130940928  # sampling rate (over-sampling) in hertz
 # Fs = 261881856
@@ -110,8 +110,8 @@ Xcs_FREQ = 999  # Hz
 ##### Set quantiser model
 #QConfig = qws.w_16bit_SPICE
 #QConfig = qws.w_16bit_ARTI
-#QConfig = qws.w_6bit_ARTI
-QConfig = qws.w_6bit_2ch_SPICE
+QConfig = qws.w_6bit_ARTI
+#QConfig = qws.w_6bit_2ch_SPICE
 Nb, Mq, Vmin, Vmax, Rng, Qstep, YQ, Qtype = quantiser_configurations(QConfig)
 
 # Generate time vector
@@ -286,7 +286,7 @@ match SC.lin.method:
                 Dsf[1,:] = 2.*(Dsf[1,:] - np.min(Dsf[1,:]))/np.ptp(Dsf[1,:]) - 1
                 
                 Dmaxamp = Rng/2  # maximum dither amplitude (volt)
-                Dscale = 75  # %
+                Dscale = 70  # %
                 Dsf = Dmaxamp*Dsf
             case 3:
                 ds = np.random.normal(0, 1.0, [1, t.size])  # normally distr. noise
@@ -375,11 +375,11 @@ match SC.lin.method:
         Xscale = 50  # carrier to dither ratio (between 0% and 100%)
         Dscale = 100 - Xscale  # dither to carrier ratio
         
-        #Dfreq = 1.592e6 # Fs10MHz - 16bit
+        Dfreq = 1.592e6 # Fs10MHz - 16bit
         #Dfreq = 2.99e6 # Fs25Mhz - 16bit
         #Dfreq = 2.98e6 # Fs250Mhz - 6 bit
         #Dfreq = 3.11e6 # Fs130Mhz - 6 bit
-        Dfreq = 2.99e6 # 
+        #Dfreq = 2.99e6 # 
         Dadf = dither_generation.adf.uniform  # amplitude distr. funct. (ADF)
         # Generate periodic dither
         Dmaxamp = Rng/2  # maximum dither amplitude (volt)
@@ -722,7 +722,7 @@ else:  # generate DAC output
             K = np.ones((Nch,1))
         elif SC.lin.method == lm.PHYSCAL:
             K = np.ones((Nch,1))
-            K[1] = 1e-2
+            K[1] = get_physcal_gain(QConfig)
         else:
             K = 1/Nch
 

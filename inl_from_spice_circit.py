@@ -51,23 +51,24 @@ def generate_dc_input(Nb, v, tempdir='spice_temp', geninputfile='input_for_spice
 
 
 
-def generate_and_run_dc_spice_batch_file(timestamp, tempdir='spice_temp', geninputfile='input_for_spice_sim.txt'):
+def generate_and_run_dc_spice_batch_file(timestamp, circname, tempdir='spice_temp', geninputfile='input_for_spice_sim.txt'):
     """
     Run operating point analysis for all bit patterns
     """
     
     circdir = 'spice_circuits'
     
-    outdir = os.path.join('spice_output_dc', timestamp)
+    outdir = os.path.join('spice_output_dc', circname + '_' + timestamp)
 
     if os.path.exists(outdir):
-        print('Putting output files in existing directory: ' + timestamp)
+        print('Putting output files in existing directory: ' + outdir)
     else:
         os.mkdir(outdir) 
 
-    circf = 'cs_dac_06bit_2ch_01.cir'  # circuit description
-    spicelogf = 'cs_dac_06bit_2ch_01_batch.log'  # complete spice input file
-    spicef = 'cs_dac_06bit_2ch_01_batch.cir'  # complete spice input file
+    
+    circf = circname + '.cir'  # circuit description
+    spicelogf = circname + '_batch.log'  # spice log file
+    spicef = circname + '_batch.cir'  # complete spice input file
     
     with open(os.path.join(outdir, spicef), 'w') as fout:
         fins = [os.path.join(circdir, circf),
@@ -78,8 +79,8 @@ def generate_and_run_dc_spice_batch_file(timestamp, tempdir='spice_temp', geninp
         fin.close()
 
     
-    #spice_path = '/home/eielsen/ngspice_files/bin/ngspice'  # newest ver., fastest (local)
-    spice_path = 'ngspice'  #
+    spice_path = '/home/eielsen/ngspice_files/bin/ngspice'  # newest ver., fastest (local)
+    #spice_path = 'ngspice'  #
     cmd = [spice_path, '-o', os.path.join(outdir, spicelogf),
            '-b', os.path.join(outdir, spicef)]
 
@@ -92,7 +93,10 @@ def generate_and_run_dc_spice_batch_file(timestamp, tempdir='spice_temp', geninp
 
 
 
-Nb = 6  ## no. of bits
+#Nb = 6  ## no. of bits
+#circname = 'cs_dac_06bit_2ch_DC'
+Nb = 16  ## no. of bits
+circname = 'cs_dac_16bit_2ch_DC'
 
 timestamp = datetime.datetime.now().strftime("%Y%m%dT%H%M%S")
 
@@ -105,13 +109,13 @@ else:
 
 for v in range(0, 2**Nb):  # generate all bit pattern permutations 
     generate_dc_input(Nb, v)
-    generate_and_run_dc_spice_batch_file(timestamp)
+    generate_and_run_dc_spice_batch_file(timestamp, circname)
 
 
 actual_1 = []
 actual_2 = []
 
-lvlsfile = 'cs_dac_06bit_2ch_01_levels.txt'
+lvlsfile = circname + '_levels.txt'
 
 with open(os.path.join(outdir, lvlsfile), newline='') as in_file:
     lvlsreader = csv.reader(in_file, delimiter=' ', skipinitialspace=True)
@@ -128,7 +132,7 @@ plt.plot(actual_2)
 
 ML = np.array([actual_1, actual_2])
 
-outfile = 'cs_dac_06bit_2ch_01_levels'
+outfile = circname + '_levels'
 
 np.save(outfile, ML)
 

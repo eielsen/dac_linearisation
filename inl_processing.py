@@ -68,7 +68,7 @@ def get_physcal_gain(QConfig):
         case qws.w_6bit_ARTI:
             K_SEC = 7.5e-2
         case qws.w_16bit_ARTI:
-            K_SEC = 1  # find out
+            K_SEC = 2e-1  # find out
         case qws.w_6bit_2ch_SPICE:
             K_SEC = 12.5e-2
         case _:
