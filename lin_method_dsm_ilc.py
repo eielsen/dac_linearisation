@@ -144,7 +144,7 @@ class DSM_ILC:
             # Noise shaping loop
             for j in range(0,u_dsm_inp.size):
                 w = u_dsm_inp[j] - yns[0,0]
-                u_dsm = w + Dq[0,j]
+                u_dsm = w + Dq[j]
 
                 # Requantize
                 q_u_dsm = math.floor(u_dsm/self.Qstep + 0.5)
