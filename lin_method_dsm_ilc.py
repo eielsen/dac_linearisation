@@ -95,7 +95,7 @@ class DSM_ILC:
         return Q, L, G
     
  
-    def get_codes(self, Xcs, Dq, itr, YQns, MLns,  Q, L, G, b1, a1):
+    def get_codes(self, Xcs, Dq, itr, YQns, MLns,  Q, L, G):
 
         """ INPUTS:
         Xcs     - Reference/Test signal 
@@ -131,9 +131,16 @@ class DSM_ILC:
         for i in tqdm.tqdm(range(itr)):
             #NSD:
             ##########################
-            Mns_tf = signal.TransferFunction( a1-b1, a1, dt=1)  # Mns = 1 - Hns
-            Mns = Mns_tf.to_ss()
-            Ad, Bd, Cd, Dd = balreal(Mns.A, Mns.B, Mns.C, Mns.D)
+            # Mns_tf = signal.TransferFunction( a1-b1, a1, dt=1)  # Mns = 1 - Hns
+            # Mns = Mns_tf.to_ss()
+            # Ad, Bd, Cd, Dd = balreal(Mns.A, Mns.B, Mns.C, Mns.D)
+
+            AM = np.array([[0.0, 0.0], [1.0, 0.0]])
+            BM = np.array([[2.0], [0.0]])
+            CM = np.array([[1.0, -0.5]])
+            DM = np.array([[0.0]])
+
+            Ad, Bd, Cd, Dd = balreal(AM, BM, CM, DM)
 
             # Initialise state, output and error
             xns = np.zeros((Ad.shape[0], 1))  # noise-shaping filter state

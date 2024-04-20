@@ -95,10 +95,10 @@ Fc_lp = 100e3  # cut-off frequency in hertz
 N_lp = 3  # filter order
 
 # Sampling rate (over-sampling) in hertz
-Fs = 1e6
+# Fs = 1e6
 #Fs = 25e6
 #Fs = 250e6
-# Fs = 1022976
+Fs = 1022976
 #Fs = 32735232
 #Fs = 130940928
 #Fs = 261881856
@@ -113,8 +113,8 @@ Xcs_FREQ = 999  # Hz
 #QConfig = qws.w_16bit_SPICE
 #QConfig = qws.w_16bit_ARTI
 # QConfig = qws.w_6bit_ARTI
-QConfig = qws.w_6bit_2ch_SPICE
-#QConfig = qws.w_16bit_2ch_SPICE
+# QConfig = qws.w_6bit_2ch_SPICE
+QConfig = qws.w_16bit_2ch_SPICE
 Nb, Mq, Vmin, Vmax, Rng, Qstep, YQ, Qtype = quantiser_configurations(QConfig)
 
 SAVE_CODES_TO_FILE_AND_STOP = False
@@ -579,8 +579,8 @@ match SC.lin.method:
         Wf = np.identity(len_X)*1e-4
         Wdf = np.identity(len_X)*1e-1
 
-        bns = np.array([1, -2, 1])
-        ans =  np.array([1, 0, 0])
+        # bns = np.array([1, -2, 1])
+        # ans =  np.array([1, 0, 0])
         # Number of ILC iterations
         itr = 10
 
@@ -589,7 +589,7 @@ match SC.lin.method:
         Q, L, G = dsmilc.learningMatrices(X.size, We, Wf, Wdf,fi)
 
         # Get DSM_ILC codes
-        C = dsmilc.get_codes(X, Dq, itr, YQns, MLns, Q, L, G, bns, ans)
+        C = dsmilc.get_codes(X, Dq, itr, YQns, MLns, Q, L, G)
 
         if QConfig == qws.w_6bit_2ch_SPICE:
             C = np.stack((C[0, :], np.zeros(C.shape[1])))  # zero input to sec. channel
