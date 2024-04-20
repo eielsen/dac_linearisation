@@ -42,7 +42,7 @@ class sim_config:
         self.carrier_freq = carrier_freq
     
     def __str__(self):
-        s = str(self.qconfig)
+        s = str(self.qconfig) + '\n'
         s = s + str(self.lin) + '\n'
         s = s + str(self.dac) + '\n'
         s = s + 'Fs=' + f'{Float(self.fs):.0h}' + '\n'

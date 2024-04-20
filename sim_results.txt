@@ -1,72 +1,30 @@
-# 16-bit DAC
+# 16-bit DAC 2 Ch from Trond, updated 20.04.2024
 
---------  ------  ---  ----  -----  ------
-Method    Model   Fs   Fc    Fx     ENOB
-baseline  static  50M  100k  999.0  11.132
---------  ------  ---  ----  -----  ------
---------------------------  ------  ---  ----  -----  ------
-Method                      Model   Fs   Fc    Fx     ENOB
-physical level calibration  static  50M  100k  999.0  16.074
---------------------------  ------  ---  ----  -----  ------
----------------  ------  ---  ----  -----  ------
-Method           Model   Fs   Fc    Fx     ENOB
-periodic dither  static  25M  100k  999.0  15.201
----------------  ------  ---  ----  -----  ------
--------------------  ------  ---  ----  -----  ------
-Method               Model   Fs   Fc    Fx     ENOB
-digital calibration  static  25M  100k  999.0  18.236
--------------------  ------  ---  ----  -----  ------
-------------------------  ------  ---  ----  -----  -----
-Method                    Model   Fs   Fc    Fx     ENOB
-dynamic element matching  static  25M  100k  999.0  7.215
-------------------------  ------  ---  ----  -----  -----
+------  --------  ------  -----  ------  -----  ------
+Config  Method    Model   Fs     Fc      Fx     ENOB
+10      baseline  static  1.02M  100.0k  999.0  11.121
+------  --------  ------  -----  ------  -----  ------
+------  --------------------------  ------  -----  ------  -----  ------
+Config  Method                      Model   Fs     Fc      Fx     ENOB
+10      physical level calibration  static  1.02M  100.0k  999.0  16.487
+------  --------------------------  ------  -----  ------  -----  ------
+------  ---------------  ------  -----  ------  -----  ------
+Config  Method           Model   Fs     Fc      Fx     ENOB
+10      periodic dither  static  1.02M  100.0k  999.0  11.255
+------  ---------------  ------  -----  ------  -----  ------
+------  ------------  ------  -----  ------  -----  -----
+Config  Method        Model   Fs     Fc      Fx     ENOB
+10      noise dither  static  1.02M  100.0k  999.0  8.209
+------  ------------  ------  -----  ------  -----  -----
+------  -------------------  ------  -----  ------  -----  ------
+Config  Method               Model   Fs     Fc      Fx     ENOB
+10      digital calibration  static  1.02M  100.0k  999.0  14.416
+------  -------------------  ------  -----  ------  -----  ------
+------  ------------------------  ------  -----  ------  -----  -----
+Config  Method                    Model   Fs     Fc      Fx     ENOB
+10      dynamic element matching  static  1.02M  100.0k  999.0  8.645
+------  ------------------------  ------  -----  ------  -----  -----
 
---------  -----  ---  ----  -----  ------
-Method    Model  Fs   Fc    Fx     ENOB
-baseline  spice  25M  100k  999.0  11.136
---------  -----  ---  ----  -----  ------
---------------------------  -----  ---  ----  -----  ------
-Method                      Model  Fs   Fc    Fx     ENOB
-physical level calibration  spice  25M  100k  999.0  16.111
---------------------------  -----  ---  ----  -----  ------
----------------  -----  ---  ----  -----  ------
-Method           Model  Fs   Fc    Fx     ENOB
-periodic dither  spice  25M  100k  999.0  15.123
----------------  -----  ---  ----  -----  ------
--------------------  -----  ---  ----  ---  ------
-Method               Model  Fs   Fc    Fx   ENOB
-digital calibration  spice  25M  100k  999  18.252
--------------------  -----  ---  ----  ---  ------
-------------------------  -----  ---  ----  -----  -----
-Method                    Model  Fs   Fc    Fx     ENOB
-dynamic element matching  spice  25M  100k  999.0  7.250
-------------------------  -----  ---  ----  -----  -----
-
-
--------------------  ------  ----  ------  -----  ------
-Method               Model   Fs    Fc      Fx     ENOB
-digital calibration  static  1.0M  100.0k  999.0  14.311
--------------------  ------  ----  ------  -----  ------
-------  ------  ----  ------  -----  ------
-Method  Model   Fs    Fc      Fx     ENOB
-ilc     static  1.0M  100.0k  999.0  14.798
-------  ------  ----  ------  -----  ------
-------  ------  ----  -----  -----  ------
-Method  Model   Fs    Fc     Fx     ENOB
-mpc     static  1.0M  10.0k  999.0  18.036
-------  ------  ----  -----  -----  ------
--------------------  -----  ----  ------  -----  ------
-Method               Model  Fs    Fc      Fx     ENOB
-digital calibration  spice  1.0M  100.0k  999.0  14.252
--------------------  -----  ----  ------  -----  ------
-------  -----  ----  ------  -----  ------
-Method  Model  Fs    Fc      Fx     ENOB
-ilc     spice  1.0M  100.0k  999.0  14.646
-------  -----  ----  ------  -----  ------
-------  -----  ----  -----  -----  ------
-Method  Model  Fs    Fc     Fx     ENOB
-mpc     spice  1.0M  10.0k  999.0  14.198
-------  -----  ----  -----  -----  ------
 
 
 # 6-bit DAC from Jonathan, updated 20.04.2024
