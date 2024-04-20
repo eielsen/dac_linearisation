@@ -441,6 +441,8 @@ match SC.lin.method:
             HEADROOM = 1  # 16 bit DAC
         elif QConfig == qws.w_6bit_2ch_SPICE:
             HEADROOM = 10  # 6 bit DAC
+        elif QConfig == qws.w_6bit_2ch_SPICE:
+            HEADROOM = 1  # 6 bit DAC
         else:
             sys.exit('Fix qconfig')
 
@@ -584,8 +586,8 @@ match SC.lin.method:
         Wf = np.identity(len_X)*1e-4
         Wdf = np.identity(len_X)*1e-1
 
-        bns = np.array([1, -2, 1])
-        ans =  np.array([1, 0, 0])
+        # bns = np.array([1, -2, 1])
+        # ans =  np.array([1, 0, 0])
         # Number of ILC iterations
         itr = 10
 
@@ -594,7 +596,7 @@ match SC.lin.method:
         Q, L, G = dsmilc.learningMatrices(X.size, We, Wf, Wdf,fi)
 
         # Get DSM_ILC codes
-        C = dsmilc.get_codes(X, Dq, itr, YQns, MLns, Q, L, G, bns, ans)
+        C = dsmilc.get_codes(X, Dq, itr, YQns, MLns, Q, L, G)
 
         if QConfig == qws.w_6bit_2ch_SPICE:
             C = np.stack((C[0, :], np.zeros(C.shape[1])))  # zero input to sec. channel
