@@ -472,6 +472,7 @@ def main():
     #method_str = 'noise_dither'
     #method_str = 'digital_calibration'
     #method_str = 'dynamic_element_matching'
+    method_str = 'ilc'
 
     matching = [s for s in rundirs if method_str in s]
 
@@ -515,7 +516,7 @@ def main():
             print(Nch)
 
             # Summation stage
-            if SC.lin.method == lm.BASELINE:
+            if SC.lin.method == lm.BASELINE or SC.lin.method == lm.ILC:
                 K = np.ones((Nch,1))
                 K[1] = 0.0  # null one channel (want single channel resp.)
             elif SC.lin.method == lm.DEM:

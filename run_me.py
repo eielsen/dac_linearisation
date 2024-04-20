@@ -7,8 +7,8 @@
 @license: BSD 3-Clause
 """
 
-# %reload_ext autoreload
-# %autoreload 2
+%reload_ext autoreload
+%autoreload 2
 
 # %%
 # Imports
@@ -83,8 +83,8 @@ RUN_LM = lm.ILC
 lin = lm(RUN_LM)
 
 ##### MODEL CHOICE
-dac = dm(dm.STATIC)  # use static non-linear quantiser model to simulate DAC
-#dac = dm(dm.SPICE)  # use SPICE to simulate DAC output
+#dac = dm(dm.STATIC)  # use static non-linear quantiser model to simulate DAC
+dac = dm(dm.SPICE)  # use SPICE to simulate DAC output
 
 # Chose how to compute SINAD
 SINAD_COMP_SEL = sinad_comp.CFIT
@@ -598,7 +598,7 @@ match SC.lin.method:
         # Get DSM_ILC codes
         C = dsmilc.get_codes(X, Dq, itr, YQns, MLns, Q, L, G)
 
-        if QConfig == qws.w_6bit_2ch_SPICE:
+        if QConfig == qws.w_6bit_2ch_SPICE or QConfig == qws.w_16bit_2ch_SPICE:
             C = np.stack((C[0, :], np.zeros(C.shape[1])))  # zero input to sec. channel
         
     case lm.ILC_SIMP:  # iterative learning control, basic implementation
@@ -640,8 +640,8 @@ match SC.lin.method:
 
 
 # %% Post processing
-# C = C_nsq[0,0:t.size].reshape(1,-1)
-# C = C_nsq
+#dac = dm(dm.SPICE)
+#SC.dac = dac
 # generate DAC output
 match SC.dac.model:
     case dm.STATIC:  # use static non-linear quantiser model to simulate DAC
@@ -741,5 +741,3 @@ if run_SPICE or SC.dac.model == dm.STATIC:
     results_tab = [['Config', 'Method', 'Model', 'Fs', 'Fc', 'Fx', 'ENOB'],
             [str(SC.qconfig), str(SC.lin), str(SC.dac), f'{Float(SC.fs):.2h}', f'{Float(SC.fc):.1h}', f'{Float(SC.carrier_freq):.1h}', f'{Float(ENOB_M):.3h}']]
     print(tabulate(results_tab))
-
-# %%
