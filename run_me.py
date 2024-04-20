@@ -69,14 +69,14 @@ def test_signal(SCALE, MAXAMP, FREQ, OFFSET, t):
 # Configuration
 
 ##### METHOD CHOICE - Choose which linearization method you want to test
-RUN_LM = lm.BASELINE
+#RUN_LM = lm.BASELINE
 #RUN_LM = lm.PHYSCAL
 #RUN_LM = lm.PHFD
 #RUN_LM = lm.SHPD
 #RUN_LM = lm.NSDCAL
 #RUN_LM = lm.DEM
 #RUN_LM = lm.MPC
-#RUN_LM = lm.ILC
+RUN_LM = lm.ILC
 #RUN_LM = lm.ILC_SIMP
 
 lin = lm(RUN_LM)
@@ -96,8 +96,9 @@ N_lp = 3  # filter order
 #Fs = 1e6  # sampling rate (over-sampling) in hertz
 #Fs = 25e6  # sampling rate (over-sampling) in hertz
 #Fs = 250e6  # sampling rate (over-sampling) in hertz
+Fs = 1022976
 #Fs = 130940928  # sampling rate (over-sampling) in hertz
-Fs = 261881856
+#Fs = 261881856
 Ts = 1/Fs  # sampling time
 
 # Punkter: 1048576
@@ -108,13 +109,20 @@ Xcs_FREQ = 999  # Hz
 
 ##### Set quantiser model
 #QConfig = qws.w_16bit_SPICE
-QConfig = qws.w_16bit_ARTI
-#QConfig = qws.w_6bit_ARTI
+#QConfig = qws.w_16bit_ARTI
+QConfig = qws.w_6bit_ARTI
 #QConfig = qws.w_6bit_2ch_SPICE
 Nb, Mq, Vmin, Vmax, Rng, Qstep, YQ, Qtype = quantiser_configurations(QConfig)
 
-SAVE_CODES_TO_FILE_AND_STOP = False  # TODO: Messy
+SAVE_CODES_TO_FILE_AND_STOP = False
+#SAVE_CODES_TO_FILE_AND_STOP = True
+SAVE_CODES_TO_FILE = False
+#SAVE_CODES_TO_FILE = True
 run_SPICE = False
+
+config_tab = [['Config', 'Method', 'Model', 'Fs', 'Fc', 'Fx'],
+            [str(QConfig), str(SC.lin), str(SC.dac), f'{Float(SC.fs):.1h}', f'{Float(SC.fc):.1h}', f'{Float(SC.carrier_freq):.1h}']]
+print(tabulate(config_tab))
 
 
 # Generate time vector
@@ -226,7 +234,7 @@ match SC.lin.method:
         elif QConfig == qws.w_6bit_ARTI:
             HEADROOM = 15  # 6 bit DAC
         elif QConfig == qws.w_16bit_ARTI:
-            HEADROOM = 10  # 6 bit DAC
+            HEADROOM = 10  # 16 bit DAC
         elif QConfig == qws.w_6bit_2ch_SPICE:
             HEADROOM = 10  # 6 bit DAC
         else:
@@ -268,17 +276,17 @@ match SC.lin.method:
         Xcs = matlib.repmat(Xcs, Nch, 1)
 
         # Large high-pass dither set-up
-        Xscale = 25  # carrier to dither ratio (between 0% and 100%)
+        Xscale = 10  # carrier to dither ratio (between 0% and 100%)
+        Dscale = 100 - Xscale  # dither to carrier ratio
 
-        match 2:
+        match 3:
             case 1:
                 Dmaxamp = Rng/2  # maximum dither amplitude (volt)
                 Dscale = 100  # %
                 Ds = dither_generation.gen_stochastic(t.size, Nch, Dmaxamp, dither_generation.pdf.uniform)
                 Dsf = Ds
             case 2:
-                #Ds = dither_generation.gen_stochastic(t.size, Nch, 1, dither_generation.pdf.uniform)
-                Ds = np.random.normal(0, 1.0, [Nch, t.size])  # normally distr. noise
+                Ds = dither_generation.gen_stochastic(t.size, Nch, 1, dither_generation.pdf.uniform)
 
                 N_hf = 1
                 Fc_hf = 160e3
@@ -290,13 +298,12 @@ match SC.lin.method:
                 Dsf[1,:] = 2.*(Dsf[1,:] - np.min(Dsf[1,:]))/np.ptp(Dsf[1,:]) - 1
                 
                 Dmaxamp = Rng/2  # maximum dither amplitude (volt)
-                Dscale = 75  # %
                 Dsf = Dmaxamp*Dsf
-            case 3:
+            case 3:  # 6 bit and 16 bit ARTI
                 ds = np.random.normal(0, 1.0, [1, t.size])  # normally distr. noise
                 
                 N_hf = 1
-                Fc_hf = 150e3
+                Fc_hf = 200e3
 
                 b, a = signal.butter(N_hf, Fc_hf/(Fs/2), btype='high', analog=False)#, fs=Fs)
 
@@ -313,13 +320,12 @@ match SC.lin.method:
                     sys.exit("Invalid channel config. for stoch. dithering.")
 
                 Dmaxamp = Rng/2  # maximum dither amplitude (volt)
-                Dscale = 50  # %
                 Dsf = Dmaxamp*Dsf
             case 4:
                 Ds = np.random.normal(0, 1.0, [Nch, t.size])  # normally distr. noise
 
                 N_hf = 1
-                Fc_hf = 1700e3
+                Fc_hf = 200e3
 
                 b, a = signal.butter(N_hf, Fc_hf/(Fs/2), btype='high', analog=False)#, fs=Fs)
 
@@ -328,13 +334,11 @@ match SC.lin.method:
                 Dsf[1,:] = 2.*(Dsf[1,:] - np.min(Dsf[1,:]))/np.ptp(Dsf[1,:]) - 1
                 
                 Dmaxamp = Rng/2  # maximum dither amplitude (volt)
-                Dscale = 50  # %
                 Dsf = Dmaxamp*Dsf
 
             case 5:
                 Dsf = np.zeros((Nch, t.size))
                 Dmaxamp = Rng/2  # maximum dither amplitude (volt)
-                Dscale = 100 - Xscale  # dither to carrier ratio
                 Dsf[0,:] = 0.99*Dmaxamp*dual_dither(N=t.size)
                 Dsf[1,:] = 0.99*Dmaxamp*dual_dither(N=t.size)
         
@@ -381,11 +385,13 @@ match SC.lin.method:
         Xscale = 50  # carrier to dither ratio (between 0% and 100%)
         Dscale = 100 - Xscale  # dither to carrier ratio
         
-        Dfreq = 1.592e6 # Fs10MHz - 16bit
+        #Dfreq = 1.592e6 # Fs10MHz - 16bit
         #Dfreq = 2.99e6 # Fs25Mhz - 16bit
         #Dfreq = 2.98e6 # Fs250Mhz - 6 bit
-        #Dfreq = 3.11e6 # Fs130Mhz - 6 bit
-        #Dfreq = 2.99e6 # 
+
+        #Dfreq = 5.0e6 # Fs262Mhz - 16 bit ARTI
+        Dfreq = 5.0e6 # Fs262Mhz - 6 bit ARTI
+
         Dadf = dither_generation.adf.uniform  # amplitude distr. funct. (ADF)
         # Generate periodic dither
         Dmaxamp = Rng/2  # maximum dither amplitude (volt)
@@ -425,14 +431,15 @@ match SC.lin.method:
         ML = get_measured_levels(QConfig, SC.lin.method)
         MLns = ML[0]
 
-        # Adding "measurement error"
-        # introducing some "measurement/model error" in the levels
-        if QConfig == qws.w_16bit_SPICE:
-            MLns_err = np.random.uniform(-Qstep, Qstep, MLns.shape)  # 16 bit DAC
+        # Addding some "measurement/model error" in the levels
+        if QConfig == qws.w_16bit_SPICE or QConfig == qws.w_16bit_ARTI:
+            ML_err_rng = Qstep  # 16 bit DAC
         elif QConfig == qws.w_6bit_ARTI or QConfig == qws.w_6bit_2ch_SPICE:
-            MLns_err = np.random.uniform(-Qstep/1024, Qstep/1024, MLns.shape)  # 6 bit DAC
+            ML_err_rng = Qstep/1024 # 6 bit DAC
         else:
-            sys.exit('Fix qconfig')
+            sys.exit('Unknown QConfig')
+        
+        MLns_err = np.random.uniform(-ML_err_rng, ML_err_rng, MLns.shape)
         MLns = MLns + MLns_err
 
         if QConfig == qws.w_6bit_ARTI or QConfig == qws.w_16bit_ARTI:
@@ -443,47 +450,24 @@ match SC.lin.method:
             case 1:
                 Wn = Fc_lp/(Fs/2)
                 b1, a1 = signal.butter(2, Wn)
-                A1, B1, C1, D1 = signal.tf2ss(b1,a1) # Transfer function to StateSpace
+                A1, B1, C1, D1 = signal.tf2ss(b1, a1) # Transfer function to StateSpace
             case 2:  # bilinear transf., seems to work ok, not a perfect match to physics
                 Wn = Fc_lp/(Fs/2)
                 b1, a1 = signal.butter(N_lp, Wn)
-                A1, B1, C1, D1 = signal.tf2ss(b1,a1) # Transfer function to StateSpace
-            case 3:  # zoh interp. matches physics, SciPi impl. causes numerical problems??
-                Wn = 2*np.pi*Fc_lp
-                b1, a1 = signal.butter(N_lp, Wn, 'lowpass', analog=True)
-                Wlp = signal.TransferFunction(b1, a1)  # filter LTI system instance
-                Wlp_ss = Wlp.to_ss()  # controllable canonical form
-                Ac = Wlp_ss.A
-                Bc = Wlp_ss.B
-                Cc = Wlp_ss.C
-                Dc = Wlp_ss.D
-                A_, B_, C_, D_ = balreal_ct(Ac, Bc, Cc, Dc)
-                Wlp_ss_d = signal.cont2discrete((A_, B_, C_, D_), dt=1e-6, method='zoh')
-                A1, B1, C1, D1, dt = Wlp_ss_d
-                # A1 = Wlp_ss_d.A
-                # B1 = Wlp_ss_d.B
-                # C1 = Wlp_ss_d.C
-                # D1 = Wlp_ss_d.D
-            case 4:
-                b1 = np.array([1, -2, 1])
-                a1 =  np.array([1, 0, 0])
-                # l_dlti = signal.dlti(b1, a1, dt=Ts)
-                A1, B1, C1, D1 = signal.tf2ss(b1,a1) # Transfer function to StateSpace
+                A1, B1, C1, D1 = signal.tf2ss(b1, a1) # Transfer function to StateSpace
 
-        N_PRED = 5  # prediction horizon
+        N_PRED = 2  # prediction horizon
 
         # Add dither to input 
         X = Xcs + Dq
 
         # Quantiser model
-        QMODEL = 2
+        QMODEL = 1
 
-        # Get c
         mpc = MPC(Nb, Qstep, QMODEL,  A1, B1, C1, D1)
-
         C = mpc.get_codes(N_PRED, X, YQns, MLns)
 
-        # slice time samples based on the size of C
+        # Slice time samples based on the size of C
         t = t[0:C.size]
 
         if QConfig == qws.w_6bit_2ch_SPICE:
@@ -644,103 +628,102 @@ match SC.lin.method:
 
 
 # %% Post processing
-if SAVE_CODES_TO_FILE_AND_STOP:  # save codes to file
-    outfile = 'generated_codes/' + str(SC.lin).replace(" ", "_")
-    np.save(outfile, C)
-else:  # generate DAC output
-    match SC.dac.model:
-        case dm.STATIC:  # use static non-linear quantiser model to simulate DAC
-            ML = get_measured_levels(QConfig, SC.lin.method)
-            YM = generate_dac_output(C.astype(int), ML)  # using measured or randomised levels
-            tm = t[0:YM.size]
-        case dm.SPICE:  # use SPICE to simulate DAC output
-            timestamp = datetime.datetime.now().strftime("%Y%m%dT%H%M%S")
-            outdirname = str(SC.lin) + '_' + timestamp
+# generate DAC output
+match SC.dac.model:
+    case dm.STATIC:  # use static non-linear quantiser model to simulate DAC
+        if SAVE_CODES_TO_FILE:
+            outfile = 'generated_codes/' + str(SC.lin).replace(" ", "_")
+            np.save(outfile, C)
+            if SAVE_CODES_TO_FILE_AND_STOP:
+                sys.exit('Codes saved, stopping.')
+        
+        ML = get_measured_levels(QConfig, SC.lin.method)
+        YM = generate_dac_output(C.astype(int), ML)  # using measured or randomised levels
+        tm = t[0:YM.size]
 
-            outdir = 'spice_output/' + outdirname + '/'
+    case dm.SPICE:  # use SPICE to simulate DAC output
+        timestamp = datetime.datetime.now().strftime("%Y%m%dT%H%M%S")
+        outdirname = str(SC.lin) + '_' + timestamp
 
-            if os.path.exists(outdir):
-                print('Putting output files in existing directory: ' + outdirname)
-            else:
-                os.mkdir(outdir)
-            
-            configf = 'sim_config'
-            with open(os.path.join(outdir, configf + '.txt'), 'w') as fout:
-                fout.write(SC.__str__())
+        outdir = 'spice_output/' + outdirname + '/'
 
-            with open(os.path.join(outdir, configf + '.pickle'), 'wb') as fout:
-                pickle.dump(SC, fout)
-            
-            spicef_list = []
-            outputf_list = []
-            
-            if QConfig == qws.w_6bit_2ch_SPICE:
-                SEPARATE_FILE_PER_CHANNEL = False  # TODO: Mr. Tidy and Mr. Neat cannot stand a mess
-            else:
-                SEPARATE_FILE_PER_CHANNEL = True
-            
-            if SEPARATE_FILE_PER_CHANNEL:
+        if os.path.exists(outdir):
+            print('Putting output files in existing directory: ' + outdirname)
+        else:
+            os.mkdir(outdir)
+        
+        configf = 'sim_config'
+        with open(os.path.join(outdir, configf + '.txt'), 'w') as fout:
+            fout.write(SC.__str__())
+
+        with open(os.path.join(outdir, configf + '.pickle'), 'wb') as fout:
+            pickle.dump(SC, fout)
+        
+        spicef_list = []
+        outputf_list = []
+        
+        if QConfig == qws.w_6bit_2ch_SPICE:
+            SEPARATE_FILE_PER_CHANNEL = False  # TODO: Mr. Tidy and Mr. Neat cannot stand a mess
+        else:
+            SEPARATE_FILE_PER_CHANNEL = True
+        
+        if SEPARATE_FILE_PER_CHANNEL:
+            for k in range(0,Nch):
+                c = C[k,:]
+                seed = k + 1
+                spicef, outputf = gen_spice_sim_file(c, Nb, t, Ts, QConfig, outdirname, seed, k)
+                spicef_list.append(spicef)
+                outputf_list.append(outputf)
+        else:
+            spicef, outputf = gen_spice_sim_file(C, Nb, t, Ts, QConfig, outdirname)
+        
+        if run_SPICE:  # run SPICE
+            spice_path = '/home/eielsen/ngspice_files/bin/ngspice'  # newest ver., fastest (local)
+            #spice_path = 'ngspice'  # 
+
+            if False:
                 for k in range(0,Nch):
-                    c = C[k,:]
-                    seed = k + 1
-                    spicef, outputf = gen_spice_sim_file(c, Nb, t, Ts, QConfig, outdirname, seed, k)
-                    spicef_list.append(spicef)
-                    outputf_list.append(outputf)
+                    run_spice_sim(spicef_list[k], outputf_list[k], outdir, spice_path)
             else:
-                spicef, outputf = gen_spice_sim_file(C, Nb, t, Ts, QConfig, outdirname)
+                run_spice_sim_parallel(spicef_list, outputf_list, outdir, spice_path)
             
-            if run_SPICE:  # run SPICE
-                spice_path = '/home/eielsen/ngspice_files/bin/ngspice'  # newest ver., fastest (local)
-                #spice_path = 'ngspice'  # 
+            YM = np.zeros([Nch, t.size])
+            tm = t
+            for k in range(0,Nch):
+                t_spice, y_spice = read_spice_bin_file(outdir, outputf_list[k] + '.bin')
+                y_resamp = np.interp(t, t_spice, y_spice)  # re-sample
+                YM[k,:] = y_resamp
 
-                if False:
-                    for k in range(0,Nch):
-                        run_spice_sim(spicef_list[k], outputf_list[k], outdir, spice_path)
-                else:
-                    run_spice_sim_parallel(spicef_list, outputf_list, outdir, spice_path)
-                
-                YM = np.zeros([Nch, t.size])
-                tm = t
-                for k in range(0,Nch):
-                    t_spice, y_spice = read_spice_bin_file(outdir, outputf_list[k] + '.bin')
-                    y_resamp = np.interp(t, t_spice, y_spice)  # re-sample
-                    YM[k,:] = y_resamp
-
-    if run_SPICE or SC.dac.model == dm.STATIC:
-        # Summation stage TODO: This case dependent
-        if SC.lin.method == lm.BASELINE:
-            if QConfig == qws.w_6bit_2ch_SPICE:
-                K = np.ones((Nch,1))
-                K[1] = 0.0  # null secondary channel (want single channel resp.)
-            else:
-                K = 1/Nch
-        elif SC.lin.method == lm.NSDCAL or SC.lin.method == lm.MPC or SC.lin.method == lm.ILC:
-            if QConfig == qws.w_6bit_2ch_SPICE:
-                K = np.ones((2,1))
-                K[1] = 0.0  # secondary channel will have zero input, null to remove any noise
-            else:
-                K = 1/Nch
-        elif SC.lin.method == lm.DEM:
+if run_SPICE or SC.dac.model == dm.STATIC:
+    # Summation stage TODO: Tidy up, this is case dependent
+    if SC.lin.method == lm.BASELINE:
+        if QConfig == qws.w_6bit_2ch_SPICE:
             K = np.ones((Nch,1))
-        elif SC.lin.method == lm.PHYSCAL:
-            K = np.ones((Nch,1))
-            K[1] = get_physcal_gain(QConfig)
+            K[1] = 0.0  # null secondary channel (want single channel resp.)
         else:
             K = 1/Nch
+    elif SC.lin.method == lm.NSDCAL or SC.lin.method == lm.MPC or SC.lin.method == lm.ILC:
+        if QConfig == qws.w_6bit_2ch_SPICE:
+            K = np.ones((2,1))
+            K[1] = 0.0  # secondary channel will have zero input, null to remove any noise
+        else:
+            K = 1/Nch
+    elif SC.lin.method == lm.DEM:
+        K = np.ones((Nch,1))
+    elif SC.lin.method == lm.PHYSCAL:
+        K = np.ones((Nch,1))
+        K[1] = get_physcal_gain(QConfig)
+    else:
+        K = 1/Nch
 
-        # yu = np.sum(K*YU, 0)
-        # tu = tm
-        ym = np.sum(K*YM, 0)
+    ym = np.sum(K*YM, 0)
 
-        TRANSOFF = np.floor(Npt*Fs/Xcs_FREQ).astype(int)  # remove transient effects from output
-        # yu_avg, ENOB_U = process_sim_output(tu, yu, Fc_lp, Fs, N_lp, TRANSOFF, SINAD_COMP_SEL, False, 'uniform')
-        ym_avg, ENOB_M = process_sim_output(tm, ym, Fc_lp, Fs, N_lp, TRANSOFF, SINAD_COMP_SEL, True, 'non-linear')
+    # Remove transients and process the output
+    TRANSOFF = np.floor(Npt*Fs/Xcs_FREQ).astype(int)  # remove transient effects from output
+    # yu_avg, ENOB_U = process_sim_output(tu, yu, Fc_lp, Fs, N_lp, TRANSOFF, SINAD_COMP_SEL, False, 'uniform')
+    ym_avg, ENOB_M = process_sim_output(tm, ym, Fc_lp, Fs, N_lp, TRANSOFF, SINAD_COMP_SEL, True, 'non-linear')
 
-        
-
-        results = [['Method', 'Model', 'Fs', 'Fc', 'Fx', 'ENOB'],
-                [str(SC.lin), str(SC.dac), f'{Float(SC.fs):.1h}', f'{Float(SC.fc):.1h}', f'{Float(SC.carrier_freq):.1h}', f'{Float(ENOB_M):.3h}']]
-
-        print(tabulate(results))
-
-
+    # Print result
+    results_tab = [['Config', 'Method', 'Model', 'Fs', 'Fc', 'Fx', 'ENOB'],
+            [str(QConfig), str(SC.lin), str(SC.dac), f'{Float(SC.fs):.1h}', f'{Float(SC.fc):.1h}', f'{Float(SC.carrier_freq):.1h}', f'{Float(ENOB_M):.3h}']]
+    print(tabulate(results_tab))

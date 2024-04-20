@@ -48,6 +48,26 @@ y_avg_out = signal.dlsim(Wlpd, y) # filter the output
 y_avg = y_avg_out[1] # extract the filtered data; lsim returns (T, y, x) tuple, want output y
 
 
+"""
+case 3:  # zoh interp. matches physics, SciPi impl. causes numerical problems??
+       
+       Wn = 2*np.pi*Fc_lp
+       b1, a1 = signal.butter(N_lp, Wn, 'lowpass', analog=True)
+       Wlp = signal.TransferFunction(b1, a1)  # filter LTI system instance
+       Wlp_ss = Wlp.to_ss()  # controllable canonical form
+       Ac = Wlp_ss.A
+       Bc = Wlp_ss.B
+       Cc = Wlp_ss.C
+       Dc = Wlp_ss.D
+       A_, B_, C_, D_ = balreal_ct(Ac, Bc, Cc, Dc)
+       Wlp_ss_d = signal.cont2discrete((A_, B_, C_, D_), dt=1e-6, method='zoh')
+       A1 = Wlp_ss_d.A
+       B1 = Wlp_ss_d.B
+       C1 = Wlp_ss_d.C
+       D1 = Wlp_ss_d.D
+"""
+
+
 #dt = 1e-6
 #A = np.eye(3, k=-1) 
 #A[0,:] = a1[1:4]

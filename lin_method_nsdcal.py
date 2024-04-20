@@ -30,15 +30,22 @@ def nsdcal(X, Dq, YQns, MLns, Qstep, Vmin, Nb, QMODEL):
             2: measured/calibrated
     """
     # Noise-shaping filter (using a simple double integrator)
-    b = np.array([1, -2, 1])
-    a = np.array([1, 0, 0])
-    Hns_tf = signal.TransferFunction(b, a, dt=1)  # double integrator
-    Mns_tf = signal.TransferFunction(a-b, a, dt=1)  # Mns = 1 - Hns
-    Mns = Mns_tf.to_ss()
+    #b = np.array([1, -2, 1])
+    #a = np.array([1, 0, 0])
+    #Hns_tf = signal.TransferFunction(b, a, dt=1)  # double integrator
+    #Mns_tf = signal.TransferFunction(a-b, a, dt=1)  # Mns = 1 - Hns
+    #Mns = Mns_tf.to_ss()
+
+    AM = np.array([[0.0, 0.0], [1.0, 0.0]])
+    BM = np.array([[2.0], [0.0]])
+    CM = np.array([[1.0, -0.5]])
+    DM = np.array([[0.0]])
+
     # Make a balanced realisation.
     # Less sensitivity to filter coefficients in the IIR implementation.
     # (Useful if having to used fixed-point implementation and/or if the filter order is to be high.)
-    Ad, Bd, Cd, Dd = balreal(Mns.A, Mns.B, Mns.C, Mns.D)
+    #Ad, Bd, Cd, Dd = balreal(Mns.A, Mns.B, Mns.C, Mns.D)
+    Ad, Bd, Cd, Dd = balreal(AM, BM, CM, DM)
     # Initialise state, output and error
     xns = np.zeros((Ad.shape[0], 1))  # noise-shaping filter state
     yns = np.zeros((1, 1))  # noise-shaping filter output

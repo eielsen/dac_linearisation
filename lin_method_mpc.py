@@ -1,3 +1,11 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""Run DAC simulations using various linearisation methods
+
+@author: Bikash Adhikari
+@date: 22.02.2024
+@license: BSD 3-Clause
+"""
 
 import numpy as np
 from scipy import linalg , signal
@@ -30,6 +38,7 @@ class MPC:
         self.C = C
         self.D = D
         # self.x0 = x0
+    
         
     def state_prediction(self, st, con):
         """
@@ -38,11 +47,12 @@ class MPC:
         x_iplus1 = self.A @ st + self.B * con
         return x_iplus1
 
+    
     def q_scaling(self, X):
         Xs = X.squeeze() /self.Qstep  + 2**(self.Nb-1)
         return Xs
 
-
+    
     # def get_codes(self, Xcs, N_PRED, YQns, MLns)
     def get_codes(self, N_PRED, Xcs, YQns, MLns ):
 
