@@ -437,6 +437,8 @@ match SC.lin.method:
             HEADROOM = 1  # 16 bit DAC
         elif QConfig == qws.w_6bit_2ch_SPICE:
             HEADROOM = 10  # 6 bit DAC
+        elif QConfig == qws.w_6bit_2ch_SPICE:
+            HEADROOM = 1  # 6 bit DAC
         else:
             sys.exit('Fix qconfig')
 
@@ -524,6 +526,8 @@ match SC.lin.method:
             HEADROOM = 10  # 16 bit DAC
         elif QConfig == qws.w_6bit_2ch_SPICE:
             HEADROOM = 10  # 6 bit DAC
+        elif QConfig == qws.w_16bit_2ch_SPICE:
+            HEADROOM = 1  # 6 bit DAC
         else:
             sys.exit('Fix qconfig')
 
@@ -537,9 +541,9 @@ match SC.lin.method:
         MLns = ML[0] # one channel only
         
         # introducing some "measurement/model error" in the levels
-        if QConfig == qws.w_16bit_SPICE:
+        if QConfig == qws.w_16bit_SPICE or QConfig == qws.w_16bit_2ch_SPICE:
             MLns_err = np.random.uniform(-Qstep, Qstep, MLns.shape)  # 16 bit DAC
-        elif QConfig == qws.w_6bit_ARTI or QConfig == qws.w_6bit_2ch_SPICE:
+        elif QConfig == qws.w_6bit_ARTI or QConfig == qws.w_6bit_2ch_SPICE: 
             MLns_err = np.random.uniform(-Qstep/1024, Qstep/1024, MLns.shape)  # 6 bit DAC
         else:
             sys.exit('Fix qconfig')
