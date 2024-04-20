@@ -70,11 +70,11 @@ def test_signal(SCALE, MAXAMP, FREQ, OFFSET, t):
 # Configuration
 
 ##### METHOD CHOICE - Choose which linearization method you want to test
-#RUN_LM = lm.BASELINE
+RUN_LM = lm.BASELINE
 #RUN_LM = lm.PHYSCAL
 #RUN_LM = lm.PHFD
 #RUN_LM = lm.SHPD
-RUN_LM = lm.NSDCAL
+#RUN_LM = lm.NSDCAL
 #RUN_LM = lm.DEM
 #RUN_LM = lm.MPC
 #RUN_LM = lm.ILC
@@ -83,8 +83,8 @@ RUN_LM = lm.NSDCAL
 lin = lm(RUN_LM)
 
 ##### MODEL CHOICE
-dac = dm(dm.STATIC)  # use static non-linear quantiser model to simulate DAC
-#dac = dm(dm.SPICE)  # use SPICE to simulate DAC output
+#dac = dm(dm.STATIC)  # use static non-linear quantiser model to simulate DAC
+dac = dm(dm.SPICE)  # use SPICE to simulate DAC output
 
 # Chose how to compute SINAD
 SINAD_COMP_SEL = sinad_comp.CFIT
@@ -153,7 +153,7 @@ match SC.lin.method:
     case lm.BASELINE:  # baseline, only carrier
         # Generate unmodified DAC output without any corrections.
 
-        if QConfig == qws.w_6bit_2ch_SPICE:
+        if QConfig == qws.w_6bit_2ch_SPICE or QConfig == qws.w_16bit_2ch_SPICE:
             Nch = 2  # number of channels to use (averaging to reduce noise floor)
         else:
             Nch = 1
@@ -256,7 +256,7 @@ match SC.lin.method:
         elif QConfig == qws.w_6bit_ARTI or QConfig == qws.w_6bit_2ch_SPICE:
             ML_err_rng = Qstep/1024 # 6 bit DAC
         else:
-            sys.exit('Unknown QConfig')
+            sys.exit('NSDCAL: Unknown QConfig for ML error')
         
         MLns_err = np.random.uniform(-ML_err_rng, ML_err_rng, MLns.shape)
         MLns = MLns + MLns_err
@@ -264,7 +264,7 @@ match SC.lin.method:
         QMODEL = 2  # 1: no calibration, 2: use calibration
         C = nsdcal(X, Dq, YQns, MLns, Qstep, Vmin, Nb, QMODEL)
 
-        if QConfig == qws.w_6bit_2ch_SPICE:
+        if QConfig == qws.w_6bit_2ch_SPICE or QConfig == qws.w_16bit_2ch_SPICE:
             C = np.stack((C[0, :], np.zeros(C.shape[1])))  # zero input to sec. channel
         
     case lm.SHPD:  # stochastic high-pass noise dither
@@ -388,11 +388,15 @@ match SC.lin.method:
 
         # Scaling dither with respect to the carrier
         Xscale = 50  # carrier to dither ratio (between 0% and 100%)
+        #Xscale = 80  # carrier to dither ratio (between 0% and 100%) # Fs1022976 - 6 bit 2 Ch
         Dscale = 100 - Xscale  # dither to carrier ratio
         
         Dfreq = 250e3 # Fs1022976 - 16 bit 2 Ch
         #Dfreq = 5.0e6 # Fs32735232 - 16 bit 2 Ch
         
+        #Dfreq = 300e3 # Fs1022976 - 6 bit 2 Ch
+        #Dfreq = 1.5e6 # Fs32735232 - 6 bit 2 Ch
+
         #Dfreq = 1.592e6 # Fs10MHz - 16bit
         #Dfreq = 2.99e6 # Fs25Mhz - 16bit
         #Dfreq = 2.98e6 # Fs250Mhz - 6 bit
@@ -495,6 +499,8 @@ match SC.lin.method:
             HEADROOM = 10  # 16 bit DAC
         elif QConfig == qws.w_6bit_2ch_SPICE:
             HEADROOM = 10  # 6 bit DAC
+        elif QConfig == qws.w_16bit_2ch_SPICE:
+            HEADROOM = 1  # 16 bit DAC
         else:
             sys.exit('Fix qconfig')
 
@@ -510,32 +516,35 @@ match SC.lin.method:
         ML = get_measured_levels(QConfig, SC.lin.method) # get_measured_levels(lm.ILC)
         MLns = ML[0] # one channel only
         
-        # introducing some "measurement/model error" in the levels
-        if QConfig == qws.w_16bit_SPICE:
-            MLns_err = np.random.uniform(-Qstep, Qstep, MLns.shape)  # 16 bit DAC
+        # Adding some "measurement/model error" in the levels
+        if QConfig == qws.w_16bit_SPICE or QConfig == qws.w_16bit_ARTI or QConfig == qws.w_16bit_2ch_SPICE:
+            ML_err_rng = Qstep  # 16 bit DAC
         elif QConfig == qws.w_6bit_ARTI or QConfig == qws.w_6bit_2ch_SPICE:
-            MLns_err = np.random.uniform(-Qstep/1024, Qstep/1024, MLns.shape)  # 6 bit DAC
+            ML_err_rng = Qstep/1024 # 6 bit DAC
         else:
-            sys.exit('Fix qconfig')
-        MLns = MLns + 0*MLns_err
+            sys.exit('ILC: Unknown QConfig for ML error')
+        
+        MLns_err = np.random.uniform(-ML_err_rng, ML_err_rng, MLns.shape)
+        MLns = MLns + MLns_err
  
         if QConfig == qws.w_6bit_ARTI or QConfig == qws.w_16bit_ARTI:
             MLns = np.flip(MLns)
             YQns = np.flip(YQns)
-        # Reconstruction filter
-        match 3:
+
+        # noise transfer function 
+        match 1:
             case 1:
                 b1 = np.array([1, -2, 1])
                 a1 =  np.array([1, 0, 0])
                 l_dlti = signal.dlti(b1, a1, dt=Ts)
-            case 2:
-                Wn = Fc_lp/(Fs/2)
-                b1, a1 = signal.butter(2, Wn)
-                l_dlti = signal.dlti(b1, a1, dt=Ts)
-            case 3:  # bilinear transf., seems to work ok, not a perfect match to physics
-                Wn = Fc_lp/(Fs/2)
-                b1, a1 = signal.butter(N_lp, Wn)
-                l_dlti = signal.dlti(b1, a1, dt=Ts)
+            # case 2:
+            #     Wn = Fc_lp/(Fs/2)
+            #     b1, a1 = signal.butter(2, Wn)
+            #     l_dlti = signal.dlti(b1, a1, dt=Ts)
+            # case 3:  # bilinear transf., seems to work ok, not a perfect match to physics
+            #     Wn = Fc_lp/(Fs/2)
+            #     b1, a1 = signal.butter(N_lp, Wn)
+            #     l_dlti = signal.dlti(b1, a1, dt=Ts)
         
         len_X = len(Xcs)
         ft, fi = signal.dimpulse(l_dlti, n=2*len_X)
@@ -647,7 +656,7 @@ match SC.dac.model:
 
     case dm.SPICE:  # use SPICE to simulate DAC output
         timestamp = datetime.datetime.now().strftime("%Y%m%dT%H%M%S")
-        outdirname = str(SC.lin) + '_' + timestamp
+        outdirname = str(SC.lin).replace(" ", "_") + '_' + timestamp
 
         outdir = 'spice_output/' + outdirname + '/'
 
@@ -666,7 +675,7 @@ match SC.dac.model:
         spicef_list = []
         outputf_list = []
         
-        if QConfig == qws.w_6bit_2ch_SPICE:
+        if QConfig == qws.w_6bit_2ch_SPICE or QConfig == qws.w_16bit_2ch_SPICE:
             SEPARATE_FILE_PER_CHANNEL = False  # TODO: Mr. Tidy and Mr. Neat cannot stand a mess
         else:
             SEPARATE_FILE_PER_CHANNEL = True
@@ -675,11 +684,11 @@ match SC.dac.model:
             for k in range(0,Nch):
                 c = C[k,:]
                 seed = k + 1
-                spicef, outputf = gen_spice_sim_file(c, Nb, t, Ts, QConfig, outdirname, seed, k)
+                spicef, outputf = gen_spice_sim_file(c, Nb, t, Ts, QConfig, outdir, seed, k)
                 spicef_list.append(spicef)
                 outputf_list.append(outputf)
         else:
-            spicef, outputf = gen_spice_sim_file(C, Nb, t, Ts, QConfig, outdirname)
+            spicef, outputf = gen_spice_sim_file(C, Nb, t, Ts, QConfig, outdir)
         
         if run_SPICE:  # run SPICE
             spice_path = '/home/eielsen/ngspice_files/bin/ngspice'  # newest ver., fastest (local)
@@ -729,5 +738,5 @@ if run_SPICE or SC.dac.model == dm.STATIC:
 
     # Print result
     results_tab = [['Config', 'Method', 'Model', 'Fs', 'Fc', 'Fx', 'ENOB'],
-            [str(QConfig), str(SC.lin), str(SC.dac), f'{Float(SC.fs):.2h}', f'{Float(SC.fc):.1h}', f'{Float(SC.carrier_freq):.1h}', f'{Float(ENOB_M):.3h}']]
+            [str(SC.qconfig), str(SC.lin), str(SC.dac), f'{Float(SC.fs):.2h}', f'{Float(SC.fc):.1h}', f'{Float(SC.carrier_freq):.1h}', f'{Float(ENOB_M):.3h}']]
     print(tabulate(results_tab))

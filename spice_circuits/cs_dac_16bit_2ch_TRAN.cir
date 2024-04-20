@@ -1,6 +1,6 @@
 current-steering dac inl test
 
-.option gmin=1e-19 reltol=200u abstol=100f vntol=100n seed=1
+*.option gmin=1e-19 reltol=200u abstol=100f vntol=100n seed=1
 
 .param mc_mm_switch = 1
 .param vdd = 1.5
@@ -16,16 +16,6 @@ e1 out1 0 outp1 outn1 10
 rl1 out1 0 1k
 e2 out2 0 outp2 outn2 10
 rl2 out 0 1k
-
-.op
-
-.control
-set filetype=ascii
-set appendwrite
-run
-*write output.txt v(out1) v(out2)
-wrdata $inputdir/cs_dac_16bit_2ch_DC_levels.txt v(out1) v(out2)
-.endc
 
 .subckt pfet d g s b
 .param mfac = 1
