@@ -69,12 +69,12 @@ def test_signal(SCALE, MAXAMP, FREQ, OFFSET, t):
 # Configuration
 
 ##### METHOD CHOICE - Choose which linearization method you want to test
-RUN_LM = lm.BASELINE
+#RUN_LM = lm.BASELINE
 #RUN_LM = lm.PHYSCAL
 #RUN_LM = lm.PHFD
 #RUN_LM = lm.SHPD
 #RUN_LM = lm.NSDCAL
-#RUN_LM = lm.DEM
+RUN_LM = lm.DEM
 #RUN_LM = lm.MPC
 #RUN_LM = lm.ILC
 #RUN_LM = lm.ILC_SIMP
@@ -83,22 +83,25 @@ lin = lm(RUN_LM)
 
 ##### MODEL CHOICE
 dac = dm(dm.STATIC)  # use static non-linear quantiser model to simulate DAC
-# dac = dm(dm.SPICE)  # use SPICE to simulate DAC output
+#dac = dm(dm.SPICE)  # use SPICE to simulate DAC output
 
 # Chose how to compute SINAD
 SINAD_COMP_SEL = sinad_comp.CFIT
+#SINAD_COMP_SEL = sinad_comp.FFT
 
 # Output low-pass filter configuration
 Fc_lp = 100e3  # cut-off frequency in hertz
 N_lp = 3  # filter order
 
-# Sampling rate
-#Fs = 1e6  # sampling rate (over-sampling) in hertz
-#Fs = 25e6  # sampling rate (over-sampling) in hertz
-#Fs = 250e6  # sampling rate (over-sampling) in hertz
+# Sampling rate (over-sampling) in hertz
+#Fs = 1e6
+#Fs = 25e6
+#Fs = 250e6
 Fs = 1022976
-#Fs = 130940928  # sampling rate (over-sampling) in hertz
+#Fs = 32735232
+#Fs = 130940928
 #Fs = 261881856
+
 Ts = 1/Fs  # sampling time
 
 # Carrier signal (to be recovered on the output)
@@ -109,8 +112,8 @@ Xcs_FREQ = 999  # Hz
 #QConfig = qws.w_16bit_SPICE
 #QConfig = qws.w_16bit_ARTI
 #QConfig = qws.w_6bit_ARTI
-QConfig = qws.w_6bit_2ch_SPICE
-#QCOnfig = qws.w_16bit_2ch_SPICE
+#QConfig = qws.w_6bit_2ch_SPICE
+QConfig = qws.w_16bit_2ch_SPICE
 Nb, Mq, Vmin, Vmax, Rng, Qstep, YQ, Qtype = quantiser_configurations(QConfig)
 
 ##### Set what to run
@@ -126,7 +129,10 @@ match 2:
         Nts = 1e6  # no. of time samples
         Np = np.ceil(Xcs_FREQ*Ts*Nts).astype(int) # no. of periods for carrier
     case 2:  # specify duration as number of periods of carrier
-        Np = 3  # no. of periods for carrier
+        if SINAD_COMP_SEL == sinad_comp.FFT:
+            Np = 200  # no. of periods for carrier
+        else:
+            Np = 3  # no. of periods for carrier
 
 Npt = 1/2  # no. of carrier periods to use to account for transients
 Np = Np + 2*Npt
@@ -224,7 +230,6 @@ match SC.lin.method:
         # The feedback generates an actuation signal that may cause the
         # quantiser to saturate if there is no "headroom"
         # Also need room for re-quantisation dither
-        #
         
         if QConfig == qws.w_16bit_SPICE:
             HEADROOM = 10  # 16 bit DAC
@@ -234,6 +239,8 @@ match SC.lin.method:
             HEADROOM = 10  # 16 bit DAC
         elif QConfig == qws.w_6bit_2ch_SPICE:
             HEADROOM = 10  # 6 bit DAC
+        elif QConfig == qws.w_16bit_2ch_SPICE:
+            HEADROOM = 1  # 16 bit DAC
         else:
             sys.exit('Fix qconfig')
 
@@ -244,13 +251,15 @@ match SC.lin.method:
         YQns = YQ[0]  # ideal ouput levels
         MLns = ML[0]  # measured ouput levels (convert from 2d to 1d)
 
-        # introducing some "measurement/model error" in the levels
-        if QConfig == qws.w_16bit_SPICE or QConfig == qws.w_16bit_ARTI:
-            MLns_err = np.random.uniform(-Qstep, Qstep, MLns.shape)  # 16 bit DAC
+        # Adding some "measurement/model error" in the levels
+        if QConfig == qws.w_16bit_SPICE or QConfig == qws.w_16bit_ARTI or QConfig == qws.w_16bit_2ch_SPICE:
+            ML_err_rng = Qstep  # 16 bit DAC
         elif QConfig == qws.w_6bit_ARTI or QConfig == qws.w_6bit_2ch_SPICE:
-            MLns_err = np.random.uniform(-Qstep/1024, Qstep/1024, MLns.shape)  # 6 bit DAC
+            ML_err_rng = Qstep/1024 # 6 bit DAC
         else:
-            sys.exit('Fix qconfig')
+            sys.exit('Unknown QConfig')
+        
+        MLns_err = np.random.uniform(-ML_err_rng, ML_err_rng, MLns.shape)
         MLns = MLns + MLns_err
 
         QMODEL = 2  # 1: no calibration, 2: use calibration
@@ -382,12 +391,15 @@ match SC.lin.method:
         Xscale = 50  # carrier to dither ratio (between 0% and 100%)
         Dscale = 100 - Xscale  # dither to carrier ratio
         
+        Dfreq = 250e3 # Fs1022976 - 16 bit 2 Ch
+        #Dfreq = 5.0e6 # Fs32735232 - 16 bit 2 Ch
+        
         #Dfreq = 1.592e6 # Fs10MHz - 16bit
         #Dfreq = 2.99e6 # Fs25Mhz - 16bit
         #Dfreq = 2.98e6 # Fs250Mhz - 6 bit
 
         #Dfreq = 5.0e6 # Fs262Mhz - 16 bit ARTI
-        Dfreq = 5.0e6 # Fs262Mhz - 6 bit ARTI
+        #Dfreq = 5.0e6 # Fs262Mhz - 6 bit ARTI
 
         Dadf = dither_generation.adf.uniform  # amplitude distr. funct. (ADF)
         # Generate periodic dither
@@ -428,8 +440,8 @@ match SC.lin.method:
         ML = get_measured_levels(QConfig, SC.lin.method)
         MLns = ML[0]
 
-        # Addding some "measurement/model error" in the levels
-        if QConfig == qws.w_16bit_SPICE or QConfig == qws.w_16bit_ARTI:
+        # Adding some "measurement/model error" in the levels
+        if QConfig == qws.w_16bit_SPICE or QConfig == qws.w_16bit_ARTI or QConfig == qws.w_16bit_2ch_SPICE:
             ML_err_rng = Qstep  # 16 bit DAC
         elif QConfig == qws.w_6bit_ARTI or QConfig == qws.w_6bit_2ch_SPICE:
             ML_err_rng = Qstep/1024 # 6 bit DAC
@@ -722,5 +734,5 @@ if run_SPICE or SC.dac.model == dm.STATIC:
 
     # Print result
     results_tab = [['Config', 'Method', 'Model', 'Fs', 'Fc', 'Fx', 'ENOB'],
-            [str(QConfig), str(SC.lin), str(SC.dac), f'{Float(SC.fs):.1h}', f'{Float(SC.fc):.1h}', f'{Float(SC.carrier_freq):.1h}', f'{Float(ENOB_M):.3h}']]
+            [str(QConfig), str(SC.lin), str(SC.dac), f'{Float(SC.fs):.2h}', f'{Float(SC.fc):.1h}', f'{Float(SC.carrier_freq):.1h}', f'{Float(ENOB_M):.3h}']]
     print(tabulate(results_tab))
