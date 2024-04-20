@@ -76,8 +76,8 @@ def test_signal(SCALE, MAXAMP, FREQ, OFFSET, t):
 # RUN_LM = lm.SHPD
 # RUN_LM = lm.NSDCAL
 # RUN_LM = lm.DEM
-RUN_LM = lm.MPC
-# RUN_LM = lm.ILC
+# RUN_LM = lm.MPC
+RUN_LM = lm.ILC
 #RUN_LM = lm.ILC_SIMP
 
 lin = lm(RUN_LM)
