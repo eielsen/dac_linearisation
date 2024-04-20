@@ -40,7 +40,7 @@ from lin_method_nsdcal import nsdcal
 from lin_method_dem import dem
 # from lin_method_ilc import get_control, learning_matrices
 # from lin_method_ilc_simple import ilc_simple
-from lin_method_mpc import MPC, MPC_BIN
+from lin_method_mpc import MPC
 # from lin_method_ILC_DSM import learningMatrices, get_ILC_control
 from lin_method_dsm_ilc import DSM_ILC
 from lin_method_util import lm, dm
@@ -67,6 +67,7 @@ def test_signal(SCALE, MAXAMP, FREQ, OFFSET, t):
     return (SCALE/100)*MAXAMP*np.cos(2*np.pi*FREQ*t) + OFFSET
 
 
+N_PRED = 12 # prediction horizon
 # Configuration
 
 ##### METHOD CHOICE - Choose which linearization method you want to test
@@ -110,8 +111,8 @@ Xcs_SCALE = 100  # %
 Xcs_FREQ = 999  # Hz
 
 ##### Set quantiser model
-#QConfig = qws.w_16bit_SPICE
-#QConfig = qws.w_16bit_ARTI
+# QConfig = qws.w_16bit_SPICE
+# QConfig = qws.w_16bit_ARTI
 # QConfig = qws.w_6bit_ARTI
 # QConfig = qws.w_6bit_2ch_SPICE
 QConfig = qws.w_16bit_2ch_SPICE
@@ -132,7 +133,7 @@ match 2:
         if SINAD_COMP_SEL == sinad_comp.FFT:
             Np = 200  # no. of periods for carrier
         else:
-            Np = 2  # no. of periods for carrier
+            Np = 3  # no. of periods for carrier
 
 Npt = 1/2  # no. of carrier periods to use to account for transients
 Np = Np + 2*Npt
@@ -147,6 +148,7 @@ SIGNAL_MAXAMP = Rng/2 - Qstep  # make headroom for noise dither (see below)
 SIGNAL_OFFSET = -Qstep/2  # try to center given quantiser type
 Xcs = test_signal(Xcs_SCALE, SIGNAL_MAXAMP, Xcs_FREQ, SIGNAL_OFFSET, t)
 
+# %%
 # Linearisation methods
 match SC.lin.method:
     case lm.BASELINE:  # baseline, only carrier
@@ -437,7 +439,7 @@ match SC.lin.method:
             HEADROOM = 1  # 16 bit DAC
         elif QConfig == qws.w_6bit_2ch_SPICE:
             HEADROOM = 10  # 6 bit DAC
-        elif QConfig == qws.w_6bit_2ch_SPICE:
+        elif QConfig == qws.w_16bit_2ch_SPICE:
             HEADROOM = 1  # 6 bit DAC
         else:
             sys.exit('Fix qconfig')
@@ -466,42 +468,41 @@ match SC.lin.method:
 
         QMODEL = 2
         C_nsq = nsdcal(Xcs, Dq, YQns, MLns, Qstep, Vmin, Nb, QMODEL)
+
         # To fit into optimisaton problem. 
         if QConfig == qws.w_6bit_ARTI or QConfig == qws.w_16bit_ARTI:
             MLns = np.flip(MLns)
             YQns = np.flip(YQns)
 
+        fig, ax = plt.subplots()
+        ax.plot(np.arange(0, 2**Nb, 1), YQns)
+        ax.plot(np.arange(0, 2**Nb, 1), MLns)
+        ax.legend(['il', 'ML'])
+        Fc = 100e3
         # Reconstruction filter
-        match 3:
+        match 2:
             case 1:
-                b1 = np.array([1, -2, 1])
-                a1 =  np.array([1, 0, 0])
-                # l_dlti = signal.dlti(b1, a1, dt=Ts)
-                A1, B1, C1, D1 = signal.tf2ss(a1-b1, a1) # Transfer function to StateSpace
-            case 2:
-                Wn = Fc_lp/(Fs/2)
+                Wn = Fc/(Fs/2)
                 b1, a1 = signal.butter(2, Wn)
                 A1, B1, C1, D1 = signal.tf2ss(b1, a1) # Transfer function to StateSpace
-            case 3:  # bilinear transf., seems to work ok, not a perfect match to physics
-                Wn = Fc_lp/(Fs/2)
+            case 2:  # bilinear transf., seems to work ok, not a perfect match to physics
+                Wn = Fc/(Fs/2)
                 b1, a1 = signal.butter(N_lp, Wn)
                 A1, B1, C1, D1 = signal.tf2ss(b1, a1) # Transfer function to StateSpace
 
-        # AM = np.array([[0.0, 0.0], [1.0, 0.0]])
-        # BM = np.array([[2.0], [0.0]])
-        # CM = np.array([[1.0, -0.5]])
-        # DM = np.array([[0.0]])
-        # A1, B1, C1, D1 = balreal(AM, BM, CM, DM)
-        N_PRED = 5  # prediction horizon
+        # N_PRED = 1  # prediction horizon
 
         # Add dither to input 
         X = Xcs + Dq
 
         # Quantiser model
         QMODEL = 2 #: 1 - no calibration, 2 - Calibration
-        mpc = MPC_BIN(Nb, Qstep, QMODEL,  A1, B1, C1, D1)
+        # if Nb == 6:
+        #     mpc = MPC_BIN(Nb, Qstep, QMODEL,  A1, B1, C1, D1)
+        #     C = mpc.get_codes(N_PRED, X, YQns, MLns)
+        # if Nb == 16:
+        mpc = MPC(Nb, Qstep, QMODEL,  A1, B1, C1, D1)
         C = mpc.get_codes(N_PRED, X, YQns, MLns)
-
         # Slice time samples based on the size of C
         t = t[0:C.size]
 
@@ -548,17 +549,11 @@ match SC.lin.method:
         else:
             sys.exit('Fix qconfig')
 
-        QMODEL = 2
-        C_nsq = nsdcal(X, Dq, YQns, MLns, Qstep, Vmin, Nb, QMODEL)
 
         if QConfig == qws.w_6bit_ARTI or QConfig == qws.w_16bit_ARTI:
             MLns = np.flip(MLns)
             YQns = np.flip(YQns)
 
-        fig, ax = plt.subplots()
-        ax.plot(np.arange(0, 2**Nb, 1), YQns)
-        ax.plot(np.arange(0, 2**Nb, 1), MLns)
-        ax.legend(['il', 'ML'])
         # Reconstruction filter
         match 2:
             case 1:
@@ -583,9 +578,6 @@ match SC.lin.method:
         Wf = np.identity(len_X)*1e-4
         Wdf = np.identity(len_X)*1e-1
 
-        # bns = np.array([1, -2, 1])
-        # ans =  np.array([1, 0, 0])
-        # Number of ILC iterations
         itr = 10
 
         dsmilc = DSM_ILC(Nb, Qstep, Vmin, Vmax, Qtype, QMODEL)
@@ -637,8 +629,6 @@ match SC.lin.method:
 
 
 # %% Post processing
-# C = C_nsq[0,0:t.size].reshape(1,-1)
-# C = C_nsq
 # generate DAC output
 match SC.dac.model:
     case dm.STATIC:  # use static non-linear quantiser model to simulate DAC
