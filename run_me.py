@@ -7,9 +7,10 @@
 @license: BSD 3-Clause
 """
 
-%reload_ext autoreload
-%autoreload 2
+# %reload_ext autoreload
+# %autoreload 2
 
+# %%
 # Imports
 import sys
 import numpy as np
@@ -40,7 +41,7 @@ from lin_method_dem import dem
 # from lin_method_ilc import get_control, learning_matrices
 # from lin_method_ilc_simple import ilc_simple
 from lin_method_mpc import MPC
-from lin_method_ILC_DSM import learningMatrices, get_ILC_control
+# from lin_method_ILC_DSM import learningMatrices, get_ILC_control
 from lin_method_dsm_ilc import DSM_ILC
 from lin_method_util import lm, dm
 
@@ -104,6 +105,8 @@ Fs = 1022976
 
 Ts = 1/Fs  # sampling time
 
+# Punkter: 1048576
+
 # Carrier signal (to be recovered on the output)
 Xcs_SCALE = 100  # %
 Xcs_FREQ = 999  # Hz
@@ -116,18 +119,22 @@ Xcs_FREQ = 999  # Hz
 QConfig = qws.w_16bit_2ch_SPICE
 Nb, Mq, Vmin, Vmax, Rng, Qstep, YQ, Qtype = quantiser_configurations(QConfig)
 
-##### Set what to run
 SAVE_CODES_TO_FILE_AND_STOP = False
 #SAVE_CODES_TO_FILE_AND_STOP = True
 SAVE_CODES_TO_FILE = False
 #SAVE_CODES_TO_FILE = True
 run_SPICE = False
 
+# config_tab = [['Config', 'Method', 'Model', 'Fs', 'Fc', 'Fx'],
+#             [str(QConfig), str(SC.lin), str(SC.dac), f'{Float(SC.fs):.1h}', f'{Float(SC.fc):.1h}', f'{Float(SC.carrier_freq):.1h}']]
+# print(tabulate(config_tab))
+
+
 # Generate time vector
 match 2:
     case 1:  # specify duration as number of samples and find number of periods
         Nts = 1e6  # no. of time samples
-        Np = np.ceil(Xcs_FREQ*Ts*Nts).astype(int) # no. of periods for carrier
+        Np = np.ceil(Xcs_FREQ*s*Nts).astype(int) # no. of periods for carrier
     case 2:  # specify duration as number of periods of carrier
         if SINAD_COMP_SEL == sinad_comp.FFT:
             Np = 200  # no. of periods for carrier
@@ -140,9 +147,7 @@ Np = Np + 2*Npt
 t_end = Np/Xcs_FREQ  # time vector duration
 t = np.arange(0, t_end, Ts)  # time vector
 
-# Store configuration
-SC = sim_config(QConfig, lin, dac, Fs, t, Fc_lp, N_lp, Xcs_SCALE, Xcs_FREQ)
-print(SC)  # print configuration
+SC = sim_config(lin, dac, Fs, t, Fc_lp, N_lp, Xcs_SCALE, Xcs_FREQ)
 
 # Generate carrier/test signal
 SIGNAL_MAXAMP = Rng/2 - Qstep  # make headroom for noise dither (see below)
@@ -428,7 +433,7 @@ match SC.lin.method:
         Dq = dither_generation.gen_stochastic(t.size, Nch, Qstep, dither_generation.pdf.triangular_hp)
         
         # Also need room for re-quantisation dither
-        HEADROOM = 1  # %
+        HEADROOM = 10  # %
         Xcs = ((100-HEADROOM)/100)*Xcs  # input
 
         # Ideal Levels
@@ -453,6 +458,15 @@ match SC.lin.method:
 
         if QConfig == qws.w_6bit_ARTI or QConfig == qws.w_16bit_ARTI:
             MLns = np.flip(MLns)
+            YQns = np.flip(YQns)
+
+
+
+        fig, ax = plt.subplots()
+        ax.plot(np.arange(0,2**Nb, 1), MLns)
+        ax.plot(np.arange(0,2**Nb, 1),YQns)
+        ax.legend(['ml','yq'])
+
 
         # Reconstruction filter
         match 2:
@@ -465,7 +479,7 @@ match SC.lin.method:
                 b1, a1 = signal.butter(N_lp, Wn)
                 A1, B1, C1, D1 = signal.tf2ss(b1, a1) # Transfer function to StateSpace
 
-        N_PRED = 2  # prediction horizon
+        N_PRED = 5  # prediction horizon
 
         # Add dither to input 
         X = Xcs + Dq
@@ -486,10 +500,18 @@ match SC.lin.method:
 
         Nch = 1
 
-        # The feedback generates an actuation signal that may cause the
-        # quantiser to saturate if there is no "headroom"
-        # Also need room for re-quantisation dither
-        HEADROOM = 10  # %
+
+        if QConfig == qws.w_16bit_SPICE:
+            HEADROOM = 10  # 16 bit DAC
+        elif QConfig == qws.w_6bit_ARTI:
+            HEADROOM = 15  # 6 bit DAC
+        elif QConfig == qws.w_16bit_ARTI:
+            HEADROOM = 10  # 16 bit DAC
+        elif QConfig == qws.w_6bit_2ch_SPICE:
+            HEADROOM = 10  # 6 bit DAC
+        else:
+            sys.exit('Fix qconfig')
+
         Xcs = ((100-HEADROOM)/100)*Xcs  # input
         
         # Quantisation dither
@@ -510,9 +532,12 @@ match SC.lin.method:
         else:
             sys.exit('Fix qconfig')
         MLns = MLns + 0*MLns_err
-    
+ 
+        if QConfig == qws.w_6bit_ARTI or QConfig == qws.w_16bit_ARTI:
+            MLns = np.flip(MLns)
+            YQns = np.flip(YQns)
         # Reconstruction filter
-        match 3:
+        match 1:
             case 1:
                 b1 = np.array([1, -2, 1])
                 a1 =  np.array([1, 0, 0])
