@@ -33,14 +33,14 @@ from dual_dither import dual_dither, hist_and_psd
 from quantiser_configurations import quantiser_configurations, get_measured_levels, qws
 from static_dac_model import generate_dac_output, quantise_signal, generate_codes, quantiser_type
 from figures_of_merit import FFT_SINAD, TS_SINAD
-from balreal import balreal_ct
+from balreal import balreal_ct, balreal
 
 
 from lin_method_nsdcal import nsdcal
 from lin_method_dem import dem
 # from lin_method_ilc import get_control, learning_matrices
 # from lin_method_ilc_simple import ilc_simple
-from lin_method_mpc import MPC
+from lin_method_mpc import MPC, MPC_BIN
 # from lin_method_ILC_DSM import learningMatrices, get_ILC_control
 from lin_method_dsm_ilc import DSM_ILC
 from lin_method_util import lm, dm
@@ -73,11 +73,11 @@ def test_signal(SCALE, MAXAMP, FREQ, OFFSET, t):
 RUN_LM = lm.BASELINE
 #RUN_LM = lm.PHYSCAL
 #RUN_LM = lm.PHFD
-#RUN_LM = lm.SHPD
-#RUN_LM = lm.NSDCAL
-#RUN_LM = lm.DEM
-#RUN_LM = lm.MPC
-#RUN_LM = lm.ILC
+# RUN_LM = lm.SHPD
+# RUN_LM = lm.NSDCAL
+# RUN_LM = lm.DEM
+# RUN_LM = lm.MPC
+RUN_LM = lm.ILC
 #RUN_LM = lm.ILC_SIMP
 
 lin = lm(RUN_LM)
@@ -95,10 +95,10 @@ Fc_lp = 100e3  # cut-off frequency in hertz
 N_lp = 3  # filter order
 
 # Sampling rate (over-sampling) in hertz
-#Fs = 1e6
+Fs = 1e6
 #Fs = 25e6
 #Fs = 250e6
-Fs = 1022976
+# Fs = 1022976
 #Fs = 32735232
 #Fs = 130940928
 #Fs = 261881856
@@ -112,7 +112,7 @@ Xcs_FREQ = 999  # Hz
 ##### Set quantiser model
 #QConfig = qws.w_16bit_SPICE
 #QConfig = qws.w_16bit_ARTI
-#QConfig = qws.w_6bit_ARTI
+# QConfig = qws.w_6bit_ARTI
 QConfig = qws.w_6bit_2ch_SPICE
 #QConfig = qws.w_16bit_2ch_SPICE
 Nb, Mq, Vmin, Vmax, Rng, Qstep, YQ, Qtype = quantiser_configurations(QConfig)
@@ -132,7 +132,7 @@ match 2:
         if SINAD_COMP_SEL == sinad_comp.FFT:
             Np = 200  # no. of periods for carrier
         else:
-            Np = 3  # no. of periods for carrier
+            Np = 2  # no. of periods for carrier
 
 Npt = 1/2  # no. of carrier periods to use to account for transients
 Np = Np + 2*Npt
@@ -141,7 +141,6 @@ t_end = Np/Xcs_FREQ  # time vector duration
 t = np.arange(0, t_end, Ts)  # time vector
 
 SC = sim_config(QConfig, lin, dac, Fs, t, Fc_lp, N_lp, Xcs_SCALE, Xcs_FREQ)
-print(SC)
 
 # Generate carrier/test signal
 SIGNAL_MAXAMP = Rng/2 - Qstep  # make headroom for noise dither (see below)
@@ -427,15 +426,28 @@ match SC.lin.method:
 
     case lm.MPC:  # model predictive control (with INL model)
         Nch = 1
-        # Quantisation dither
-        Dq = dither_generation.gen_stochastic(t.size, Nch, Qstep, dither_generation.pdf.triangular_hp)
         
+        # Quantisation dither
+        DITHER_ON = 1
+        Dq = dither_generation.gen_stochastic(t.size, Nch, Qstep, dither_generation.pdf.triangular_hp)
+        Dq = DITHER_ON*Dq[0]  # convert to 1d, add/remove dither
+
         # Also need room for re-quantisation dither
-        HEADROOM = 10  # %
+        if QConfig == qws.w_16bit_SPICE:
+            HEADROOM = 10  # 16 bit DAC
+        elif QConfig == qws.w_6bit_ARTI:
+            HEADROOM = 15  # 6 bit DAC
+        elif QConfig == qws.w_16bit_ARTI:
+            HEADROOM = 1  # 16 bit DAC
+        elif QConfig == qws.w_6bit_2ch_SPICE:
+            HEADROOM = 10  # 6 bit DAC
+        else:
+            sys.exit('Fix qconfig')
+
         Xcs = ((100-HEADROOM)/100)*Xcs  # input
 
         # Ideal Levels
-        YQns = YQ.squeeze()
+        YQns = YQ[0]
         
         # Unsigned integers representing the level codes
         level_codes = np.arange(0, 2**Nb,1) # Levels:  0, 1, 2, .... 2^(Nb)
@@ -454,30 +466,42 @@ match SC.lin.method:
         MLns_err = np.random.uniform(-ML_err_rng, ML_err_rng, MLns.shape)
         MLns = MLns + MLns_err
 
+        QMODEL = 2
+        C_nsq = nsdcal(Xcs, Dq, YQns, MLns, Qstep, Vmin, Nb, QMODEL)
+        # To fit into optimisaton problem. 
         if QConfig == qws.w_6bit_ARTI or QConfig == qws.w_16bit_ARTI:
             MLns = np.flip(MLns)
             YQns = np.flip(YQns)
 
         # Reconstruction filter
-        match 2:
+        match 3:
             case 1:
+                b1 = np.array([1, -2, 1])
+                a1 =  np.array([1, 0, 0])
+                # l_dlti = signal.dlti(b1, a1, dt=Ts)
+                A1, B1, C1, D1 = signal.tf2ss(a1-b1, a1) # Transfer function to StateSpace
+            case 2:
                 Wn = Fc_lp/(Fs/2)
                 b1, a1 = signal.butter(2, Wn)
                 A1, B1, C1, D1 = signal.tf2ss(b1, a1) # Transfer function to StateSpace
-            case 2:  # bilinear transf., seems to work ok, not a perfect match to physics
+            case 3:  # bilinear transf., seems to work ok, not a perfect match to physics
                 Wn = Fc_lp/(Fs/2)
                 b1, a1 = signal.butter(N_lp, Wn)
                 A1, B1, C1, D1 = signal.tf2ss(b1, a1) # Transfer function to StateSpace
 
+        # AM = np.array([[0.0, 0.0], [1.0, 0.0]])
+        # BM = np.array([[2.0], [0.0]])
+        # CM = np.array([[1.0, -0.5]])
+        # DM = np.array([[0.0]])
+        # A1, B1, C1, D1 = balreal(AM, BM, CM, DM)
         N_PRED = 5  # prediction horizon
 
         # Add dither to input 
         X = Xcs + Dq
 
         # Quantiser model
-        QMODEL = 1
-
-        mpc = MPC(Nb, Qstep, QMODEL,  A1, B1, C1, D1)
+        QMODEL = 2 #: 1 - no calibration, 2 - Calibration
+        mpc = MPC_BIN(Nb, Qstep, QMODEL,  A1, B1, C1, D1)
         C = mpc.get_codes(N_PRED, X, YQns, MLns)
 
         # Slice time samples based on the size of C
@@ -490,7 +514,12 @@ match SC.lin.method:
 
         Nch = 1
 
+        # Quantisation dither
+        DITHER_ON = 1
+        Dq = dither_generation.gen_stochastic(t.size, Nch, Qstep, dither_generation.pdf.triangular_hp)
+        Dq = DITHER_ON*Dq[0]  # convert to 1d, add/remove dither
 
+        # Headrooom for requantisation
         if QConfig == qws.w_16bit_SPICE:
             HEADROOM = 10  # 16 bit DAC
         elif QConfig == qws.w_6bit_ARTI:
@@ -504,13 +533,10 @@ match SC.lin.method:
         else:
             sys.exit('Fix qconfig')
 
-        Xcs = ((100-HEADROOM)/100)*Xcs  # input
+        X = ((100-HEADROOM)/100)*Xcs  # input
         
-        # Quantisation dither
-        Dq = dither_generation.gen_stochastic(t.size, Nch, Qstep, dither_generation.pdf.triangular_hp)
-
         # Ideal Levels
-        YQns = YQ.squeeze()
+        YQns = YQ[0]
 
         # % Measured Levels
         ML = get_measured_levels(QConfig, SC.lin.method) # get_measured_levels(lm.ILC)
@@ -522,63 +548,33 @@ match SC.lin.method:
         elif QConfig == qws.w_6bit_ARTI or QConfig == qws.w_6bit_2ch_SPICE:
             ML_err_rng = Qstep/1024 # 6 bit DAC
         else:
-            sys.exit('ILC: Unknown QConfig for ML error')
-        
-        MLns_err = np.random.uniform(-ML_err_rng, ML_err_rng, MLns.shape)
-        MLns = MLns + MLns_err
- 
+            sys.exit('Fix qconfig')
+
+        QMODEL = 2
+        C_nsq = nsdcal(X, Dq, YQns, MLns, Qstep, Vmin, Nb, QMODEL)
+
         if QConfig == qws.w_6bit_ARTI or QConfig == qws.w_16bit_ARTI:
             MLns = np.flip(MLns)
             YQns = np.flip(YQns)
 
-        # noise transfer function 
-        match 1:
+        fig, ax = plt.subplots()
+        ax.plot(np.arange(0, 2**Nb, 1), YQns)
+        ax.plot(np.arange(0, 2**Nb, 1), MLns)
+        ax.legend(['il', 'ML'])
+        # Reconstruction filter
+        match 2:
             case 1:
-                b1 = np.array([1, -2, 1])
-                a1 =  np.array([1, 0, 0])
+                Wn = Fc_lp/(Fs/2)
+                b1, a1 = signal.butter(2, Wn)
                 l_dlti = signal.dlti(b1, a1, dt=Ts)
-            # case 2:
-            #     Wn = Fc_lp/(Fs/2)
-            #     b1, a1 = signal.butter(2, Wn)
-            #     l_dlti = signal.dlti(b1, a1, dt=Ts)
-            # case 3:  # bilinear transf., seems to work ok, not a perfect match to physics
-            #     Wn = Fc_lp/(Fs/2)
-            #     b1, a1 = signal.butter(N_lp, Wn)
-            #     l_dlti = signal.dlti(b1, a1, dt=Ts)
+            case 2:  # bilinear transf., seems to work ok, not a perfect match to physics
+                Wn = Fc_lp/(Fs/2)
+                b1, a1 = signal.butter(N_lp, Wn)
+                l_dlti = signal.dlti(b1, a1, dt=Ts)
         
         len_X = len(Xcs)
         ft, fi = signal.dimpulse(l_dlti, n=2*len_X)
         
-        # Learning and Output Matrices
-        # Q, L, G = learningMatrices(len_X, fi)
-
-        # ILC with DSM
-
-        # Get ILC output codes
-        #CU1 = get_ILC_control(Nb, Xcs, Dq.squeeze(), Q, L, G, itr, b1, a1, Qstep, Vmin, Qtype, YQ, ILns)
-        # CM1 = get_ILC_control(Nb, Xcs, Dq.squeeze(), Q, L, G, itr, b1, a1, Qstep, Vmin, Qtype, YQ, MLns)
-
-        # # Silce 1 - 1 from the front and back to remove the transient
-        # N_padding = int(len_X/Np)
-        # #CU1 = CU1.reshape(1,-1)
-        # CM1 = CM1.reshape(1,-1)
-        # # Reshape into column vector
-        # #CU1 = CU1[:,N_padding:-N_padding]
-        # CM1 = CM1[:,N_padding:-N_padding]
-
-        # # Add multiple periods
-        # #CU = [] 
-        # CM = []
-        # for i in range(round(Np)):
-        #     #CU = np.append(CU, CU1[0, :-1])
-        #     CM = np.append(CM, CM1[0, :-1])
-        # #CU = np.append(CU, CU1[0,-1]).astype(int)
-        # CM = np.append(CM, CM1[0,-1]).astype(int)
-        # #CU  = CU.reshape(1,-1)
-        # CM  = CM.reshape(1,-1)
-        # C = CM
-        # t = np.arange(0,Ts*(C.size), Ts)
-
         # new updated ILC implementation
         # Quantizer model
         # QMODEL = 1      # Ideal model
@@ -589,15 +585,17 @@ match SC.lin.method:
         Wf = np.identity(len_X)*1e-4
         Wdf = np.identity(len_X)*1e-1
 
+        bns = np.array([1, -2, 1])
+        ans =  np.array([1, 0, 0])
         # Number of ILC iterations
         itr = 10
 
         dsmilc = DSM_ILC(Nb, Qstep, Vmin, Vmax, Qtype, QMODEL)
         # Get Q filtering, learning and output matrices
-        Q, L, G = dsmilc.learningMatrices(Xcs.size, We, Wf, Wdf,fi)
+        Q, L, G = dsmilc.learningMatrices(X.size, We, Wf, Wdf,fi)
 
         # Get DSM_ILC codes
-        C = dsmilc.get_codes(Xcs, Dq, itr, YQns, MLns, Q, L, G, b1, a1)
+        C = dsmilc.get_codes(X, Dq, itr, YQns, MLns, Q, L, G, bns, ans)
 
         if QConfig == qws.w_6bit_2ch_SPICE:
             C = np.stack((C[0, :], np.zeros(C.shape[1])))  # zero input to sec. channel
@@ -641,6 +639,8 @@ match SC.lin.method:
 
 
 # %% Post processing
+# C = C_nsq[0,0:t.size].reshape(1,-1)
+# C = C_nsq
 # generate DAC output
 match SC.dac.model:
     case dm.STATIC:  # use static non-linear quantiser model to simulate DAC
@@ -740,3 +740,5 @@ if run_SPICE or SC.dac.model == dm.STATIC:
     results_tab = [['Config', 'Method', 'Model', 'Fs', 'Fc', 'Fx', 'ENOB'],
             [str(SC.qconfig), str(SC.lin), str(SC.dac), f'{Float(SC.fs):.2h}', f'{Float(SC.fc):.1h}', f'{Float(SC.carrier_freq):.1h}', f'{Float(ENOB_M):.3h}']]
     print(tabulate(results_tab))
+
+# %%
