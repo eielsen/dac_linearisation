@@ -26,6 +26,7 @@ class qws:  # quantiser_word_size
     w_6bit_ARTI = 7
     w_16bit_ARTI = 8
     w_6bit_2ch_SPICE = 9
+    w_16bit_2ch_SPICE = 10
 
 
 def quantiser_configurations(QConfig):
@@ -87,6 +88,12 @@ def quantiser_configurations(QConfig):
             Mq = 2**Nb - 1; # max. code
             Vmin = -8.00371104e-05 # volt
             Vmax = 7.99005702e-05 # volt
+            Qtype = quantiser_type.midtread
+        case qws.w_16bit_2ch_SPICE:
+            Nb = 16 # word-size
+            Mq = 2**Nb - 1; # max. code
+            Vmin =  -0.08022664 # volt
+            Vmax = 0.08024051 # volt
             Qtype = quantiser_type.midtread
         case _:
             sys.exit("Invalid quantiser configuration selected.")
@@ -158,8 +165,10 @@ def get_measured_levels(QConfig, lmethod=lm.BASELINE):
                     ML = np.transpose(np.genfromtxt(CSV_file, delimiter=',', skip_header=1))[2:,:]
                     np.save(os.path.join(inpath, infile), ML)
                     return ML
-        case qws.w_6bit_2ch_SPICE:  # w_6bit_2ch_SPICE
-            infile = 'cs_dac_06bit_2ch_01_levels.npy'
+        case qws.w_6bit_2ch_SPICE:
+            infile = 'cs_dac_06bit_2ch_DC_levels.npy'
+        case qws.w_16bit_2ch_SPICE:
+            infile = 'cs_dac_16bit_2ch_DC_levels.npy'
     
     if os.path.exists(os.path.join(inpath, infile)):
         ML = np.load(os.path.join(inpath, infile))

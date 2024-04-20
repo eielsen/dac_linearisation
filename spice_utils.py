@@ -30,7 +30,8 @@ class sinad_comp:
 
 
 class sim_config:
-    def __init__(self, lin, dac, fs, t, fc, nf, carrier_scale, carrier_freq):
+    def __init__(self, qconfig, lin, dac, fs, t, fc, nf, carrier_scale, carrier_freq):
+        self.qconfig = qconfig
         self.lin = lin
         self.dac = dac
         self.fs = fs
@@ -41,7 +42,8 @@ class sim_config:
         self.carrier_freq = carrier_freq
     
     def __str__(self):
-        s = str(self.lin) + '\n'
+        s = str(self.qconfig)
+        s = s + str(self.lin) + '\n'
         s = s + str(self.dac) + '\n'
         s = s + 'Fs=' + f'{Float(self.fs):.0h}' + '\n'
         s = s + 'Fc=' + f'{Float(self.fc):.0h}' + '\n'

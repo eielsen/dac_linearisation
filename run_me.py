@@ -69,14 +69,14 @@ def test_signal(SCALE, MAXAMP, FREQ, OFFSET, t):
 # Configuration
 
 ##### METHOD CHOICE - Choose which linearization method you want to test
-#RUN_LM = lm.BASELINE
+RUN_LM = lm.BASELINE
 #RUN_LM = lm.PHYSCAL
 #RUN_LM = lm.PHFD
 #RUN_LM = lm.SHPD
 #RUN_LM = lm.NSDCAL
 #RUN_LM = lm.DEM
 #RUN_LM = lm.MPC
-RUN_LM = lm.ILC
+#RUN_LM = lm.ILC
 #RUN_LM = lm.ILC_SIMP
 
 lin = lm(RUN_LM)
@@ -101,8 +101,6 @@ Fs = 1022976
 #Fs = 261881856
 Ts = 1/Fs  # sampling time
 
-# Punkter: 1048576
-
 # Carrier signal (to be recovered on the output)
 Xcs_SCALE = 100  # %
 Xcs_FREQ = 999  # Hz
@@ -110,20 +108,17 @@ Xcs_FREQ = 999  # Hz
 ##### Set quantiser model
 #QConfig = qws.w_16bit_SPICE
 #QConfig = qws.w_16bit_ARTI
-QConfig = qws.w_6bit_ARTI
-#QConfig = qws.w_6bit_2ch_SPICE
+#QConfig = qws.w_6bit_ARTI
+QConfig = qws.w_6bit_2ch_SPICE
+#QCOnfig = qws.w_16bit_2ch_SPICE
 Nb, Mq, Vmin, Vmax, Rng, Qstep, YQ, Qtype = quantiser_configurations(QConfig)
 
+##### Set what to run
 SAVE_CODES_TO_FILE_AND_STOP = False
 #SAVE_CODES_TO_FILE_AND_STOP = True
 SAVE_CODES_TO_FILE = False
 #SAVE_CODES_TO_FILE = True
 run_SPICE = False
-
-config_tab = [['Config', 'Method', 'Model', 'Fs', 'Fc', 'Fx'],
-            [str(QConfig), str(SC.lin), str(SC.dac), f'{Float(SC.fs):.1h}', f'{Float(SC.fc):.1h}', f'{Float(SC.carrier_freq):.1h}']]
-print(tabulate(config_tab))
-
 
 # Generate time vector
 match 2:
@@ -132,14 +127,16 @@ match 2:
         Np = np.ceil(Xcs_FREQ*Ts*Nts).astype(int) # no. of periods for carrier
     case 2:  # specify duration as number of periods of carrier
         Np = 3  # no. of periods for carrier
-        
+
 Npt = 1/2  # no. of carrier periods to use to account for transients
 Np = Np + 2*Npt
 
 t_end = Np/Xcs_FREQ  # time vector duration
 t = np.arange(0, t_end, Ts)  # time vector
 
-SC = sim_config(lin, dac, Fs, t, Fc_lp, N_lp, Xcs_SCALE, Xcs_FREQ)
+# Store configuration
+SC = sim_config(QConfig, lin, dac, Fs, t, Fc_lp, N_lp, Xcs_SCALE, Xcs_FREQ)
+print(SC)  # print configuration
 
 # Generate carrier/test signal
 SIGNAL_MAXAMP = Rng/2 - Qstep  # make headroom for noise dither (see below)
