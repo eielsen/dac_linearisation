@@ -311,6 +311,42 @@ def gen_spice_sim_file(C, Nb, t, Ts, QConfig, outdir, seed=1, seq=0):
                 'tran 10u ' + str(t[-1]) + '\n' + \
                 'write $inputdir/' + outputf + '.bin' + ' v(out1) v(out2)\n' + \
                 '.endc\n'
+        case qws.w_16bit_2ch_SPICE:  # 16 bit DAC, 2 channels
+            c1 = C[0,:].astype(int)
+            c2 = C[1,:].astype(int)
+            nsamples1 = len(c1)
+            nsamples2 = len(c2)
+
+            tvb1 = '\n'
+            tvb2 = '\n'
+            tvbb1 = '\n'
+            tvbb2 = '\n'
+            vbpc = '0'
+            vdd = '1.5'
+            Tr = 1e-3  # the rise-time for edges, in µs
+            for k in range(0, Nb):  # generate PWL strings
+                k_str = str(k + 1)
+                tvb1 += 'vb1' + k_str + ' b1' + k_str + ' 0 pwl ' + \
+                    get_pwl_string(c1, Ts, nsamples1, k, vbpc, vdd, Tr)
+                tvbb1 += 'vbb1' + k_str + ' bb1' + k_str + ' 0 pwl ' + \
+                    get_inverted_pwl_string(c1, Ts, nsamples1, k, vbpc, vdd, Tr)
+                tvb2 += 'vb2' + k_str + ' b2' + k_str + ' 0 pwl ' + \
+                    get_pwl_string(c2, Ts, nsamples2, k, vbpc, vdd, Tr)
+                tvbb2 += 'vbb2' + k_str + ' bb2' + k_str + ' 0 pwl ' + \
+                    get_inverted_pwl_string(c2, Ts, nsamples2, k, vbpc, vdd, Tr)
+            wav_str = tvb1 + tvbb1 + tvb2 + tvbb2
+
+            circf = 'cs_dac_16bit_2ch_TRAN.cir'  # circuit description
+            spicef = 'cs_dac_16bit_2ch_TRAN_ngspice_batch.cir'  # complete spice input file
+
+            outputf = 'cs_dac_16bit_2ch_TRAN_ngspice_batch'
+            
+            ctrl_str = '\n.option method=trap TRTOL=5 gmin=1e-19 reltol=200u abstol=100f vntol=100n seed=1\n'
+            ctrl_str = ctrl_str + \
+                '\n.control\n' + \
+                'tran 10u ' + str(t[-1]) + '\n' + \
+                'write $inputdir/' + outputf + '.bin' + ' v(out1) v(out2)\n' + \
+                '.endc\n'
 
     addtexttofile(os.path.join(tempdir, cmdf), ctrl_str)
 
@@ -429,8 +465,19 @@ def main():
     rundirs.sort()
 
     print('No. dirs.: ' + str(len(rundirs)))
-    rundir = rundirs[16]  # pick run
-    rundir = rundirs[-1]  # pick run
+
+    method_str = 'baseline'
+    #method_str = 'physical_level_calibration'
+    #method_str = 'periodic_dither'
+    #method_str = 'noise_dither'
+    #method_str = 'digital_calibration'
+    #method_str = 'dynamic_element_matching'
+    method_str = 'ilc'
+
+    matching = [s for s in rundirs if method_str in s]
+
+    #rundir = rundirs[16]  # pick run
+    rundir = matching[0]  # pick run
     
     bindir = os.path.join(outdir, rundir)
 
@@ -469,7 +516,7 @@ def main():
             print(Nch)
 
             # Summation stage
-            if SC.lin.method == lm.BASELINE:
+            if SC.lin.method == lm.BASELINE or SC.lin.method == lm.ILC:
                 K = np.ones((Nch,1))
                 K[1] = 0.0  # null one channel (want single channel resp.)
             elif SC.lin.method == lm.DEM:
@@ -525,11 +572,10 @@ def main():
         plt.plot(t,ym)
         plt.plot(t,ym_avg)
         
-        results = [['Method', 'Model', 'Fs', 'Fc', 'Fx', 'ENOB'],
-                [str(SC.lin), str(SC.dac), f'{Float(SC.fs):.1h}', f'{Float(SC.fc):.1h}', f'{Float(SC.carrier_freq):.1h}', f'{Float(ENOB_M):.3h}']]
-
-        print(tabulate(results))
-
+        results_tab = [['Config', 'Method', 'Model', 'Fs', 'Fc', 'Fx', 'ENOB'],
+            [str(SC.qconfig), str(SC.lin), str(SC.dac), f'{Float(SC.fs):.2h}', f'{Float(SC.fc):.1h}', f'{Float(SC.carrier_freq):.1h}', f'{Float(ENOB_M):.3h}']]
+        print(tabulate(results_tab))
+        
         #t_spice, y_spice = read_spice_bin_file_with_most_recent_timestamp(path)
         #YM = np.zeros([1,y_spice.size])
         #YM[0,:] = y_spice

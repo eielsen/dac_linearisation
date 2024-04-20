@@ -76,16 +76,12 @@ def quantiser_configurations(QConfig):
             Mq = 2**Nb - 1; # max. code
             Vmin =  0.020651606 # volt
             Vmax = -0.019920569 # volt
-            # Vmax =  0.020651606 # volt
-            # Vmin = -0.019920569 # volt
             Qtype = quantiser_type.midtread
         case qws.w_16bit_ARTI:
             Nb = 16 # word-size
             Mq = 2**Nb - 1; # max. code
             Vmin =  0.022894606 # volt
             Vmax = -0.020022067 # volt
-            # Vmax =  0.022894606 # volt
-            # Vmin = -0.020022067 # volt
             Qtype = quantiser_type.midtread
         case qws.w_6bit_2ch_SPICE:
             Nb = 6 # word-size

@@ -24,7 +24,7 @@ set filetype=ascii
 set appendwrite
 run
 *write output.txt v(out1) v(out2)
-wrdata $inputdir/cs_dac_06bit_2ch_01_levels.txt v(out1) v(out2)
+wrdata $inputdir/cs_dac_06bit_2ch_DC_levels.txt v(out1) v(out2)
 .endc
 
 .subckt pfet d g s b
