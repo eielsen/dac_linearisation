@@ -70,11 +70,11 @@ def test_signal(SCALE, MAXAMP, FREQ, OFFSET, t):
 # Configuration
 
 ##### METHOD CHOICE - Choose which linearization method you want to test
-RUN_LM = lm.BASELINE
+#RUN_LM = lm.BASELINE
 #RUN_LM = lm.PHYSCAL
 #RUN_LM = lm.PHFD
 #RUN_LM = lm.SHPD
-#RUN_LM = lm.NSDCAL
+RUN_LM = lm.NSDCAL
 #RUN_LM = lm.DEM
 #RUN_LM = lm.MPC
 #RUN_LM = lm.ILC
@@ -104,8 +104,6 @@ Fs = 1022976
 #Fs = 261881856
 
 Ts = 1/Fs  # sampling time
-
-# Punkter: 1048576
 
 # Carrier signal (to be recovered on the output)
 Xcs_SCALE = 100  # %
@@ -456,14 +454,6 @@ match SC.lin.method:
             MLns = np.flip(MLns)
             YQns = np.flip(YQns)
 
-
-
-        fig, ax = plt.subplots()
-        ax.plot(np.arange(0,2**Nb, 1), MLns)
-        ax.plot(np.arange(0,2**Nb, 1),YQns)
-        ax.legend(['ml','yq'])
-
-
         # Reconstruction filter
         match 2:
             case 1:
@@ -533,7 +523,7 @@ match SC.lin.method:
             MLns = np.flip(MLns)
             YQns = np.flip(YQns)
         # Reconstruction filter
-        match 1:
+        match 3:
             case 1:
                 b1 = np.array([1, -2, 1])
                 a1 =  np.array([1, 0, 0])
@@ -544,24 +534,8 @@ match SC.lin.method:
                 l_dlti = signal.dlti(b1, a1, dt=Ts)
             case 3:  # bilinear transf., seems to work ok, not a perfect match to physics
                 Wn = Fc_lp/(Fs/2)
-                #b1, a1 = signal.butter(N_lp, Wn, btype='low', analog=False, output='ba', fs=1/Ts)
                 b1, a1 = signal.butter(N_lp, Wn)
                 l_dlti = signal.dlti(b1, a1, dt=Ts)
-            case 4:  # zoh interp. matches physics, SciPi impl. causes numerical problems??
-                Wn = 2*np.pi*Fc_lp
-                b1, a1 = signal.butter(N_lp, 1, 'lowpass', analog=True)
-                Wlp = signal.lti(b1, a1)  # filter LTI system instance
-                Wlp_ss = Wlp.to_ss()  # controllable canonical form
-                Ac = Wlp_ss.A
-                Bc = Wlp_ss.B
-                Cc = Wlp_ss.C
-                Dc = Wlp_ss.D
-                Ac = Wn*Ac  # scale to get correct cut-off /SciPi garbage butter workaround
-                Bc = Wn*Bc
-
-                A_, B_, C_, D_ = balreal_ct(Ac, Bc, Cc, Dc)
-                l_lti = signal.lti(A_, B_, C_, D_)
-                l_dlti = l_lti.to_discrete(dt=Ts, method='zoh')
         
         len_X = len(Xcs)
         ft, fi = signal.dimpulse(l_dlti, n=2*len_X)
