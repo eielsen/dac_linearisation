@@ -465,13 +465,13 @@ def main():
     rundirs.sort()
 
     print('No. dirs.: ' + str(len(rundirs)))
-    
-    #method_str = 'baseline'
+
+    method_str = 'baseline'
     #method_str = 'physical_level_calibration'
     #method_str = 'periodic_dither'
     #method_str = 'noise_dither'
     #method_str = 'digital_calibration'
-    method_str = 'dynamic_element_matching'
+    #method_str = 'dynamic_element_matching'
 
     matching = [s for s in rundirs if method_str in s]
 

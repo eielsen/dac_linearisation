@@ -70,21 +70,21 @@ def test_signal(SCALE, MAXAMP, FREQ, OFFSET, t):
 # Configuration
 
 ##### METHOD CHOICE - Choose which linearization method you want to test
-RUN_LM = lm.BASELINE
+#RUN_LM = lm.BASELINE
 #RUN_LM = lm.PHYSCAL
 #RUN_LM = lm.PHFD
-# RUN_LM = lm.SHPD
-# RUN_LM = lm.NSDCAL
-# RUN_LM = lm.DEM
-# RUN_LM = lm.MPC
+#RUN_LM = lm.SHPD
+#RUN_LM = lm.NSDCAL
+#RUN_LM = lm.DEM
+#RUN_LM = lm.MPC
 RUN_LM = lm.ILC
 #RUN_LM = lm.ILC_SIMP
 
 lin = lm(RUN_LM)
 
 ##### MODEL CHOICE
-#dac = dm(dm.STATIC)  # use static non-linear quantiser model to simulate DAC
-dac = dm(dm.SPICE)  # use SPICE to simulate DAC output
+dac = dm(dm.STATIC)  # use static non-linear quantiser model to simulate DAC
+#dac = dm(dm.SPICE)  # use SPICE to simulate DAC output
 
 # Chose how to compute SINAD
 SINAD_COMP_SEL = sinad_comp.CFIT
@@ -95,10 +95,10 @@ Fc_lp = 100e3  # cut-off frequency in hertz
 N_lp = 3  # filter order
 
 # Sampling rate (over-sampling) in hertz
-Fs = 1e6
+#Fs = 1e6
 #Fs = 25e6
 #Fs = 250e6
-# Fs = 1022976
+Fs = 1022976
 #Fs = 32735232
 #Fs = 130940928
 #Fs = 261881856
@@ -113,8 +113,8 @@ Xcs_FREQ = 999  # Hz
 #QConfig = qws.w_16bit_SPICE
 #QConfig = qws.w_16bit_ARTI
 # QConfig = qws.w_6bit_ARTI
-QConfig = qws.w_6bit_2ch_SPICE
-#QConfig = qws.w_16bit_2ch_SPICE
+#QConfig = qws.w_6bit_2ch_SPICE
+QConfig = qws.w_16bit_2ch_SPICE
 Nb, Mq, Vmin, Vmax, Rng, Qstep, YQ, Qtype = quantiser_configurations(QConfig)
 
 SAVE_CODES_TO_FILE_AND_STOP = False
@@ -548,7 +548,10 @@ match SC.lin.method:
         elif QConfig == qws.w_6bit_ARTI or QConfig == qws.w_6bit_2ch_SPICE:
             ML_err_rng = Qstep/1024 # 6 bit DAC
         else:
-            sys.exit('Fix qconfig')
+            sys.exit('NSDCAL: Unknown QConfig for ML error')
+        
+        MLns_err = np.random.uniform(-ML_err_rng, ML_err_rng, MLns.shape)
+        MLns = MLns + MLns_err
 
         QMODEL = 2
         C_nsq = nsdcal(X, Dq, YQns, MLns, Qstep, Vmin, Nb, QMODEL)
@@ -557,10 +560,6 @@ match SC.lin.method:
             MLns = np.flip(MLns)
             YQns = np.flip(YQns)
 
-        fig, ax = plt.subplots()
-        ax.plot(np.arange(0, 2**Nb, 1), YQns)
-        ax.plot(np.arange(0, 2**Nb, 1), MLns)
-        ax.legend(['il', 'ML'])
         # Reconstruction filter
         match 2:
             case 1:
