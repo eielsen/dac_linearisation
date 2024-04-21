@@ -72,19 +72,19 @@ def test_signal(SCALE, MAXAMP, FREQ, OFFSET, t):
 ##### METHOD CHOICE - Choose which linearization method you want to test
 #RUN_LM = lm.BASELINE
 #RUN_LM = lm.PHYSCAL
-#RUN_LM = lm.PHFD
+RUN_LM = lm.PHFD
 #RUN_LM = lm.SHPD
 #RUN_LM = lm.NSDCAL
 #RUN_LM = lm.DEM
 #RUN_LM = lm.MPC
-RUN_LM = lm.ILC
+#RUN_LM = lm.ILC
 #RUN_LM = lm.ILC_SIMP
 
 lin = lm(RUN_LM)
 
 ##### MODEL CHOICE
-#dac = dm(dm.STATIC)  # use static non-linear quantiser model to simulate DAC
-dac = dm(dm.SPICE)  # use SPICE to simulate DAC output
+dac = dm(dm.STATIC)  # use static non-linear quantiser model to simulate DAC
+#dac = dm(dm.SPICE)  # use SPICE to simulate DAC output
 
 # Chose how to compute SINAD
 SINAD_COMP_SEL = sinad_comp.CFIT
@@ -98,7 +98,8 @@ N_lp = 3  # filter order
 #Fs = 1e6
 #Fs = 25e6
 #Fs = 250e6
-Fs = 1022976
+#Fs = 1022976
+Fs = 16367616
 #Fs = 32735232
 #Fs = 130940928
 #Fs = 261881856
@@ -240,7 +241,7 @@ match SC.lin.method:
         elif QConfig == qws.w_16bit_2ch_SPICE:
             HEADROOM = 1  # 16 bit DAC
         else:
-            sys.exit('Fix qconfig')
+            sys.exit('NSDCAL: Missing config.')
 
         X = ((100-HEADROOM)/100)*Xcs  # input
         
@@ -280,7 +281,8 @@ match SC.lin.method:
         Xcs = matlib.repmat(Xcs, Nch, 1)
 
         # Large high-pass dither set-up
-        Xscale = 10  # carrier to dither ratio (between 0% and 100%)
+        #Xscale = 10  # carrier to dither ratio (between 0% and 100%)
+        Xscale = 50  # carrier to dither ratio (between 0% and 100%)
         Dscale = 100 - Xscale  # dither to carrier ratio
 
         match 3:
@@ -385,23 +387,33 @@ match SC.lin.method:
         # Repeat carrier on all channels
         Xcs = matlib.repmat(Xcs, Nch, 1)
 
-        # Scaling dither with respect to the carrier
-        Xscale = 50  # carrier to dither ratio (between 0% and 100%)
+        if QConfig == qws.w_16bit_SPICE:
+            Xscale = 50  # carrier to dither ratio (between 0% and 100%)
+        elif QConfig == qws.w_6bit_ARTI:
+            Xscale = 50  # carrier to dither ratio (between 0% and 100%)
+            Dfreq = 5.0e6 # Fs262Mhz - 6 bit ARTI
+        elif QConfig == qws.w_16bit_ARTI:
+            Xscale = 50  # carrier to dither ratio (between 0% and 100%)
+            Dfreq = 5.0e6 # Fs262Mhz - 16 bit ARTI
+        elif QConfig == qws.w_6bit_2ch_SPICE:
+            Xscale = 80  # carrier to dither ratio (between 0% and 100%) # Fs1022976 - 6 bit 2 Ch
+            Dfreq = 300e3 # Fs1022976 - 6 bit 2 Ch
+            #Dfreq = 1.5e6 # Fs32735232 - 6 bit 2 Ch
+        elif QConfig == qws.w_16bit_2ch_SPICE:
+            Xscale = 50  # carrier to dither ratio (between 0% and 100%)
+            #Dfreq = 250e3 # Fs1022976 - 16 bit 2 Ch
+            Dfreq = 5.0e6 # Fs32735232 - 16 bit 2 Ch
+            #Dfreq = 5.0e6 # Fs262Mhz - 16 bit 2 Ch
+        else:
+            sys.exit('PHFD: Missing config.')
+        
+        #Xscale = 50  # carrier to dither ratio (between 0% and 100%)
         #Xscale = 80  # carrier to dither ratio (between 0% and 100%) # Fs1022976 - 6 bit 2 Ch
         Dscale = 100 - Xscale  # dither to carrier ratio
         
-        Dfreq = 250e3 # Fs1022976 - 16 bit 2 Ch
-        #Dfreq = 5.0e6 # Fs32735232 - 16 bit 2 Ch
-        
-        #Dfreq = 300e3 # Fs1022976 - 6 bit 2 Ch
-        #Dfreq = 1.5e6 # Fs32735232 - 6 bit 2 Ch
-
         #Dfreq = 1.592e6 # Fs10MHz - 16bit
         #Dfreq = 2.99e6 # Fs25Mhz - 16bit
         #Dfreq = 2.98e6 # Fs250Mhz - 6 bit
-
-        #Dfreq = 5.0e6 # Fs262Mhz - 16 bit ARTI
-        #Dfreq = 5.0e6 # Fs262Mhz - 6 bit ARTI
 
         Dadf = dither_generation.adf.uniform  # amplitude distr. funct. (ADF)
         # Generate periodic dither
