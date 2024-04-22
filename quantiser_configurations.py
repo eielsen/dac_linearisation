@@ -27,6 +27,7 @@ class qws:  # quantiser_word_size
     w_16bit_ARTI = 8
     w_6bit_2ch_SPICE = 9
     w_16bit_2ch_SPICE = 10
+    w_16bit_6t_ARTI = 11
 
 
 def quantiser_configurations(QConfig):
@@ -72,16 +73,25 @@ def quantiser_configurations(QConfig):
             Vmax = 8 # volt
             Qtype = quantiser_type.midtread
         case qws.w_6bit_ARTI:
+            # 6-bit DAC. All bits are binary-weighted
             Nb = 6 # word-size
             Mq = 2**Nb - 1; # max. code
-            Vmin =  0.020651606 # volt
-            Vmax = -0.019920569 # volt
+            Vmin =  0.020651606 # Ampere
+            Vmax = -0.019920569 # Ampere
             Qtype = quantiser_type.midtread
         case qws.w_16bit_ARTI:
+            # 16-bit DAC. All bits are binary-weighted
             Nb = 16 # word-size
             Mq = 2**Nb - 1; # max. code
-            Vmin =  0.022894606 # volt
-            Vmax = -0.020022067 # volt
+            Vmin =  0.022894606 # Ampere
+            Vmax = -0.020022067 # Ampere
+            Qtype = quantiser_type.midtread
+        case qws.w_16bit_6t_ARTI:
+            # 16-bit DAC. The 10 first bits are binary-weighted, and the upper 6 bits are thermometer-weighted.
+            Nb = 16 # word-size
+            Mq = 2**Nb - 1; # max. code
+            Vmin =  0.0204081 # Ampere
+            Vmax = -0.02040625 # Ampere
             Qtype = quantiser_type.midtread
         case qws.w_6bit_2ch_SPICE:
             Nb = 6 # word-size
@@ -165,6 +175,16 @@ def get_measured_levels(QConfig, lmethod=lm.BASELINE):
                     ML = np.transpose(np.genfromtxt(CSV_file, delimiter=',', skip_header=1))[2:,:]
                     np.save(os.path.join(inpath, infile), ML)
                     return ML
+                
+        case qws.w_16bit_6t_ARTI:
+            CSV_file = os.path.join(inpath, 'ARTI_cs_dac_16b_6t_levels.csv')
+            infile = 'SPICE_levels_ARTI_16bit_6t.npy'
+            if (os.path.exists(os.path.join(inpath, infile)) is False):
+                if (os.path.exists(CSV_file) is True):
+                    ML = np.transpose(np.genfromtxt(CSV_file, delimiter=',', skip_header=1))[2:,:]
+                    np.save(os.path.join(inpath, infile), ML)
+                    return ML
+
         case qws.w_6bit_2ch_SPICE:
             infile = 'cs_dac_06bit_2ch_DC_levels.npy'
         case qws.w_16bit_2ch_SPICE:

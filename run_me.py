@@ -70,12 +70,12 @@ def test_signal(SCALE, MAXAMP, FREQ, OFFSET, t):
 # Configuration
 
 ##### METHOD CHOICE - Choose which linearization method you want to test
-#RUN_LM = lm.BASELINE
-#RUN_LM = lm.PHYSCAL
+RUN_LM = lm.BASELINE
+# RUN_LM = lm.PHYSCAL
 RUN_LM = lm.PHFD
-#RUN_LM = lm.SHPD
-#RUN_LM = lm.NSDCAL
-#RUN_LM = lm.DEM
+RUN_LM = lm.SHPD
+# RUN_LM = lm.NSDCAL
+RUN_LM = lm.DEM
 #RUN_LM = lm.MPC
 #RUN_LM = lm.ILC
 #RUN_LM = lm.ILC_SIMP
@@ -99,9 +99,11 @@ N_lp = 3  # filter order
 #Fs = 25e6
 #Fs = 250e6
 #Fs = 1022976
-Fs = 16367616
+#Fs = 16367616
 #Fs = 32735232
+Fs = 51200000*4
 #Fs = 130940928
+#Fs = 51200000*4
 #Fs = 261881856
 
 Ts = 1/Fs  # sampling time
@@ -113,9 +115,10 @@ Xcs_FREQ = 999  # Hz
 ##### Set quantiser model
 #QConfig = qws.w_16bit_SPICE
 #QConfig = qws.w_16bit_ARTI
-# QConfig = qws.w_6bit_ARTI
+QConfig = qws.w_16bit_6t_ARTI
+#QConfig = qws.w_6bit_ARTI
 #QConfig = qws.w_6bit_2ch_SPICE
-QConfig = qws.w_16bit_2ch_SPICE
+#QConfig = qws.w_16bit_2ch_SPICE
 Nb, Mq, Vmin, Vmax, Rng, Qstep, YQ, Qtype = quantiser_configurations(QConfig)
 
 SAVE_CODES_TO_FILE_AND_STOP = False
@@ -133,7 +136,7 @@ match 2:
         if SINAD_COMP_SEL == sinad_comp.FFT:
             Np = 200  # no. of periods for carrier
         else:
-            Np = 2  # no. of periods for carrier
+            Np = 8  # no. of periods for carrier
 
 Npt = 1/2  # no. of carrier periods to use to account for transients
 Np = Np + 2*Npt
@@ -393,8 +396,11 @@ match SC.lin.method:
             Xscale = 50  # carrier to dither ratio (between 0% and 100%)
             Dfreq = 5.0e6 # Fs262Mhz - 6 bit ARTI
         elif QConfig == qws.w_16bit_ARTI:
-            Xscale = 50  # carrier to dither ratio (between 0% and 100%)
-            Dfreq = 5.0e6 # Fs262Mhz - 16 bit ARTI
+            Xscale = 47.5  # carrier to dither ratio (between 0% and 100%)
+            Dfreq = 2.98e6 #10.0e6 # Fs262Mhz - 16 bit ARTI
+        elif QConfig == qws.w_16bit_6t_ARTI:
+            Xscale = 47.5  # carrier to dither ratio (between 0% and 100%)
+            Dfreq = 2.98e6 #10.0e6 # Fs262Mhz - 16 bit ARTI
         elif QConfig == qws.w_6bit_2ch_SPICE:
             Xscale = 80  # carrier to dither ratio (between 0% and 100%) # Fs1022976 - 6 bit 2 Ch
             Dfreq = 300e3 # Fs1022976 - 6 bit 2 Ch
