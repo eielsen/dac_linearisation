@@ -72,7 +72,7 @@ def test_signal(SCALE, MAXAMP, FREQ, OFFSET, t):
 ##### METHOD CHOICE - Choose which linearization method you want to test
 #RUN_LM = lm.BASELINE
 #RUN_LM = lm.PHYSCAL
-RUN_LM = lm.PHFD
+#RUN_LM = lm.PHFD
 #RUN_LM = lm.SHPD
 #RUN_LM = lm.NSDCAL
 #RUN_LM = lm.DEM
@@ -83,8 +83,8 @@ RUN_LM = lm.PHFD
 lin = lm(RUN_LM)
 
 ##### MODEL CHOICE
-dac = dm(dm.STATIC)  # use static non-linear quantiser model to simulate DAC
-#dac = dm(dm.SPICE)  # use SPICE to simulate DAC output
+#dac = dm(dm.STATIC)  # use static non-linear quantiser model to simulate DAC
+dac = dm(dm.SPICE)  # use SPICE to simulate DAC output
 
 # Chose how to compute SINAD
 SINAD_COMP_SEL = sinad_comp.CFIT
@@ -99,8 +99,8 @@ N_lp = 3  # filter order
 #Fs = 25e6
 #Fs = 250e6
 #Fs = 1022976
-Fs = 16367616
-#Fs = 32735232
+#Fs = 16367616
+Fs = 32735232
 #Fs = 130940928
 #Fs = 261881856
 
@@ -114,8 +114,8 @@ Xcs_FREQ = 999  # Hz
 #QConfig = qws.w_16bit_SPICE
 #QConfig = qws.w_16bit_ARTI
 # QConfig = qws.w_6bit_ARTI
-#QConfig = qws.w_6bit_2ch_SPICE
-QConfig = qws.w_16bit_2ch_SPICE
+QConfig = qws.w_6bit_2ch_SPICE
+#QConfig = qws.w_16bit_2ch_SPICE
 Nb, Mq, Vmin, Vmax, Rng, Qstep, YQ, Qtype = quantiser_configurations(QConfig)
 
 SAVE_CODES_TO_FILE_AND_STOP = False
@@ -393,16 +393,20 @@ match SC.lin.method:
             Xscale = 50  # carrier to dither ratio (between 0% and 100%)
             Dfreq = 5.0e6 # Fs262Mhz - 6 bit ARTI
         elif QConfig == qws.w_16bit_ARTI:
-            Xscale = 50  # carrier to dither ratio (between 0% and 100%)
-            Dfreq = 5.0e6 # Fs262Mhz - 16 bit ARTI
+            Xscale = 47.5  # carrier to dither ratio (between 0% and 100%)
+            #Dfreq = 5.0e6 # Fs262Mhz - 16 bit ARTI
+            #Dfreq = 1.0e6 # Fs32735232 - 16 bit ARTI
+            Dfreq = 1.0e6 # Fs16367616 - 16 bit ARTI
         elif QConfig == qws.w_6bit_2ch_SPICE:
-            Xscale = 80  # carrier to dither ratio (between 0% and 100%) # Fs1022976 - 6 bit 2 Ch
-            Dfreq = 300e3 # Fs1022976 - 6 bit 2 Ch
-            #Dfreq = 1.5e6 # Fs32735232 - 6 bit 2 Ch
+            #Xscale = 80  # carrier to dither ratio (between 0% and 100%) # Fs1022976 - 6 bit 2 Ch
+            Xscale = 50  # carrier to dither ratio (between 0% and 100%) # Fs1022976 - 6 bit 2 Ch
+            #Dfreq = 250e3 # Fs1022976 - 6 bit 2 Ch
+            Dfreq = 1.0e6 # Fs32735232 - 6 bit 2 Ch
         elif QConfig == qws.w_16bit_2ch_SPICE:
             Xscale = 50  # carrier to dither ratio (between 0% and 100%)
-            #Dfreq = 250e3 # Fs1022976 - 16 bit 2 Ch
-            Dfreq = 5.0e6 # Fs32735232 - 16 bit 2 Ch
+            Dfreq = 250e3 # Fs1022976 - 16 bit 2 Ch
+            #Dfreq = 5.0e6 # Fs32735232 - 16 bit 2 Ch
+            #Dfreq = 1.0e6 # Fs32735232 - 16 bit 2 Ch
             #Dfreq = 5.0e6 # Fs262Mhz - 16 bit 2 Ch
         else:
             sys.exit('PHFD: Missing config.')
@@ -753,3 +757,5 @@ if run_SPICE or SC.dac.model == dm.STATIC:
     results_tab = [['Config', 'Method', 'Model', 'Fs', 'Fc', 'Fx', 'ENOB'],
             [str(SC.qconfig), str(SC.lin), str(SC.dac), f'{Float(SC.fs):.2h}', f'{Float(SC.fc):.1h}', f'{Float(SC.carrier_freq):.1h}', f'{Float(ENOB_M):.3h}']]
     print(tabulate(results_tab))
+
+# %%

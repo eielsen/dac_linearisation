@@ -20,7 +20,7 @@ Config  Method                      Model  Fs     Fc      Fx     ENOB
 
 ------  ---------------  ------  -----  ------  -----  ------
 Config  Method           Model   Fs     Fc      Fx     ENOB
-10      periodic dither  static  1.02M  100.0k  999.0  11.255
+10      periodic dither  static  1.02M  100.0k  999.0  11.283
 ------  ---------------  ------  -----  ------  -----  ------
 ------  ---------------  -----  -----  ------  -----  ------
 Config  Method           Model  Fs     Fc      Fx     ENOB

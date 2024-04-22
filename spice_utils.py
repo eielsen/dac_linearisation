@@ -468,10 +468,10 @@ def main():
 
     #method_str = 'baseline'
     #method_str = 'physical_level_calibration'
-    #method_str = 'periodic_dither'
+    method_str = 'periodic_dither'
     #method_str = 'noise_dither'
     #method_str = 'digital_calibration'
-    method_str = 'dynamic_element_matching'
+    #method_str = 'dynamic_element_matching'
     #method_str = 'ilc'
 
     matching = [s for s in rundirs if method_str in s]
