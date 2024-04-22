@@ -92,24 +92,25 @@ def plot_inl(QConfig=qws.w_16bit_NI_card, Ch_sel=0):
     
     ML = get_measured_levels(QConfig)
     
-    LVLS = np.array(ML[Ch_sel])
+    LVLS1 = np.array(ML[0])#Ch_sel])
+    LVLS2 = np.array(ML[1])#Ch_sel])
     
     qs = np.arange(-2**(Nb-1), 2**(Nb-1), 1) # possible quantisation steps/codes (recall arange() is not inclusive)
     qs = qs.reshape(-1, 1) # ensure column vector for codes
 
-    from matplotlib import rc
+    #from matplotlib import rc
+    #rc('font',**{'family':'sans-serif'})
+    #rc('font',**{'family':'serif','serif':['Times']})
+    #rc('text', usetex=False)
 
-    from matplotlib import rc
-    #rc('font',**{'family':'sans-serif','sans-serif':['Helvetica']})
-    rc('font',**{'family':'serif','serif':['Times']})
-    rc('text', usetex=True)
-
-    plt.plot(qs, signal.detrend(LVLS)/Qstep)
+    plt.plot(qs, signal.detrend(LVLS1)/Qstep, label='Channel 1')
+    plt.plot(qs, signal.detrend(LVLS2)/Qstep, label='Channel 2')
+    plt.legend()
     plt.xlabel("Input code")
     plt.ylabel("Least significant bits")
     plt.grid()
 
-    plt.savefig('figures/INL_plot.pdf', format="pdf", bbox_inches="tight")
+    plt.savefig('figures/INL_plot.pdf', format='pdf', bbox_inches='tight')
     #fig.savefig('Stylized Plots.png', dpi=300, bbox_inches='tight', transparent=True)
 
 

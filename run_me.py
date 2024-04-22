@@ -100,12 +100,10 @@ N_lp = 3  # filter order
 #Fs = 250e6
 #Fs = 1022976
 #Fs = 16367616
-#Fs = 32735232
+Fs = 32735232
 #Fs = 65470464
-#Fs = 51200000*4
 #Fs = 130940928
-#Fs = 51200000*4
-Fs = 261881856
+#Fs = 261881856
 
 Ts = 1/Fs  # sampling time
 
@@ -116,9 +114,9 @@ Xcs_FREQ = 999  # Hz
 ##### Set quantiser model
 #QConfig = qws.w_16bit_SPICE
 #QConfig = qws.w_16bit_ARTI
-QConfig = qws.w_16bit_6t_ARTI
+#QConfig = qws.w_16bit_6t_ARTI
 #QConfig = qws.w_6bit_ARTI
-#QConfig = qws.w_6bit_2ch_SPICE
+QConfig = qws.w_6bit_2ch_SPICE
 #QConfig = qws.w_16bit_2ch_SPICE
 Nb, Mq, Vmin, Vmax, Rng, Qstep, YQ, Qtype = quantiser_configurations(QConfig)
 

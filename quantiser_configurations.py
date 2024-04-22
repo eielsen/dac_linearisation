@@ -76,7 +76,7 @@ def quantiser_configurations(QConfig):
             # 6-bit DAC. All bits are binary-weighted
             Nb = 6 # word-size
             Mq = 2**Nb - 1; # max. code
-            Vmin =  -0.019920569 # Ampere
+            Vmin = -0.019920569 # Ampere
             Vmax = 0.019920569 # Ampere
             Qtype = quantiser_type.midtread
         case qws.w_16bit_ARTI:
@@ -171,8 +171,9 @@ def get_measured_levels(QConfig, lmethod=lm.BASELINE):
             if (os.path.exists(os.path.join(inpath, infile)) is False):
                 if (os.path.exists(CSV_file) is True):
                     ML = np.transpose(np.genfromtxt(CSV_file, delimiter=',', skip_header=1))[2:,:]
-                    np.save(os.path.join(inpath, infile), -ML)
-                    return ML
+                    np.save(os.path.join(inpath, infile), -ML)  # NOTE: Inverting gain!
+                    return -ML  # NOTE: Inverting gain!
+                
         case qws.w_16bit_ARTI:
             CSV_file = os.path.join(inpath, 'ARTI_cs_dac_16b_levels.csv')
             infile = 'DC_levels_ARTI_16bit.npy'
@@ -188,8 +189,8 @@ def get_measured_levels(QConfig, lmethod=lm.BASELINE):
             if (os.path.exists(os.path.join(inpath, infile)) is False):
                 if (os.path.exists(CSV_file) is True):
                     ML = np.transpose(np.genfromtxt(CSV_file, delimiter=',', skip_header=1))[2:,:]
-                    np.save(os.path.join(inpath, infile), -ML)
-                    return -ML
+                    np.save(os.path.join(inpath, infile), -ML)  # NOTE: Inverting gain!
+                    return -ML  # NOTE: Inverting gain!
 
         case qws.w_6bit_2ch_SPICE:
             infile = 'cs_dac_06bit_2ch_DC_levels.npy'
