@@ -100,8 +100,10 @@ N_lp = 3  # filter order
 #Fs = 250e6
 #Fs = 1022976
 #Fs = 16367616
-Fs = 32735232
+#Fs = 32735232
+Fs = 51200000*4
 #Fs = 130940928
+#Fs = 51200000*4
 #Fs = 261881856
 
 Ts = 1/Fs  # sampling time
@@ -113,8 +115,9 @@ Xcs_FREQ = 999  # Hz
 ##### Set quantiser model
 #QConfig = qws.w_16bit_SPICE
 #QConfig = qws.w_16bit_ARTI
-# QConfig = qws.w_6bit_ARTI
-QConfig = qws.w_6bit_2ch_SPICE
+QConfig = qws.w_16bit_6t_ARTI
+#QConfig = qws.w_6bit_ARTI
+#QConfig = qws.w_6bit_2ch_SPICE
 #QConfig = qws.w_16bit_2ch_SPICE
 Nb, Mq, Vmin, Vmax, Rng, Qstep, YQ, Qtype = quantiser_configurations(QConfig)
 
@@ -133,7 +136,7 @@ match 2:
         if SINAD_COMP_SEL == sinad_comp.FFT:
             Np = 200  # no. of periods for carrier
         else:
-            Np = 2  # no. of periods for carrier
+            Np = 8  # no. of periods for carrier
 
 Npt = 1/2  # no. of carrier periods to use to account for transients
 Np = Np + 2*Npt
@@ -394,9 +397,10 @@ match SC.lin.method:
             Dfreq = 5.0e6 # Fs262Mhz - 6 bit ARTI
         elif QConfig == qws.w_16bit_ARTI:
             Xscale = 47.5  # carrier to dither ratio (between 0% and 100%)
-            #Dfreq = 5.0e6 # Fs262Mhz - 16 bit ARTI
-            #Dfreq = 1.0e6 # Fs32735232 - 16 bit ARTI
-            Dfreq = 1.0e6 # Fs16367616 - 16 bit ARTI
+            Dfreq = 2.98e6 #10.0e6 # Fs262Mhz - 16 bit ARTI
+        elif QConfig == qws.w_16bit_6t_ARTI:
+            Xscale = 47.5  # carrier to dither ratio (between 0% and 100%)
+            Dfreq = 2.98e6 #10.0e6 # Fs262Mhz - 16 bit ARTI
         elif QConfig == qws.w_6bit_2ch_SPICE:
             #Xscale = 80  # carrier to dither ratio (between 0% and 100%) # Fs1022976 - 6 bit 2 Ch
             Xscale = 50  # carrier to dither ratio (between 0% and 100%) # Fs1022976 - 6 bit 2 Ch
