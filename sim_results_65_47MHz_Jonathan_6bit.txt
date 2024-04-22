@@ -17,6 +17,11 @@ Config  Method           Model   Fs      Fc      Fx     ENOB
 7       periodic dither  static  65.47M  100.0k  999.0  9.224
 ------  ---------------  ------  ------  ------  -----  -----
 
+------  ------------  ------  ------  ------  -----  -----
+Config  Method        Model   Fs      Fc      Fx     ENOB
+7       noise dither  static  65.47M  100.0k  999.0  6.575
+------  ------------  ------  ------  ------  -----  -----
+
 ------  -------------------  ------  ------  ------  -----  ------
 Config  Method               Model   Fs      Fc      Fx     ENOB
 7       digital calibration  static  65.47M  100.0k  999.0  16.700
@@ -43,6 +48,11 @@ Config  Method                      Model   Fs      Fc      Fx     ENOB
 Config  Method           Model   Fs      Fc      Fx     ENOB
 7       periodic dither  spectre  65.47M  100.0k  999.0  9.19
 ------  ---------------  ------  ------  ------  -----  -----
+
+------  ------------  ------  ------  ------  -----  -----
+Config  Method        Model   Fs      Fc      Fx     ENOB
+7       noise dither  spectre  65.47M  100.0k  999.0  5.91
+------  ------------  ------  ------  ------  -----  -----
 
 ------  -------------------  ------  ------  ------  -----  ------
 Config  Method               Model   Fs      Fc      Fx     ENOB
