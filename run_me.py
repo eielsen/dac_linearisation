@@ -70,11 +70,11 @@ def test_signal(SCALE, MAXAMP, FREQ, OFFSET, t):
 # Configuration
 
 ##### METHOD CHOICE - Choose which linearization method you want to test
-RUN_LM = lm.BASELINE
+#RUN_LM = lm.BASELINE
 #RUN_LM = lm.PHYSCAL
 #RUN_LM = lm.PHFD
 #RUN_LM = lm.SHPD
-#RUN_LM = lm.NSDCAL
+RUN_LM = lm.NSDCAL
 #RUN_LM = lm.DEM
 #RUN_LM = lm.MPC
 #RUN_LM = lm.ILC
@@ -100,10 +100,10 @@ N_lp = 3  # filter order
 #Fs = 250e6
 #Fs = 1022976
 #Fs = 16367616
-#Fs = 32735232
+Fs = 32735232
 #Fs = 65470464
 #Fs = 130940928
-Fs = 261881856
+#Fs = 261881856
 
 Ts = 1/Fs  # sampling time
 
@@ -115,8 +115,8 @@ Xcs_FREQ = 999  # Hz
 #QConfig = qws.w_16bit_SPICE
 #QConfig = qws.w_16bit_ARTI
 #QConfig = qws.w_16bit_6t_ARTI
-QConfig = qws.w_6bit_ARTI
-#QConfig = qws.w_6bit_2ch_SPICE
+#QConfig = qws.w_6bit_ARTI
+QConfig = qws.w_6bit_2ch_SPICE
 #QConfig = qws.w_16bit_2ch_SPICE
 Nb, Mq, Vmin, Vmax, Rng, Qstep, YQ, Qtype = quantiser_configurations(QConfig)
 
