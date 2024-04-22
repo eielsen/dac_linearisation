@@ -70,11 +70,11 @@ def test_signal(SCALE, MAXAMP, FREQ, OFFSET, t):
 # Configuration
 
 ##### METHOD CHOICE - Choose which linearization method you want to test
-#RUN_LM = lm.BASELINE
+RUN_LM = lm.BASELINE
 #RUN_LM = lm.PHYSCAL
 #RUN_LM = lm.PHFD
-#RUN_LM = lm.SHPD
-RUN_LM = lm.NSDCAL
+RUN_LM = lm.SHPD
+#RUN_LM = lm.NSDCAL
 #RUN_LM = lm.DEM
 #RUN_LM = lm.MPC
 #RUN_LM = lm.ILC
@@ -100,8 +100,8 @@ N_lp = 3  # filter order
 #Fs = 250e6
 #Fs = 1022976
 #Fs = 16367616
-Fs = 32735232
-#Fs = 65470464
+#Fs = 32735232
+Fs = 65470464
 #Fs = 130940928
 #Fs = 261881856
 
@@ -114,15 +114,15 @@ Xcs_FREQ = 999  # Hz
 ##### Set quantiser model
 #QConfig = qws.w_16bit_SPICE
 #QConfig = qws.w_16bit_ARTI
-#QConfig = qws.w_16bit_6t_ARTI
-#QConfig = qws.w_6bit_ARTI
-QConfig = qws.w_6bit_2ch_SPICE
+QConfig = qws.w_16bit_6t_ARTI
+QConfig = qws.w_6bit_ARTI
+#QConfig = qws.w_6bit_2ch_SPICE
 #QConfig = qws.w_16bit_2ch_SPICE
 Nb, Mq, Vmin, Vmax, Rng, Qstep, YQ, Qtype = quantiser_configurations(QConfig)
 
 SAVE_CODES_TO_FILE_AND_STOP = False
 #SAVE_CODES_TO_FILE_AND_STOP = True
-SAVE_CODES_TO_FILE = False
+SAVE_CODES_TO_FILE = True
 #SAVE_CODES_TO_FILE = True
 run_SPICE = False
 
@@ -138,7 +138,7 @@ match 2:
             #Np = 8  # no. of periods for carrier
             Np = 3  # no. of periods for carrier
 
-Npt = 1/2  # no. of carrier periods to use to account for transients
+Npt = 3  # no. of carrier periods to use to account for transients
 Np = Np + 2*Npt
 
 t_end = Np/Xcs_FREQ  # time vector duration
@@ -292,6 +292,15 @@ match SC.lin.method:
         if QConfig == qws.w_16bit_6t_ARTI:
             if Fs == 65470464:
                 Xscale = 10
+                Fc_hf = 200e3
+            elif Fs == 261881856:
+                Xscale = 10
+                Fc_hf = 200e3
+            else:
+                sys.exit('SHPD: Missing config.')
+        elif QConfig == qws.w_6bit_ARTI:
+            if Fs == 65470464:
+                Xscale = 20
                 Fc_hf = 200e3
             elif Fs == 261881856:
                 Xscale = 10
