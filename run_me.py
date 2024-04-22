@@ -74,7 +74,7 @@ def test_signal(SCALE, MAXAMP, FREQ, OFFSET, t):
 #RUN_LM = lm.PHYSCAL
 #RUN_LM = lm.PHFD
 #RUN_LM = lm.SHPD
-#RUN_LM = lm.NSDCAL
+RUN_LM = lm.NSDCAL
 #RUN_LM = lm.DEM
 #RUN_LM = lm.MPC
 #RUN_LM = lm.ILC
@@ -83,8 +83,8 @@ def test_signal(SCALE, MAXAMP, FREQ, OFFSET, t):
 lin = lm(RUN_LM)
 
 ##### MODEL CHOICE
-#dac = dm(dm.STATIC)  # use static non-linear quantiser model to simulate DAC
-dac = dm(dm.SPICE)  # use SPICE to simulate DAC output
+dac = dm(dm.STATIC)  # use static non-linear quantiser model to simulate DAC
+#dac = dm(dm.SPICE)  # use SPICE to simulate DAC output
 
 # Chose how to compute SINAD
 SINAD_COMP_SEL = sinad_comp.CFIT
@@ -101,10 +101,11 @@ N_lp = 3  # filter order
 #Fs = 1022976
 #Fs = 16367616
 #Fs = 32735232
-Fs = 51200000*4
+#Fs = 65470464
+#Fs = 51200000*4
 #Fs = 130940928
 #Fs = 51200000*4
-#Fs = 261881856
+Fs = 261881856
 
 Ts = 1/Fs  # sampling time
 
@@ -136,7 +137,8 @@ match 2:
         if SINAD_COMP_SEL == sinad_comp.FFT:
             Np = 200  # no. of periods for carrier
         else:
-            Np = 8  # no. of periods for carrier
+            #Np = 8  # no. of periods for carrier
+            Np = 3  # no. of periods for carrier
 
 Npt = 1/2  # no. of carrier periods to use to account for transients
 Np = Np + 2*Npt
@@ -243,6 +245,8 @@ match SC.lin.method:
             HEADROOM = 10  # 6 bit DAC
         elif QConfig == qws.w_16bit_2ch_SPICE:
             HEADROOM = 1  # 16 bit DAC
+        elif QConfig == qws.w_16bit_6t_ARTI:
+            HEADROOM = 1  # 16 bit DAC
         else:
             sys.exit('NSDCAL: Missing config.')
 
@@ -254,7 +258,7 @@ match SC.lin.method:
         MLns = ML[0]  # measured ouput levels (convert from 2d to 1d)
 
         # Adding some "measurement/model error" in the levels
-        if QConfig == qws.w_16bit_SPICE or QConfig == qws.w_16bit_ARTI or QConfig == qws.w_16bit_2ch_SPICE:
+        if QConfig == qws.w_16bit_SPICE or QConfig == qws.w_16bit_ARTI or QConfig == qws.w_16bit_2ch_SPICE or QConfig == qws.w_16bit_6t_ARTI:
             ML_err_rng = Qstep  # 16 bit DAC
         elif QConfig == qws.w_6bit_ARTI or QConfig == qws.w_6bit_2ch_SPICE:
             ML_err_rng = Qstep/1024 # 6 bit DAC
@@ -285,7 +289,20 @@ match SC.lin.method:
 
         # Large high-pass dither set-up
         #Xscale = 10  # carrier to dither ratio (between 0% and 100%)
-        Xscale = 50  # carrier to dither ratio (between 0% and 100%)
+        #Xscale = 5  # carrier to dither ratio (between 0% and 100%)
+        
+        if QConfig == qws.w_16bit_6t_ARTI:
+            if Fs == 65470464:
+                Xscale = 10
+                Fc_hf = 200e3
+            elif Fs == 261881856:
+                Xscale = 10
+                Fc_hf = 200e3
+            else:
+                sys.exit('SHPD: Missing config.')
+        else:
+            sys.exit('SHPD: Missing config.')
+
         Dscale = 100 - Xscale  # dither to carrier ratio
 
         match 3:
@@ -298,8 +315,6 @@ match SC.lin.method:
                 Ds = dither_generation.gen_stochastic(t.size, Nch, 1, dither_generation.pdf.uniform)
 
                 N_hf = 1
-                Fc_hf = 160e3
-
                 b, a = signal.butter(N_hf, Fc_hf/(Fs/2), btype='high', analog=False)#, fs=Fs)
 
                 Dsf = signal.filtfilt(b, a, Ds, method="gust")
@@ -312,8 +327,6 @@ match SC.lin.method:
                 ds = np.random.normal(0, 1.0, [1, t.size])  # normally distr. noise
                 
                 N_hf = 1
-                Fc_hf = 200e3
-
                 b, a = signal.butter(N_hf, Fc_hf/(Fs/2), btype='high', analog=False)#, fs=Fs)
 
                 dsf = signal.filtfilt(b, a, ds, method="gust")
@@ -334,8 +347,6 @@ match SC.lin.method:
                 Ds = np.random.normal(0, 1.0, [Nch, t.size])  # normally distr. noise
 
                 N_hf = 1
-                Fc_hf = 200e3
-
                 b, a = signal.butter(N_hf, Fc_hf/(Fs/2), btype='high', analog=False)#, fs=Fs)
 
                 Dsf = signal.filtfilt(b, a, Ds, method="gust")
@@ -390,6 +401,8 @@ match SC.lin.method:
         # Repeat carrier on all channels
         Xcs = matlib.repmat(Xcs, Nch, 1)
 
+        # Optimising scale and freq. using grid search (elsewhere; TODO: convert MATLAB code for grid search)
+        # Scale: carrier to dither ratio (between 0% and 100%)
         if QConfig == qws.w_16bit_SPICE:
             Xscale = 50  # carrier to dither ratio (between 0% and 100%)
         elif QConfig == qws.w_6bit_ARTI:
@@ -399,11 +412,17 @@ match SC.lin.method:
             Xscale = 47.5  # carrier to dither ratio (between 0% and 100%)
             Dfreq = 2.98e6 #10.0e6 # Fs262Mhz - 16 bit ARTI
         elif QConfig == qws.w_16bit_6t_ARTI:
-            Xscale = 47.5  # carrier to dither ratio (between 0% and 100%)
-            Dfreq = 2.98e6 #10.0e6 # Fs262Mhz - 16 bit ARTI
+            if Fs == 65470464:
+                Xscale = 10 
+                Dfreq = 3.0e6 
+            elif Fs == 261881856:
+                Xscale = 6
+                Dfreq = 3.0e6
+            else:
+                sys.exit('PHFD: Missing config.')
         elif QConfig == qws.w_6bit_2ch_SPICE:
-            #Xscale = 80  # carrier to dither ratio (between 0% and 100%) # Fs1022976 - 6 bit 2 Ch
-            Xscale = 50  # carrier to dither ratio (between 0% and 100%) # Fs1022976 - 6 bit 2 Ch
+            #Xscale = 80  # Fs1022976 - 6 bit 2 Ch
+            Xscale = 50  # Fs1022976 - 6 bit 2 Ch
             #Dfreq = 250e3 # Fs1022976 - 6 bit 2 Ch
             Dfreq = 1.0e6 # Fs32735232 - 6 bit 2 Ch
         elif QConfig == qws.w_16bit_2ch_SPICE:
@@ -415,14 +434,8 @@ match SC.lin.method:
         else:
             sys.exit('PHFD: Missing config.')
         
-        #Xscale = 50  # carrier to dither ratio (between 0% and 100%)
-        #Xscale = 80  # carrier to dither ratio (between 0% and 100%) # Fs1022976 - 6 bit 2 Ch
         Dscale = 100 - Xscale  # dither to carrier ratio
         
-        #Dfreq = 1.592e6 # Fs10MHz - 16bit
-        #Dfreq = 2.99e6 # Fs25Mhz - 16bit
-        #Dfreq = 2.98e6 # Fs250Mhz - 6 bit
-
         Dadf = dither_generation.adf.uniform  # amplitude distr. funct. (ADF)
         # Generate periodic dither
         Dmaxamp = Rng/2  # maximum dither amplitude (volt)
