@@ -29,15 +29,11 @@ class MPC:
         """
         self.Nb = Nb
         self.Qstep = abs(Qstep)
-        # self.N_PRED = N_PRED
-        # self.Xcs = Xcs
-        # self.QL = QL.reshape(1,-1)
         self.QMODEL = QMODEL
         self.A = A
         self.B = B
         self.C = C
         self.D = D
-        # self.x0 = x0
     
         
     def state_prediction(self, st, con):
@@ -57,19 +53,34 @@ class MPC:
     def get_codes(self, N_PRED, Xcs, YQns, MLns ):
 
         # Scale the input to the quantizer levels to run it as an MILP
-        # Xs = self.Xcs.squeeze()
-        # X = Xs/self.Qstep + 2**(self.Nb-1)
+        Xs = Xcs.squeeze()
+        X = Xs/self.Qstep + 2**(self.Nb-1)
 
         X = self.q_scaling(Xcs)
 
         #  Scale ideal levels  
-        # QLS = (self.QL /self.Qstep ) + 2**(self.Nb-1) -1/2
-        # QLS = QLS[0].squeeze()
+        # match self.QMODEL:
+        #     case 1:
+        #         QLS = (YQns /self.Qstep ) + 2**(self.Nb-1) -1/2
+        #         QLS = QLS.squeeze()
+        #     case 2:
+        #         QLS = (MLns /self.Qstep ) + 2**(self.Nb-1) -1/2
+        #         QLS = QLS.squeeze()
+        INL = YQns - MLns
+
         match self.QMODEL:
             case 1:
-                QLS = self.q_scaling(YQns.reshape(1,-1)).squeeze()
+                QLS = (YQns /self.Qstep ) + 2**(self.Nb-1) -1/2
+                QLS = QLS.squeeze()
             case 2:
-                QLS = self.q_scaling(MLns.reshape(1,-1)).squeeze()
+                QLS = (YQns /self.Qstep ) + 2**(self.Nb-1) -1/2
+                QLS = QLS + INL
+                QLS = QLS.squeeze()
+        # match self.QMODEL:
+        #     case 1:
+        #         QLS = self.q_scaling(YQns.reshape(1,-1)).squeeze()
+        #     case 2:
+        #         QLS = self.q_scaling(MLns.reshape(1,-1)).squeeze()
         # Storage container for code
         C = []
 
@@ -119,8 +130,8 @@ class MPC:
             m.Params.LogToConsole = 0
 
             # Gurobi setting for precision  
-            m.Params.IntFeasTol = 1e-9
-            m.Params.IntegralityFocus = 1
+            # m.Params.IntFeasTol = 1e-9
+            # m.Params.IntegralityFocus = 1
 
             # Optimization 
             m.optimize()

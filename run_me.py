@@ -7,8 +7,8 @@
 @license: BSD 3-Clause
 """
 
-%reload_ext autoreload
-%autoreload 2
+# %reload_ext autoreload
+# %autoreload 2
 
 # %%
 # Imports
@@ -67,7 +67,7 @@ def test_signal(SCALE, MAXAMP, FREQ, OFFSET, t):
     return (SCALE/100)*MAXAMP*np.cos(2*np.pi*FREQ*t) + OFFSET
 
 
-N_PRED = 12 # prediction horizon
+N_PRED = 5 # prediction horizon
 # Configuration
 
 ##### METHOD CHOICE - Choose which linearization method you want to test
@@ -75,17 +75,17 @@ N_PRED = 12 # prediction horizon
 #RUN_LM = lm.PHYSCAL
 #RUN_LM = lm.PHFD
 #RUN_LM = lm.SHPD
-#RUN_LM = lm.NSDCAL
+# RUN_LM = lm.NSDCAL
 #RUN_LM = lm.DEM
-#RUN_LM = lm.MPC
-RUN_LM = lm.ILC
+RUN_LM = lm.MPC
+# RUN_LM = lm.ILC
 #RUN_LM = lm.ILC_SIMP
 
 lin = lm(RUN_LM)
 
 ##### MODEL CHOICE
-#dac = dm(dm.STATIC)  # use static non-linear quantiser model to simulate DAC
-dac = dm(dm.SPICE)  # use SPICE to simulate DAC output
+dac = dm(dm.STATIC)  # use static non-linear quantiser model to simulate DAC
+# dac = dm(dm.SPICE)  # use SPICE to simulate DAC output
 
 # Chose how to compute SINAD
 SINAD_COMP_SEL = sinad_comp.CFIT
@@ -114,7 +114,7 @@ Xcs_FREQ = 999  # Hz
 # QConfig = qws.w_16bit_SPICE
 # QConfig = qws.w_16bit_ARTI
 # QConfig = qws.w_6bit_ARTI
-#QConfig = qws.w_6bit_2ch_SPICE
+# QConfig = qws.w_6bit_2ch_SPICE
 QConfig = qws.w_16bit_2ch_SPICE
 Nb, Mq, Vmin, Vmax, Rng, Qstep, YQ, Qtype = quantiser_configurations(QConfig)
 
@@ -444,7 +444,7 @@ match SC.lin.method:
         elif QConfig == qws.w_6bit_2ch_SPICE:
             HEADROOM = 10  # 6 bit DAC
         elif QConfig == qws.w_16bit_2ch_SPICE:
-            HEADROOM = 1  # 6 bit DAC
+            HEADROOM = 10  # 16 bit DAC
         else:
             sys.exit('Fix qconfig')
 
@@ -478,12 +478,10 @@ match SC.lin.method:
             MLns = np.flip(MLns)
             YQns = np.flip(YQns)
 
-        fig, ax = plt.subplots()
-        ax.plot(np.arange(0, 2**Nb, 1), YQns)
-        ax.plot(np.arange(0, 2**Nb, 1), MLns)
-        ax.legend(['il', 'ML'])
-        Fc = 100e3
+
+        
         # Reconstruction filter
+        Fc = Fc_lp # cutoff frequency
         match 2:
             case 1:
                 Wn = Fc/(Fs/2)
@@ -493,20 +491,25 @@ match SC.lin.method:
                 Wn = Fc/(Fs/2)
                 b1, a1 = signal.butter(N_lp, Wn)
                 A1, B1, C1, D1 = signal.tf2ss(b1, a1) # Transfer function to StateSpace
-
+            case 3:
+                bns = np.array([1, -2, 1])
+                ans =  np.array([1, 0, 0])
+                Mns_tf = signal.TransferFunction( bns, ans, dt=1)  # Mns = 1 - Hns
+                Mns = Mns_tf.to_ss()
+                A1, B1, C1, D1 = balreal(Mns.A, Mns.B, Mns.C, Mns.D)
+        A1, B1, C1, D1 = balreal(A1, B1, C1, D1)
         # N_PRED = 1  # prediction horizon
 
         # Add dither to input 
-        X = Xcs + Dq
+        X = Xcs 
 
         # Quantiser model
-        QMODEL = 2 #: 1 - no calibration, 2 - Calibration
-        # if Nb == 6:
-        #     mpc = MPC_BIN(Nb, Qstep, QMODEL,  A1, B1, C1, D1)
-        #     C = mpc.get_codes(N_PRED, X, YQns, MLns)
-        # if Nb == 16:
+        QMODEL = 1 #: 1 - no calibration, 2 - Calibration
+
+        # Run MPC
         mpc = MPC(Nb, Qstep, QMODEL,  A1, B1, C1, D1)
         C = mpc.get_codes(N_PRED, X, YQns, MLns)
+
         # Slice time samples based on the size of C
         t = t[0:C.size]
 
@@ -532,7 +535,7 @@ match SC.lin.method:
         elif QConfig == qws.w_6bit_2ch_SPICE:
             HEADROOM = 10  # 6 bit DAC
         elif QConfig == qws.w_16bit_2ch_SPICE:
-            HEADROOM = 1  # 16 bit DAC
+            HEADROOM = 10  # 16 bit DAC
         else:
             sys.exit('Fix qconfig')
 
@@ -636,8 +639,6 @@ match SC.lin.method:
 
 
 # %% Post processing
-# C = C_nsq[0,0:t.size].reshape(1,-1)
-# C = C_nsq
 # generate DAC output
 match SC.dac.model:
     case dm.STATIC:  # use static non-linear quantiser model to simulate DAC
@@ -713,7 +714,8 @@ if run_SPICE or SC.dac.model == dm.STATIC:
         else:
             K = 1/Nch
     elif SC.lin.method == lm.NSDCAL or SC.lin.method == lm.MPC or SC.lin.method == lm.ILC:
-        if QConfig == qws.w_6bit_2ch_SPICE:
+        if QConfig == qws.w_6bit_2ch_SPICE or QConfig == qws.w_16bit_2ch_SPICE:
+
             K = np.ones((2,1))
             K[1] = 0.0  # secondary channel will have zero input, null to remove any noise
         else:
@@ -737,3 +739,5 @@ if run_SPICE or SC.dac.model == dm.STATIC:
     results_tab = [['Config', 'Method', 'Model', 'Fs', 'Fc', 'Fx', 'ENOB'],
             [str(SC.qconfig), str(SC.lin), str(SC.dac), f'{Float(SC.fs):.2h}', f'{Float(SC.fc):.1h}', f'{Float(SC.carrier_freq):.1h}', f'{Float(ENOB_M):.3h}']]
     print(tabulate(results_tab))
+
+# %%
