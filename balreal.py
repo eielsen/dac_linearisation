@@ -11,7 +11,7 @@ import numpy as np
 from scipy import linalg
 
 
-def balreal(A,B,C,D):
+def balreal(A, B, C, D):
     """
     Straight forward implementation of a Gramian-based balanced realisation
     using SciPy linear algebra library.
@@ -43,7 +43,7 @@ def balreal(A,B,C,D):
 
 
 
-def balreal_ct(A,B,C,D):
+def balreal_ct(A, B, C, D):
     """
     Straight forward implementation of a Gramian-based balanced realisation
     using SciPy linear algebra library.
