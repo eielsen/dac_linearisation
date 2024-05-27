@@ -70,14 +70,14 @@ def test_signal(SCALE, MAXAMP, FREQ, OFFSET, t):
 # Configuration
 
 ##### METHOD CHOICE - Choose which linearization method you want to test
-RUN_LM = lm.BASELINE
+#RUN_LM = lm.BASELINE
 #RUN_LM = lm.PHYSCAL
 #RUN_LM = lm.PHFD
 #RUN_LM = lm.SHPD
 #RUN_LM = lm.NSDCAL
 #RUN_LM = lm.DEM
 #RUN_LM = lm.MPC
-#RUN_LM = lm.ILC
+RUN_LM = lm.ILC
 #RUN_LM = lm.ILC_SIMP
 
 lin = lm(RUN_LM)
@@ -87,8 +87,8 @@ dac = dm(dm.STATIC)  # use static non-linear quantiser model to simulate DAC
 #dac = dm(dm.SPICE)  # use SPICE to simulate DAC output
 
 # Chose how to compute SINAD
-SINAD_COMP_SEL = sinad_comp.CFIT
-#SINAD_COMP_SEL = sinad_comp.FFT
+SINAD_COMP_SEL = sinad_comp.CFIT  # use curve-fit (best for short time-series)
+#SINAD_COMP_SEL = sinad_comp.FFT  # use frequency response (better for long time-series)
 
 # Output low-pass filter configuration
 Fc_lp = 100e3  # cut-off frequency in hertz
