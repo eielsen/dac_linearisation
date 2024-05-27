@@ -180,7 +180,7 @@ def get_measured_levels(QConfig, lmethod=lm.BASELINE):
             if (os.path.exists(os.path.join(inpath, infile)) is False):
                 if (os.path.exists(CSV_file) is True):
                     ML = np.transpose(np.genfromtxt(CSV_file, delimiter=',', skip_header=1))[2:,:]
-                    np.save(os.path.join(inpath, infile), ML)
+                    np.save(os.path.join(inpath, infile), -ML)
                     return ML
                 
         case qws.w_16bit_6t_ARTI:

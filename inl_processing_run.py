@@ -7,8 +7,8 @@
 @license: BSD 3-Clause
 """
 
-%reload_ext autoreload
-%autoreload 2
+# %reload_ext autoreload
+# %autoreload 2
 
 import csv
 
@@ -34,9 +34,10 @@ from spice_utils import run_spice_sim, read_spice_bin_file_with_most_recent_time
 #plot_inl(QConfig=qws.w_16bit_NI_card, Ch_sel=1)
 #plot_inl(QConfig=qws.w_16bit_ARTI, Ch_sel=0)
 #plot_inl(QConfig=qws.w_6bit_ARTI, Ch_sel=0)
-#plot_inl(QConfig=qws.w_16bit_6t_ARTI, Ch_sel=0)
+# plot_inl(QConfig=qws.w_6bit_ARTI, Ch_sel=1)
+plot_inl(QConfig=qws.w_16bit_6t_ARTI, Ch_sel=0)
 #plot_inl(QConfig=qws.w_6bit_2ch_SPICE, Ch_sel=0)
-plot_inl(QConfig=qws.w_16bit_2ch_SPICE, Ch_sel=0)
+# plot_inl(QConfig=qws.w_16bit_2ch_SPICE, Ch_sel=0)
 
 # Nb = 16
 # path = './spice_output/'
