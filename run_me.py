@@ -71,7 +71,6 @@ def test_signal(SCALE, MAXAMP, FREQ, OFFSET, t):
 
 ##### METHOD CHOICE - Choose which linearization method you want to test
 RUN_LM = lm.BASELINE
-RUN_LM = lm.BASELINE
 #RUN_LM = lm.PHYSCAL
 #RUN_LM = lm.PHFD
 #RUN_LM = lm.SHPD
