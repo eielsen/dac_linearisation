@@ -70,14 +70,14 @@ def test_signal(SCALE, MAXAMP, FREQ, OFFSET, t):
 # Configuration
 
 ##### METHOD CHOICE - Choose which linearization method you want to test
-#RUN_LM = lm.BASELINE
+RUN_LM = lm.BASELINE
 #RUN_LM = lm.PHYSCAL
-#RUN_LM = lm.PHFD
-#RUN_LM = lm.SHPD
+RUN_LM = lm.PHFD
+RUN_LM = lm.SHPD
 #RUN_LM = lm.NSDCAL
 #RUN_LM = lm.DEM
 #RUN_LM = lm.MPC
-RUN_LM = lm.ILC
+#RUN_LM = lm.ILC
 #RUN_LM = lm.ILC_SIMP
 
 lin = lm(RUN_LM)
@@ -115,7 +115,7 @@ Xcs_FREQ = 999  # Hz
 #QConfig = qws.w_16bit_SPICE
 #QConfig = qws.w_16bit_ARTI
 QConfig = qws.w_16bit_6t_ARTI
-QConfig = qws.w_6bit_ARTI
+#QConfig = qws.w_6bit_ARTI
 #QConfig = qws.w_6bit_2ch_SPICE
 #QConfig = qws.w_16bit_2ch_SPICE
 Nb, Mq, Vmin, Vmax, Rng, Qstep, YQ, Qtype = quantiser_configurations(QConfig)
@@ -298,6 +298,12 @@ match SC.lin.method:
                 Fc_hf = 200e3
             else:
                 sys.exit('SHPD: Missing config.')
+        elif QConfig == qws.w_16bit_ARTI:
+            if Fs == 65470464:
+                Xscale = 50
+                Fc_hf = 200e3
+            else:
+                sys.exit('SHPD: Missing config.')
         elif QConfig == qws.w_6bit_ARTI:
             if Fs == 65470464:
                 Xscale = 20
@@ -416,12 +422,12 @@ match SC.lin.method:
             Xscale = 50  # carrier to dither ratio (between 0% and 100%)
             Dfreq = 5.0e6 # Fs262Mhz - 6 bit ARTI
         elif QConfig == qws.w_16bit_ARTI:
-            Xscale = 47.5  # carrier to dither ratio (between 0% and 100%)
-            Dfreq = 2.98e6 #10.0e6 # Fs262Mhz - 16 bit ARTI
+            Xscale = 50  # carrier to dither ratio (between 0% and 100%)
+            Dfreq = 5.0e6 #10.0e6 # Fs262Mhz - 16 bit ARTI
         elif QConfig == qws.w_16bit_6t_ARTI:
             if Fs == 65470464:
-                Xscale = 10 
-                Dfreq = 3.0e6 
+                Xscale = 45
+                Dfreq = 5.0e6 
             elif Fs == 261881856:
                 Xscale = 6
                 Dfreq = 3.0e6
