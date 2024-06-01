@@ -100,7 +100,7 @@ N_lp = 3  # filter order
 #Fs = 25e6
 #Fs = 250e6
 Fs = 1022976
-#Fs = 32735232
+# Fs = 32735232
 #Fs = 130940928
 #Fs = 261881856
 
@@ -133,7 +133,7 @@ match 2:
         if SINAD_COMP_SEL == sinad_comp.FFT:
             Np = 200  # no. of periods for carrier
         else:
-            Np = 3  # no. of periods for carrier
+            Np = 5  # no. of periods for carrier
 
 Npt = 1/2  # no. of carrier periods to use to account for transients
 Np = Np + 2*Npt
@@ -482,9 +482,11 @@ match SC.lin.method:
         
         # Reconstruction filter
         Fc = Fc_lp # cutoff frequency
-        match 2:
+        match 1:
             case 1:
-                Wn = Fc/(Fs/2)
+                Fs1 = 1e6
+                Fc1 = 4.5e5
+                Wn = Fc1/(Fs1/2)
                 b1, a1 = signal.butter(2, Wn)
                 A1, B1, C1, D1 = signal.tf2ss(b1, a1) # Transfer function to StateSpace
             case 2:  # bilinear transf., seems to work ok, not a perfect match to physics
