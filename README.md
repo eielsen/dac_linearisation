@@ -12,13 +12,13 @@ In this repository you find an implementation of various linearisation methods t
 
 ## Linearisation methods 
 This repository contains the implementation of 7 linearisation methods. The are as follows:
-    1. [Physical Calibration](https://pubs.aip.org/aip/rsi/article-abstract/36/7/1062/462480/Double-Precision-Bidirectional-Self-Calibrating?redirectedFrom=fulltext)
-    2. [Noise shaping with Digital Calibration](https://ieeexplore.ieee.org/document/4061014)
-    3. [Periodic High Frequency Dithering](https://ieeexplore.ieee.org/document/823976)
-    4. [Stochastic High Pass Dithering](https://link.springer.com/article/10.1023/A:1008850101197)
-    5. [Dynamic Element Matching](https://ieeexplore.ieee.org/document/5420027)
-    6. [Moving Horizon Optimal Quantiser](https://ieeexplore.ieee.org/document/5420027)
-    7. [Iterative Learning Control](https://ieeexplore.ieee.org/abstract/document/10252330) 
+1. [Physical Calibration](https://pubs.aip.org/aip/rsi/article-abstract/36/7/1062/462480/Double-Precision-Bidirectional-Self-Calibrating?redirectedFrom=fulltext)
+2. [Noise shaping with Digital Calibration](https://ieeexplore.ieee.org/document/4061014)
+3. [Periodic High Frequency Dithering](https://ieeexplore.ieee.org/document/823976)
+4. [Stochastic High Pass Dithering](https://link.springer.com/article/10.1023/A:1008850101197)
+5. [Dynamic Element Matching](https://ieeexplore.ieee.org/document/5420027)
+6. [Moving Horizon Optimal Quantiser](https://ieeexplore.ieee.org/document/5420027)
+7. [Iterative Learning Control](https://ieeexplore.ieee.org/abstract/document/10252330) 
 
 ## Implementation Details
 The implementation is based on a small set of libraries mentioned as follows
