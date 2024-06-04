@@ -11,7 +11,7 @@ In this repository you find an implementation of various linearisation methods t
 
 
 ## Linearisation methods 
-This repository contains the implementation of 7 linearisation methods. The are as follows:
+This repository contains the implementation of 7 linearisation methods which are as follows:
 1. [Physical Calibration](https://pubs.aip.org/aip/rsi/article-abstract/36/7/1062/462480/Double-Precision-Bidirectional-Self-Calibrating?redirectedFrom=fulltext)
 2. [Noise shaping with Digital Calibration](https://ieeexplore.ieee.org/document/4061014)
 3. [Periodic High Frequency Dithering](https://ieeexplore.ieee.org/document/823976)
