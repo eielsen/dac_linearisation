@@ -6,9 +6,7 @@
 4. [Simulation](#Simulation)
 
 ## Introduction
-
-In this repository you find an implementation of various linearisation methods to improve the accuracy of the Digital-to-Analog Converters (DACs). The results are published in the paper title "Improving the Accuracy of the Digital ot Analog Converters(DAC)s"[Link](/Methods_for_Improving_the_Accuracy_of_Digital_to_Analog_Converters.pdf). The paper is accepted for  publication in [IMEKO 2024](https://www.imeko2024.org/home) conference. The details regarding problem formulation, simulation results and test results of the alogrithm can be found in the mentioned paper. The paper is also included in the repository.  
-
+In this repository you find an implementation of various linearisation methods to improve the accuracy of the Digital-to-Analog Converters (DACs). The results are published in the paper titled "Improving the Accuracy of the Digital ot Analog Converters(DAC)s[Link](/Methods_for_Improving_the_Accuracy_of_Digital_to_Analog_Converters.pdf)". The paper is accepted for  publication in [IMEKO 2024](https://www.imeko2024.org/home), Hamburg, Germany. For details regarding the DAC modelling and algorithm implementation, please refer to the [paper](/Methods_for_Improving_the_Accuracy_of_Digital_to_Analog_Converters.pdf)   
 
 ## Linearisation methods 
 This repository contains the implementation of 7 linearisation methods which are as follows:
