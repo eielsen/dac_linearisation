@@ -76,9 +76,9 @@ N_PRED = 1 # prediction horizon
 #RUN_LM = lm.PHYSCAL
 # RUN_LM = lm.PHFD
 # RUN_LM = lm.SHPD
-RUN_LM = lm.NSDCAL
+# RUN_LM = lm.NSDCAL
 #RUN_LM = lm.DEM
-# RUN_LM = lm.MPC
+RUN_LM = lm.MPC
 #RUN_LM = lm.ILC
 #RUN_LM = lm.ILC_SIMP
 
@@ -483,20 +483,20 @@ match SC.lin.method:
         Dq = DITHER_ON*Dq[0]  # convert to 1d, add/remove dither
 
         # Also need room for re-quantisation dither
-        # if QConfig == qws.w_16bit_SPICE:
-        #     HEADROOM = 10  # 16 bit DAC
-        # elif QConfig == qws.w_6bit_ARTI:
-        #     HEADROOM = 15  # 6 bit DAC
-        # elif QConfig == qws.w_16bit_ARTI:
-        #     HEADROOM = 1  # 16 bit DAC
-        # elif QConfig == qws.w_6bit_2ch_SPICE:
-        #     HEADROOM = 10  # 6 bit DAC
-        # elif QConfig == qws.w_16bit_2ch_SPICE:
-        #     HEADROOM = 10  # 16 bit DAC
-        # else:
-        #     sys.exit('Fix qconfig')
+        if QConfig == qws.w_16bit_SPICE:
+            HEADROOM = 10  # 16 bit DAC
+        elif QConfig == qws.w_6bit_ARTI:
+            HEADROOM = 15  # 6 bit DAC
+        elif QConfig == qws.w_16bit_ARTI:
+            HEADROOM = 1  # 16 bit DAC
+        elif QConfig == qws.w_6bit_2ch_SPICE:
+            HEADROOM = 10  # 6 bit DAC
+        elif QConfig == qws.w_16bit_2ch_SPICE:
+            HEADROOM = 10  # 16 bit DAC
+        else:
+            sys.exit('Fix qconfig')
 
-        # Xcs = ((100-HEADROOM)/100)*Xcs  # input
+        Xcs = ((100-HEADROOM)/100)*Xcs  # input
 
         # Ideal Levels
         YQns = YQ[0]
@@ -534,12 +534,7 @@ match SC.lin.method:
             case 2:
                 b1 = np.array([1.000000000000000,  -0.749062760083214,   0.353567447503785 , -0.050452041460215])
                 a1 = np.array([1.000000000000000,  -1.760042814801001 ,  1.182897276395584 , -0.278062036214375])
-                # Fc = Fc_lp # cutoff frequency
-                # Wn = Fc/(Fs/2)
-                # b1, a1 = signal.butter(2, Wn)
                 A1, B1, C1, D1 = signal.tf2ss(b1, a1) # Transfer function to StateSpace
-
-
 
 
         # Quantiser model
@@ -548,14 +543,12 @@ match SC.lin.method:
         # Run MPC
         MPC = MPC_BIN(Nb, Qstep, QMODEL, A1, B1, C1, D1)
         C= MPC.get_codes(N_PRED, Xcs, YQns, MLns_E)
-        # mpc = MPC(Nb, Qstep, QMODEL,  A1, B1, C1, D1)
-        # C = mpc.get_codes(N_PRED, Xcs, YQns, MLns)
 
         # Slice time samples based on the size of C
         t = t[0:C.size]
 
-        # if QConfig == qws.w_6bit_2ch_SPICE:
-        #     C = np.stack((C[0, :], np.zeros(C.shape[1])))  # zero input to sec. channel
+        if QConfig == qws.w_6bit_2ch_SPICE:
+            C = np.stack((C[0, :], np.zeros(C.shape[1])))  # zero input to sec. channel
 
     case lm.ILC:  # iterative learning control (with INL model, only periodic signals)
 
