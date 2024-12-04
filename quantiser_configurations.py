@@ -132,10 +132,12 @@ def get_measured_levels(QConfig, lmethod=lm.BASELINE):
             Nb, Mq, Vmin, Vmax, Rng, Qstep, YQ, Qtype = quantiser_configurations(QConfig)
             Nch = 2
             ML = matlib.repmat(YQ, Nch, 1)
+            # return ML
         case qws.w_16bit:  # re-generate ideal levels
             Nb, Mq, Vmin, Vmax, Rng, Qstep, YQ, Qtype = quantiser_configurations(QConfig)
             Nch = 2
             ML = matlib.repmat(YQ, Nch, 1)
+            # return ML
         case qws.w_16bit_NI_card:  # load measured levels for given qconfig
             # load measured levels given linearisation method (measured for a given physical set-up)
             match lmethod:

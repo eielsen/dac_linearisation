@@ -36,10 +36,17 @@ def nsdcal(X, Dq, YQns, MLns, Qstep, Vmin, Nb, QMODEL):
     # Mns_tf = signal.TransferFunction(a-b, a, dt=1)  # Mns = 1 - Hns
     # Mns = Mns_tf.to_ss()
 
-    AM = np.array([[0.0, 0.0], [1.0, 0.0]])
-    BM = np.array([[2.0], [0.0]])
-    CM = np.array([[1.0, -0.5]])
-    DM = np.array([[0.0]])
+    match 1:
+        case 1:
+            AM = np.array([[0.0, 0.0], [1.0, 0.0]])
+            BM = np.array([[2.0], [0.0]])
+            CM = np.array([[1.0, -0.5]])
+            DM = np.array([[0.0]])
+        case 2:
+            AM = np.array([[0.3538, -0.3666, 0.0330], [1.0000,  0,  0], [ 0, 1.0000 , 0]])
+            BM = np.array([ [1], [0],[0]])
+            CM = np.array([-1.4063,    0.8164 ,  -0.2451])
+            DM = np.array([[0.0]])
 
     # Make a balanced realisation.
     # Less sensitivity to filter coefficients in the IIR implementation.

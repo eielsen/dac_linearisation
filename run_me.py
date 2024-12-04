@@ -41,6 +41,7 @@ from lin_method_dem import dem
 # from lin_method_ilc import get_control, learning_matrices
 # from lin_method_ilc_simple import ilc_simple
 from lin_method_mpc import MPC
+from lin_method_mpc_bin import MPC_BIN
 # from lin_method_ILC_DSM import learningMatrices, get_ILC_control
 from lin_method_dsm_ilc import DSM_ILC
 from lin_method_util import lm, dm
@@ -67,38 +68,25 @@ def test_signal(SCALE, MAXAMP, FREQ, OFFSET, t):
     return (SCALE/100)*MAXAMP*np.cos(2*np.pi*FREQ*t) + OFFSET
 
 
-N_PRED = 5 # prediction horizon
+N_PRED = 1 # prediction horizon
 # Configuration
 
 ##### METHOD CHOICE - Choose which linearization method you want to test
-RUN_LM = lm.BASELINE
+# RUN_LM = lm.BASELINE
 #RUN_LM = lm.PHYSCAL
-<<<<<<< HEAD
-#RUN_LM = lm.PHFD
-#RUN_LM = lm.SHPD
+# RUN_LM = lm.PHFD
+# RUN_LM = lm.SHPD
 # RUN_LM = lm.NSDCAL
 #RUN_LM = lm.DEM
 RUN_LM = lm.MPC
-# RUN_LM = lm.ILC
-=======
-RUN_LM = lm.PHFD
-RUN_LM = lm.SHPD
-#RUN_LM = lm.NSDCAL
-#RUN_LM = lm.DEM
-#RUN_LM = lm.MPC
 #RUN_LM = lm.ILC
->>>>>>> f3ceb3c15625ffa22274d2a1bdd865ebf10a45f6
 #RUN_LM = lm.ILC_SIMP
 
 lin = lm(RUN_LM)
 
 ##### MODEL CHOICE
 dac = dm(dm.STATIC)  # use static non-linear quantiser model to simulate DAC
-<<<<<<< HEAD
-# dac = dm(dm.SPICE)  # use SPICE to simulate DAC output
-=======
 #dac = dm(dm.SPICE)  # use SPICE to simulate DAC output
->>>>>>> f3ceb3c15625ffa22274d2a1bdd865ebf10a45f6
 
 # Chose how to compute SINAD
 SINAD_COMP_SEL = sinad_comp.CFIT  # use curve-fit (best for short time-series)
@@ -109,18 +97,13 @@ Fc_lp = 100e3  # cut-off frequency in hertz
 N_lp = 3  # filter order
 
 # Sampling rate (over-sampling) in hertz
-#Fs = 1e6
+Fs = 1e6
 #Fs = 25e6
 #Fs = 250e6
-<<<<<<< HEAD
-Fs = 1022976
-# Fs = 32735232
-=======
-#Fs = 1022976
+# Fs = 1022976
 #Fs = 16367616
-#Fs = 32735232
-Fs = 65470464
->>>>>>> f3ceb3c15625ffa22274d2a1bdd865ebf10a45f6
+# Fs = 32735232
+# Fs = 65470464
 #Fs = 130940928
 #Fs = 261881856
 
@@ -131,25 +114,18 @@ Xcs_SCALE = 100  # %
 Xcs_FREQ = 999  # Hz
 
 ##### Set quantiser model
-<<<<<<< HEAD
-# QConfig = qws.w_16bit_SPICE
-# QConfig = qws.w_16bit_ARTI
-# QConfig = qws.w_6bit_ARTI
-# QConfig = qws.w_6bit_2ch_SPICE
-QConfig = qws.w_16bit_2ch_SPICE
-=======
+# QConfig = qws.w_06bit
 #QConfig = qws.w_16bit_SPICE
 #QConfig = qws.w_16bit_ARTI
-QConfig = qws.w_16bit_6t_ARTI
-#QConfig = qws.w_6bit_ARTI
-#QConfig = qws.w_6bit_2ch_SPICE
-#QConfig = qws.w_16bit_2ch_SPICE
->>>>>>> f3ceb3c15625ffa22274d2a1bdd865ebf10a45f6
+# QConfig = qws.w_16bit_6t_ARTI
+QConfig = qws.w_6bit_ARTI
+# QConfig = qws.w_6bit_2ch_SPICE
+# QConfig = qws.w_16bit_2ch_SPICE
 Nb, Mq, Vmin, Vmax, Rng, Qstep, YQ, Qtype = quantiser_configurations(QConfig)
 
 SAVE_CODES_TO_FILE_AND_STOP = False
 #SAVE_CODES_TO_FILE_AND_STOP = True
-SAVE_CODES_TO_FILE = True
+SAVE_CODES_TO_FILE = False
 #SAVE_CODES_TO_FILE = True
 run_SPICE = False
 
@@ -162,12 +138,8 @@ match 2:
         if SINAD_COMP_SEL == sinad_comp.FFT:
             Np = 200  # no. of periods for carrier
         else:
-<<<<<<< HEAD
-            Np = 5  # no. of periods for carrier
-=======
             #Np = 8  # no. of periods for carrier
             Np = 3  # no. of periods for carrier
->>>>>>> f3ceb3c15625ffa22274d2a1bdd865ebf10a45f6
 
 Npt = 3  # no. of carrier periods to use to account for transients
 Np = Np + 2*Npt
@@ -506,7 +478,7 @@ match SC.lin.method:
         Nch = 1
         
         # Quantisation dither
-        DITHER_ON = 1
+        DITHER_ON = 0
         Dq = dither_generation.gen_stochastic(t.size, Nch, Qstep, dither_generation.pdf.triangular_hp)
         Dq = DITHER_ON*Dq[0]  # convert to 1d, add/remove dither
 
@@ -544,49 +516,33 @@ match SC.lin.method:
             sys.exit('Unknown QConfig')
         
         MLns_err = np.random.uniform(-ML_err_rng, ML_err_rng, MLns.shape)
-        MLns = MLns + MLns_err
+        MLns_E = MLns + MLns_err
 
-        QMODEL = 2
-        C_nsq = nsdcal(Xcs, Dq, YQns, MLns, Qstep, Vmin, Nb, QMODEL)
 
         # To fit into optimisaton problem. 
-        if QConfig == qws.w_6bit_ARTI or QConfig == qws.w_16bit_ARTI:
-            MLns = np.flip(MLns)
-            YQns = np.flip(YQns)
-
-
-        
+        # if QConfig == qws.w_6bit_ARTI or QConfig == qws.w_16bit_ARTI:
+        #     MLns = np.flip(MLns)
+        #     YQns = np.flip(YQns)
+    
         # Reconstruction filter
-        Fc = Fc_lp # cutoff frequency
-        match 1:
+        match 2:
             case 1:
-                Fs1 = 1e6
-                Fc1 = 4.5e5
-                Wn = Fc1/(Fs1/2)
+                Fc = Fc_lp # cutoff frequency
+                Wn = Fc/(Fs/2)
                 b1, a1 = signal.butter(2, Wn)
                 A1, B1, C1, D1 = signal.tf2ss(b1, a1) # Transfer function to StateSpace
-            case 2:  # bilinear transf., seems to work ok, not a perfect match to physics
-                Wn = Fc/(Fs/2)
-                b1, a1 = signal.butter(N_lp, Wn)
+            case 2:
+                b1 = np.array([1.000000000000000,  -0.749062760083214,   0.353567447503785 , -0.050452041460215])
+                a1 = np.array([1.000000000000000,  -1.760042814801001 ,  1.182897276395584 , -0.278062036214375])
                 A1, B1, C1, D1 = signal.tf2ss(b1, a1) # Transfer function to StateSpace
-            case 3:
-                bns = np.array([1, -2, 1])
-                ans =  np.array([1, 0, 0])
-                Mns_tf = signal.TransferFunction( bns, ans, dt=1)  # Mns = 1 - Hns
-                Mns = Mns_tf.to_ss()
-                A1, B1, C1, D1 = balreal(Mns.A, Mns.B, Mns.C, Mns.D)
-        A1, B1, C1, D1 = balreal(A1, B1, C1, D1)
-        # N_PRED = 1  # prediction horizon
 
-        # Add dither to input 
-        X = Xcs 
 
         # Quantiser model
-        QMODEL = 1 #: 1 - no calibration, 2 - Calibration
+        QMODEL = 2 #: 1 - no calibration, 2 - Calibration
 
         # Run MPC
-        mpc = MPC(Nb, Qstep, QMODEL,  A1, B1, C1, D1)
-        C = mpc.get_codes(N_PRED, X, YQns, MLns)
+        MPC = MPC_BIN(Nb, Qstep, QMODEL, A1, B1, C1, D1)
+        C= MPC.get_codes(N_PRED, Xcs, YQns, MLns_E)
 
         # Slice time samples based on the size of C
         t = t[0:C.size]
@@ -634,13 +590,13 @@ match SC.lin.method:
         else:
             sys.exit('NSDCAL: Unknown QConfig for ML error')
         
-        MLns_err = np.random.uniform(-ML_err_rng, ML_err_rng, MLns.shape)
-        MLns = MLns + MLns_err
+        # MLns_err = np.random.uniform(-ML_err_rng, ML_err_rng, MLns.shape)
+        # MLns = MLns + MLns_err
 
 
-        if QConfig == qws.w_6bit_ARTI or QConfig == qws.w_16bit_ARTI:
-            MLns = np.flip(MLns)
-            YQns = np.flip(YQns)
+        # if QConfig == qws.w_6bit_ARTI or QConfig == qws.w_16bit_ARTI:
+        #     MLns = np.flip(MLns)
+        #     YQns = np.flip(YQns)
 
         # Reconstruction filter
         match 2:
