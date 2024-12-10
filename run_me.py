@@ -28,27 +28,28 @@ import pickle
 from prefixed import Float
 from tabulate import tabulate
 
-import dither_generation
-from dual_dither import dual_dither, hist_and_psd
-from quantiser_configurations import quantiser_configurations, get_measured_levels, qws
-from static_dac_model import generate_dac_output, quantise_signal, generate_codes, quantiser_type
-from figures_of_merit import FFT_SINAD, TS_SINAD
-from balreal import balreal_ct, balreal
+import utils.dither_generation as dither_generation
+from utils.dual_dither import dual_dither, hist_and_psd
+from utils.quantiser_configurations import quantiser_configurations, get_measured_levels, qws
+from utils.results import handle_results
+from utils.static_dac_model import generate_dac_output, quantise_signal, generate_codes, quantiser_type
+from utils.figures_of_merit import FFT_SINAD, TS_SINAD
+from utils.balreal import balreal_ct, balreal
 
 
-from lin_method_nsdcal import nsdcal
-from lin_method_dem import dem
+from LM.lin_method_nsdcal import nsdcal
+from LM.lin_method_dem import dem
 # from lin_method_ilc import get_control, learning_matrices
 # from lin_method_ilc_simple import ilc_simple
-from lin_method_mpc import MPC
-from lin_method_mpc_bin import MPC_BIN
+from LM.lin_method_mpc import MPC
+from LM.lin_method_mpc_bin import MPC_BIN
 # from lin_method_ILC_DSM import learningMatrices, get_ILC_control
-from lin_method_dsm_ilc import DSM_ILC
-from lin_method_util import lm, dm
+from LM.lin_method_dsm_ilc import DSM_ILC
+from LM.lin_method_util import lm, dm
 
-from inl_processing import get_physcal_gain
+from utils.inl_processing import get_physcal_gain
 
-from spice_utils import run_spice_sim, run_spice_sim_parallel, gen_spice_sim_file, read_spice_bin_file, sim_config, process_sim_output, sinad_comp
+from utils.spice_utils import run_spice_sim, run_spice_sim_parallel, gen_spice_sim_file, read_spice_bin_file, sim_config, process_sim_output, sinad_comp
 
 
 def test_signal(SCALE, MAXAMP, FREQ, OFFSET, t):
@@ -72,15 +73,15 @@ N_PRED = 1 # prediction horizon
 # Configuration
 
 ##### METHOD CHOICE - Choose which linearization method you want to test
-# RUN_LM = lm.BASELINE
-#RUN_LM = lm.PHYSCAL
-# RUN_LM = lm.PHFD
-# RUN_LM = lm.SHPD
+RUN_LM = lm.BASELINE
+RUN_LM = lm.PHYSCAL
+# RUN_LM = lm.DEM
 # RUN_LM = lm.NSDCAL
-#RUN_LM = lm.DEM
-RUN_LM = lm.MPC
-#RUN_LM = lm.ILC
-#RUN_LM = lm.ILC_SIMP
+# RUN_LM = lm.SHPD
+# RUN_LM = lm.PHFD
+# RUN_LM = lm.MPC
+# RUN_LM = lm.ILC
+# RUN_LM = lm.ILC_SIMP
 
 lin = lm(RUN_LM)
 
@@ -106,12 +107,13 @@ Fs = 1e6
 # Fs = 65470464
 #Fs = 130940928
 #Fs = 261881856
+Fs = 209715200
 
 Ts = 1/Fs  # sampling time
 
 # Carrier signal (to be recovered on the output)
 Xcs_SCALE = 100  # %
-Xcs_FREQ = 999  # Hz
+Xcs_FREQ = 1000  # Hz
 
 ##### Set quantiser model
 # QConfig = qws.w_06bit
@@ -119,13 +121,16 @@ Xcs_FREQ = 999  # Hz
 #QConfig = qws.w_16bit_ARTI
 # QConfig = qws.w_16bit_6t_ARTI
 QConfig = qws.w_6bit_ARTI
+# QConfig = qws.w_10bit_ARTI
 # QConfig = qws.w_6bit_2ch_SPICE
 # QConfig = qws.w_16bit_2ch_SPICE
 Nb, Mq, Vmin, Vmax, Rng, Qstep, YQ, Qtype = quantiser_configurations(QConfig)
 
+PLOTS = False
+PLOT_CURVE_FIT = False
 SAVE_CODES_TO_FILE_AND_STOP = False
 #SAVE_CODES_TO_FILE_AND_STOP = True
-SAVE_CODES_TO_FILE = False
+SAVE_CODES_TO_FILE = True
 #SAVE_CODES_TO_FILE = True
 run_SPICE = False
 
@@ -141,13 +146,13 @@ match 2:
             #Np = 8  # no. of periods for carrier
             Np = 3  # no. of periods for carrier
 
-Npt = 3  # no. of carrier periods to use to account for transients
-Np = Np + 2*Npt
+Npt = 1  # no. of carrier periods to use to account for transients
+Np = 9 # Np + 2*Npt
 
 t_end = Np/Xcs_FREQ  # time vector duration
 t = np.arange(0, t_end, Ts)  # time vector
 
-SC = sim_config(QConfig, lin, dac, Fs, t, Fc_lp, N_lp, Xcs_SCALE, Xcs_FREQ)
+SC = sim_config(QConfig, lin, dac, Fs, t, Fc_lp, N_lp, Xcs_SCALE, Xcs_FREQ, Np-2*Npt)
 
 # Generate carrier/test signal
 SIGNAL_MAXAMP = Rng/2 - Qstep  # make headroom for noise dither (see below)
@@ -241,6 +246,8 @@ match SC.lin.method:
             HEADROOM = 10  # 16 bit DAC
         elif QConfig == qws.w_6bit_ARTI:
             HEADROOM = 15  # 6 bit DAC
+        elif QConfig == qws.w_10bit_ARTI:
+            HEADROOM = 15  # 10 bit DAC
         elif QConfig == qws.w_16bit_ARTI:
             HEADROOM = 10  # 16 bit DAC
         elif QConfig == qws.w_6bit_2ch_SPICE:
@@ -260,9 +267,9 @@ match SC.lin.method:
         MLns = ML[0]  # measured ouput levels (convert from 2d to 1d)
 
         # Adding some "measurement/model error" in the levels
-        if QConfig == qws.w_16bit_SPICE or QConfig == qws.w_16bit_ARTI or QConfig == qws.w_16bit_2ch_SPICE or QConfig == qws.w_16bit_6t_ARTI:
+        if QConfig in [qws.w_16bit_SPICE, qws.w_16bit_ARTI, qws.w_16bit_2ch_SPICE, qws.w_16bit_6t_ARTI]:
             ML_err_rng = Qstep  # 16 bit DAC
-        elif QConfig == qws.w_6bit_ARTI or QConfig == qws.w_6bit_2ch_SPICE:
+        elif QConfig in [qws.w_6bit_ARTI, qws.w_6bit_2ch_SPICE, qws.w_10bit_ARTI]:
             ML_err_rng = Qstep/1024 # 6 bit DAC
         else:
             sys.exit('NSDCAL: Unknown QConfig for ML error')
@@ -292,8 +299,33 @@ match SC.lin.method:
         # Large high-pass dither set-up
         #Xscale = 10  # carrier to dither ratio (between 0% and 100%)
         #Xscale = 5  # carrier to dither ratio (between 0% and 100%)
-        
-        if QConfig == qws.w_16bit_6t_ARTI:
+        if QConfig == qws.w_6bit_ARTI:
+            if Fs == 65470464:
+                Xscale = 20
+                Fc_hf = 200e3
+            elif Fs == 209715200:
+                Xscale = 10
+                Fc_hf = 200e3
+            elif Fs == 261881856:
+                Xscale = 10
+                Fc_hf = 0.20e6
+            else:
+                sys.exit('SHPD: Missing config.')
+
+        elif QConfig == qws.w_10bit_ARTI:
+            if Fs == 65470464:
+                Xscale = 20
+                Fc_hf = 200e3
+            elif Fs == 209715200:
+                Xscale = 30
+                Fc_hf = 30.0e6
+            elif Fs == 261881856:
+                Xscale = 10
+                Fc_hf = 0.20e6
+            else:
+                sys.exit('SHPD: Missing config.')
+
+        elif QConfig == qws.w_16bit_6t_ARTI:
             if Fs == 65470464:
                 Xscale = 10
                 Fc_hf = 200e3
@@ -302,21 +334,14 @@ match SC.lin.method:
                 Fc_hf = 200e3
             else:
                 sys.exit('SHPD: Missing config.')
+
         elif QConfig == qws.w_16bit_ARTI:
             if Fs == 65470464:
                 Xscale = 50
                 Fc_hf = 200e3
             else:
                 sys.exit('SHPD: Missing config.')
-        elif QConfig == qws.w_6bit_ARTI:
-            if Fs == 65470464:
-                Xscale = 20
-                Fc_hf = 200e3
-            elif Fs == 261881856:
-                Xscale = 10
-                Fc_hf = 200e3
-            else:
-                sys.exit('SHPD: Missing config.')
+
         else:
             sys.exit('SHPD: Missing config.')
 
@@ -379,7 +404,8 @@ match SC.lin.method:
                 Dsf[0,:] = 0.99*Dmaxamp*dual_dither(N=t.size)
                 Dsf[1,:] = 0.99*Dmaxamp*dual_dither(N=t.size)
         
-        hist_and_psd(Dsf[0,:].squeeze())
+        if (PLOTS):
+            hist_and_psd(Dsf[0,:].squeeze())
 
         # for k in range(0,Nch):
         #     dsf = Dsf[k,:]
@@ -425,6 +451,9 @@ match SC.lin.method:
         elif QConfig == qws.w_6bit_ARTI:
             Xscale = 50  # carrier to dither ratio (between 0% and 100%)
             Dfreq = 5.0e6 # Fs262Mhz - 6 bit ARTI
+        elif QConfig == qws.w_10bit_ARTI:
+            Xscale = 50  # carrier to dither ratio (between 0% and 100%)
+            Dfreq = 5.0e6
         elif QConfig == qws.w_16bit_ARTI:
             Xscale = 50  # carrier to dither ratio (between 0% and 100%)
             Dfreq = 5.0e6 #10.0e6 # Fs262Mhz - 16 bit ARTI
@@ -767,11 +796,8 @@ if run_SPICE or SC.dac.model == dm.STATIC:
     # Remove transients and process the output
     TRANSOFF = np.floor(Npt*Fs/Xcs_FREQ).astype(int)  # remove transient effects from output
     # yu_avg, ENOB_U = process_sim_output(tu, yu, Fc_lp, Fs, N_lp, TRANSOFF, SINAD_COMP_SEL, False, 'uniform')
-    ym_avg, ENOB_M = process_sim_output(tm, ym, Fc_lp, Fs, N_lp, TRANSOFF, SINAD_COMP_SEL, True, 'non-linear')
+    ym_avg, ENOB_M = process_sim_output(tm, ym, Fc_lp, Fs, N_lp, TRANSOFF, SINAD_COMP_SEL, PLOT_CURVE_FIT, 'non-linear')
 
-    # Print result
-    results_tab = [['Config', 'Method', 'Model', 'Fs', 'Fc', 'Fx', 'ENOB'],
-            [str(SC.qconfig), str(SC.lin), str(SC.dac), f'{Float(SC.fs):.2h}', f'{Float(SC.fc):.1h}', f'{Float(SC.carrier_freq):.1h}', f'{Float(ENOB_M):.3h}']]
-    print(tabulate(results_tab))
+    handle_results(SC, ENOB_M)
 
 # %%

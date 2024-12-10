@@ -9,9 +9,9 @@ from numpy import matlib
 
 import control as ct
 
-from quantiser_configurations import quantiser_configurations
+from utils.quantiser_configurations import quantiser_configurations
 
-from balreal import balreal, balreal_ct
+from utils.balreal import balreal, balreal_ct
 
 %reload_ext autoreload
 %autoreload 2

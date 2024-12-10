@@ -6,10 +6,10 @@
 4. [Simulation](#Simulation)
 
 ## Introduction
-In this repository you find an implementation of various linearisation methods to improve the accuracy of the Digital-to-Analog Converters (DACs). The results are published in the paper titled "Improving the Accuracy of the Digital ot Analog Converters(DAC)s[Link](/Methods_for_Improving_the_Accuracy_of_Digital_to_Analog_Converters.pdf)". The paper is accepted for  publication in [IMEKO 2024](https://www.imeko2024.org/home), Hamburg, Germany. For details regarding the DAC modelling and algorithm implementation, please refer to the [paper](/Methods_for_Improving_the_Accuracy_of_Digital_to_Analog_Converters.pdf)   
+In this repository you find an implementation of various linearisation methods to improve the accuracy of the Digital-to-Analog Converters (DACs). The results are published in the paper titled "Improving the Accuracy of the Digital ot Analog Converters(DAC)s[Link](publications/Methods_for_Improving_the_Accuracy_of_Digital_to_Analog_Converters.pdf)". The paper is accepted for  publication in [IMEKO 2024](https://www.imeko2024.org/home), Hamburg, Germany. For details regarding the DAC modelling and algorithm implementation, please refer to the [paper](publications/Methods_for_Improving_the_Accuracy_of_Digital_to_Analog_Converters.pdf)   
 
 ## Linearisation methods 
-This repository contains the implementation of 7 linearisation methods which are as follows:
+This repository contains the implementation of 7 linearisation methods (LM) which are as follows:
 1. [Physical Calibration](https://pubs.aip.org/aip/rsi/article-abstract/36/7/1062/462480/Double-Precision-Bidirectional-Self-Calibrating?redirectedFrom=fulltext)
 2. [Noise shaping with Digital Calibration](https://ieeexplore.ieee.org/document/4061014)
 3. [Periodic High Frequency Dithering](https://ieeexplore.ieee.org/document/823976)
@@ -34,5 +34,3 @@ gurobi
 To start the simulation, go to ```main.py``` and 
     1. Choose quantiser configuration,
     2. Choose linearisation methods
-
-

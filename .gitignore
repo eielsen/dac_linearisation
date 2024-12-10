@@ -1,5 +1,6 @@
 /.vscode
 /__pycache__
+__pycache__/
 /spice_temp
 /spice_output*
 /*.m
