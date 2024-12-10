@@ -6,7 +6,9 @@
 4. [Simulation](#Simulation)
 
 ## Introduction
-In this repository you find an implementation of various linearisation methods to improve the accuracy of the Digital-to-Analog Converters (DACs). The results are published in the [paper](publications/Methods_for_Improving_the_Accuracy_of_Digital_to_Analog_Converters.pdf) titled "Improving the Accuracy of Digital-to-Analogue Converters (DACs). The paper was accepted for publication in [IMEKO 2024](https://www.imeko2024.org/home), Hamburg, Germany. For details regarding the DAC modelling and algorithm implementation, please refer to the [paper](publications/Methods_for_Improving_the_Accuracy_of_Digital_to_Analog_Converters.pdf).
+In this repository you find various implementations of linearisation methods that are being investigated with the aim of improving the accuracy of digital-to-analog converters (DACs). More about this project can be found on the project group's website: https://pinacl.ux.uis.no/.
+
+The latest results have been published in the [paper](publications/Methods_for_Improving_the_Accuracy_of_Digital_to_Analog_Converters.pdf) titled "Improving the Accuracy of Digital-to-Analogue Converters (DACs). The paper was accepted for publication as an open access publication in [Measurement: Sensors](https://www.sciencedirect.com/journal/measurement-sensors). The paper was presented orally at the [Technical Committee, 4 of IMEKO](https://www.imeko.org/index.php/tc4-homepage) (IMEKO TC4 - Measurement of Electrical Quantities) at [The XXIV IMEKO World Congress 2024](https://www.imeko2024.org/home), organized by the PTB, the Physikalisch-Technische Bundesanstalt, held in Hamburg, Germany, on 26 - 29 August 2024. For details regarding the DAC modelling and algorithm implementation, please refer to the [paper](publications/Methods_for_Improving_the_Accuracy_of_Digital_to_Analog_Converters.pdf).
 
 ## Linearisation methods 
 This repository contains the implementation of 7 linearisation methods (LM) which are as follows:
