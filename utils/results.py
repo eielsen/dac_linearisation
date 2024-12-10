@@ -205,5 +205,4 @@ if __name__ == '__main__':
         np_arr[i] = data[i]
 
     print(np_arr)
-    print('END')
     
