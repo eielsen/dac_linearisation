@@ -6,7 +6,7 @@
 4. [Simulation](#Simulation)
 
 ## Introduction
-In this repository you find an implementation of various linearisation methods to improve the accuracy of the Digital-to-Analog Converters (DACs). The results are published in the paper titled "Improving the Accuracy of the Digital ot Analog Converters(DAC)s[Link](publications/Methods_for_Improving_the_Accuracy_of_Digital_to_Analog_Converters.pdf)". The paper is accepted for  publication in [IMEKO 2024](https://www.imeko2024.org/home), Hamburg, Germany. For details regarding the DAC modelling and algorithm implementation, please refer to the [paper](publications/Methods_for_Improving_the_Accuracy_of_Digital_to_Analog_Converters.pdf)   
+In this repository you find an implementation of various linearisation methods to improve the accuracy of the Digital-to-Analog Converters (DACs). The results are published in the [paper](publications/Methods_for_Improving_the_Accuracy_of_Digital_to_Analog_Converters.pdf) titled "Improving the Accuracy of Digital-to-Analogue Converters (DACs). The paper was accepted for publication in [IMEKO 2024](https://www.imeko2024.org/home), Hamburg, Germany. For details regarding the DAC modelling and algorithm implementation, please refer to the [paper](publications/Methods_for_Improving_the_Accuracy_of_Digital_to_Analog_Converters.pdf).
 
 ## Linearisation methods 
 This repository contains the implementation of 7 linearisation methods (LM) which are as follows:
@@ -31,6 +31,6 @@ gurobi
 ```
 
 ## Simulation
-To start the simulation, go to ```main.py``` and 
+To start the simulation, go to ```run_me.py``` and 
     1. Choose quantiser configuration,
     2. Choose linearisation methods
