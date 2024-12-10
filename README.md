@@ -1,9 +1,10 @@
 # Comparison of various linearisation techniques for Digital-to-Analog Converters 
 
 1. [Introduction](#introduction)
-2. [Linearisation Methods](#moving-horizon-optimal-quantiser)
-3. [Implementation Details](#implementation-details)
-4. [Simulation](#Simulation)
+2. [Linearisation Methods](#linearisation-methods)
+3. [Results](#results)
+4. [Implementation Details](#implementation-details)
+5. [Simulation](#simulation)
 
 ## Introduction
 In this repository you find various implementations of linearisation methods that are being investigated with the aim of improving the accuracy of digital-to-analog converters (DACs). More about this project can be found on the project group's website: https://pinacl.ux.uis.no/.
