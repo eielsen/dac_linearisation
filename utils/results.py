@@ -25,7 +25,7 @@ def handle_results(SC, ENOB):
 class NumpyResults():
     def __init__(self, **kwargs) -> None:
 
-        self.headers = ['Time (UTC)', 'Config', 'Method', 'Model', 'Fs', 'Fc', 'Fx', 'Ncyc', 'ENOB']
+        self.headers = ['Time (UTC+00:00)', 'Config', 'Method', 'Model', 'Fs', 'Fc', 'Fx', 'Ncyc', 'ENOB']
 
         main_script_path = os.path.abspath(__file__) 
         parent_dir = os.path.dirname(os.path.dirname(main_script_path))
@@ -140,12 +140,13 @@ class NumpyResults():
     def data_array_to_list(self, data_array):
         timestamp = int(data_array[0])
         if (timestamp == 0):
-            time = 'Never'
+            time_string = 'Never'
         else:
-            time = datetime.datetime.fromtimestamp(timestamp, tz=datetime.UTC)
+            date_and_time = datetime.datetime.fromtimestamp(timestamp, tz=datetime.UTC)
+            time_string = f'{date_and_time.strftime("%Y-%m-%d")} - {date_and_time.strftime("%H:%M:%S")}'
 
         data_list = []
-        data_list.append(str(time))
+        data_list.append(str(time_string))
         data_list.append(str(int(data_array[1])))
         data_list.append(str(lm(data_array[2])))
         data_list.append(str(dm(data_array[3])))
