@@ -18,6 +18,9 @@ This repository contains the implementation of 7 linearisation methods (LM) whic
 6. [Moving Horizon Optimal Quantiser](https://ieeexplore.ieee.org/document/5420027)
 7. [Iterative Learning Control](https://ieeexplore.ieee.org/abstract/document/10252330) 
 
+## Results
+A summary of the current results can be found [here](results/results.md).
+
 ## Implementation Details
 The implementation is based on a small set of libraries mentioned as follows
 ```
