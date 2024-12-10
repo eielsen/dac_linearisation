@@ -105,6 +105,12 @@ class NumpyResults():
         self.results_dict[DC][DM_index, LM_index, 7] = Ncyc
         self.results_dict[DC][DM_index, LM_index, 8] = ENOB
 
+        # Add LM name/number to all rows
+
+        for DM in range(2):
+            for LM in range(9):
+                self.results_dict[DC][DM, LM, 2] = LM + 1
+
     def remove(self):
         if (self.results_array is None):
             return False
@@ -138,31 +144,35 @@ class NumpyResults():
         else:
             time = datetime.datetime.fromtimestamp(timestamp, tz=datetime.UTC)
 
-        data_list = [
-            str(time),
-            str(int(data_array[1])), 
-            str(lm(data_array[2])),
-            str(dm(data_array[3])),
-            f'{Float(data_array[4]):.2h}', 
-            f'{Float(data_array[5]):.1h}', 
-            f'{Float(data_array[6]):.1h}', 
-            f'{int(data_array[7])}', 
-            f'{Float(data_array[8]):.3h}'
-        ]
+        data_list = []
+        data_list.append(str(time))
+        data_list.append(str(int(data_array[1])))
+        data_list.append(str(lm(data_array[2])))
+        data_list.append(str(dm(data_array[3])))
+        data_list.append(f'{Float(data_array[4]):.2h}')
+        data_list.append(f'{Float(data_array[5]):.1h}')
+        data_list.append(f'{Float(data_array[6]):.1h}')
+        data_list.append(f'{int(data_array[7])}')
+        data_list.append(f'{Float(data_array[8]):.3h}')        
 
         return data_list
 
     def save_to_html(self):
         html_string = ''
+        Include_index = [0, 2, 4, 5, 6, 7, 8] # What data to include in the table
 
         for item in sorted(self.results_dict.items()):
             data_array = item[1]
             html_string += f'# DAC Configuration: {item[0]} \n'
 
-            for DM in data_array: # Static or Simulation (Spectre or Ngspice)
-                table_data = [self.headers]
+            for DM_index, DM in enumerate(data_array): # Static or Simulation (Spectre or Ngspice)
+
+                html_string += f'### Model: {str(dm(DM_index + 1))} \n'
+
+                table_data = [[self.headers[i] for i in Include_index]]
                 for LM in DM:
                     data_list = self.data_array_to_list(LM)
+                    data_list = [data_list[i] for i in Include_index]
                     table_data.append(data_list)
 
                 table_html = tabulate(table_data, headers="firstrow", tablefmt="html")
