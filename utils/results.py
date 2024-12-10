@@ -136,7 +136,7 @@ class NumpyResults():
         if (timestamp == 0):
             time = 'Never'
         else:
-            time = datetime.datetime.fromtimestamp(timestamp)
+            time = datetime.datetime.fromtimestamp(timestamp, tz=datetime.UTC)
 
         data_list = [
             str(time),
