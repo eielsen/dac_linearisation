@@ -9,12 +9,13 @@
 
 class lm:  # linearisation method
     BASELINE = 1  # baseline
-    PHYSCAL = 2  # physical level calibration
-    DEM = 3  # dynamic element matching
-    NSDCAL = 4  # noise shaping with digital calibration (INL model)
-    SHPD = 5  # stochastic high-pass noise dither
-    PHFD = 6  # periodic high-frequency dither
-    MPC = 7  # model predictive control (with INL model)
+    PHYSCAL = 2  # Physical level Calibration
+    DEM = 3  # Dynamic Element Matching
+    NSDCAL = 4  # Noise shaping with Digital Calibration (INL model)
+    SHPD = 5  # Stochastic High-Pass Dithering
+    PHFD = 6  # Periodic High-Frequency Dithering
+    MPC = 7  # Model Predictive Control (with INL model)
+    MHOQ = 7  # Moving Horizon Optimal Quantiser (The same as MPC)
     ILC = 8  # iterative learning control (with INL model, periodic signals)
     ILC_SIMP = 9  # iterative learning control, basic implementation
 
@@ -24,23 +25,23 @@ class lm:  # linearisation method
     def __str__(self):
         match self.method:
             case lm.BASELINE:
-                return 'baseline'
+                return 'BASELINE'
             case lm.PHYSCAL:
-                return 'physical level calibration'
+                return 'PHYSCAL'
             case lm.DEM:
-                return 'dynamic element matching'
+                return 'DEM'
             case lm.NSDCAL:
-                return 'digital calibration'
+                return 'NSDCAL'
             case lm.SHPD:
-                return 'noise dither'
+                return 'SHPD'
             case lm.PHFD:
-                return 'periodic dither'
-            case lm.MPC:
-                return 'mpc'
+                return 'PHFD'
+            case lm.MPC | lm.MHOQ:
+                return 'MHOQ / MPC'
             case lm.ILC:
-                return 'ilc'
+                return 'ILC'
             case lm.ILC_SIMP:
-                return 'ilc simple'
+                return 'ILC simple'
             case _:
                 return '-'
             

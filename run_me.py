@@ -74,12 +74,12 @@ N_PRED = 1 # prediction horizon
 
 ##### METHOD CHOICE - Choose which linearization method you want to test
 RUN_LM = lm.BASELINE
-RUN_LM = lm.PHYSCAL
+# RUN_LM = lm.PHYSCAL
 # RUN_LM = lm.DEM
 # RUN_LM = lm.NSDCAL
 # RUN_LM = lm.SHPD
 # RUN_LM = lm.PHFD
-# RUN_LM = lm.MPC
+# RUN_LM = lm.MPC # lm.MPC or lm.MHOQ
 # RUN_LM = lm.ILC
 # RUN_LM = lm.ILC_SIMP
 
@@ -121,7 +121,7 @@ Xcs_FREQ = 1000  # Hz
 #QConfig = qws.w_16bit_ARTI
 # QConfig = qws.w_16bit_6t_ARTI
 QConfig = qws.w_6bit_ARTI
-# QConfig = qws.w_10bit_ARTI
+QConfig = qws.w_10bit_ARTI
 # QConfig = qws.w_6bit_2ch_SPICE
 # QConfig = qws.w_16bit_2ch_SPICE
 Nb, Mq, Vmin, Vmax, Rng, Qstep, YQ, Qtype = quantiser_configurations(QConfig)
@@ -503,7 +503,7 @@ match SC.lin.method:
         # two/four identical, ideal channels
         YQ = matlib.repmat(YQ, Nch, 1)
 
-    case lm.MPC:  # model predictive control (with INL model)
+    case lm.MPC | lm.MHOQ:  # model predictive control (with INL model)
         Nch = 1
         
         # Quantisation dither
@@ -776,7 +776,7 @@ if run_SPICE or SC.dac.model == dm.STATIC:
             K[1] = 0.0  # null secondary channel (want single channel resp.)
         else:
             K = 1/Nch
-    elif SC.lin.method == lm.NSDCAL or SC.lin.method == lm.MPC or SC.lin.method == lm.ILC:
+    elif SC.lin.method in [lm.NSDCAL, lm.MPC, lm.MHOQ, lm.ILC]:
         if QConfig == qws.w_6bit_2ch_SPICE or QConfig == qws.w_16bit_2ch_SPICE:
 
             K = np.ones((2,1))
