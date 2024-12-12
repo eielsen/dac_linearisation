@@ -34,7 +34,8 @@ statistics
 itertools
 math    
 ```
-``` Optimization solver 
+Optimization solver
+```  
 gurobi
 ```
 
