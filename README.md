@@ -18,7 +18,7 @@ This repository contains the implementation of 7 linearisation methods (LM) whic
 3. [PHFD - Periodic High-Frequency Dithering](https://ieeexplore.ieee.org/document/823976)
 4. [SHPD - Stochastic High-Pass Dithering](https://link.springer.com/article/10.1023/A:1008850101197)
 5. [DEM - Dynamic Element Matching](https://ieeexplore.ieee.org/document/5420027)
-6. [MHOQ - Moving Horizon Optimal Quantiser](https://ieeexplore.ieee.org/document/5420027), or Model Predictive Control (MPC)
+6. [MHOQ - Moving Horizon Optimal Quantiser](https://www.sciencedirect.com/science/article/pii/S2405896324013946), or Model Predictive Control (MPC)
 7. [ILC - Iterative Learning Control](https://ieeexplore.ieee.org/abstract/document/10252330)
 
 ## Results
