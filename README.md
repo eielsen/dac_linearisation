@@ -1,4 +1,4 @@
-# Comparison of various linearisation techniques for Digital-to-Analog Converters 
+# Comparison of various linearisation techniques for Digital-to-Analogue Converters 
 
 1. [Introduction](#introduction)
 2. [Linearisation Methods](#linearisation-methods)
