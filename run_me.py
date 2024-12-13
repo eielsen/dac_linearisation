@@ -74,9 +74,9 @@ N_PRED = 1 # prediction horizon
 
 ##### METHOD CHOICE - Choose which linearization method you want to test
 RUN_LM = lm.BASELINE
-# RUN_LM = lm.PHYSCAL
-# RUN_LM = lm.DEM
-# RUN_LM = lm.NSDCAL
+RUN_LM = lm.PHYSCAL
+RUN_LM = lm.DEM
+RUN_LM = lm.NSDCAL
 # RUN_LM = lm.SHPD
 # RUN_LM = lm.PHFD
 # RUN_LM = lm.MPC # lm.MPC or lm.MHOQ
@@ -91,14 +91,14 @@ dac = dm(dm.STATIC)  # use static non-linear quantiser model to simulate DAC
 
 # Chose how to compute SINAD
 SINAD_COMP_SEL = sinad_comp.CFIT  # use curve-fit (best for short time-series)
-#SINAD_COMP_SEL = sinad_comp.FFT  # use frequency response (better for long time-series)
+# SINAD_COMP_SEL = sinad_comp.FFT  # use frequency response (better for long time-series)
 
 # Output low-pass filter configuration
 Fc_lp = 100e3  # cut-off frequency in hertz
 N_lp = 3  # filter order
 
 # Sampling rate (over-sampling) in hertz
-Fs = 1e6
+# Fs = 1e6
 #Fs = 25e6
 #Fs = 250e6
 # Fs = 1022976
@@ -107,7 +107,8 @@ Fs = 1e6
 # Fs = 65470464
 #Fs = 130940928
 #Fs = 261881856
-Fs = 209715200
+# Fs = 209715200
+Fs = 226719135.13513514400
 
 Ts = 1/Fs  # sampling time
 
@@ -303,10 +304,7 @@ match SC.lin.method:
             if Fs == 65470464:
                 Xscale = 20
                 Fc_hf = 200e3
-            elif Fs == 209715200:
-                Xscale = 10
-                Fc_hf = 200e3
-            elif Fs == 261881856:
+            elif Fs in [209715200, 226719135.13513514400, 261881856]:
                 Xscale = 10
                 Fc_hf = 0.20e6
             else:
@@ -316,7 +314,7 @@ match SC.lin.method:
             if Fs == 65470464:
                 Xscale = 20
                 Fc_hf = 200e3
-            elif Fs == 209715200:
+            elif Fs in [209715200, 226719135.13513514400]:
                 Xscale = 30
                 Fc_hf = 30.0e6
             elif Fs == 261881856:
