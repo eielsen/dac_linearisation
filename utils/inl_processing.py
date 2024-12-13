@@ -111,6 +111,7 @@ def plot_inl(QConfig=qws.w_16bit_NI_card, Ch_sel=0):
     plt.grid()
 
     plt.savefig('figures/INL_plot.pdf', format='pdf', bbox_inches='tight')
+    plt.savefig('figures/INL_plot.svg', format='svg', bbox_inches='tight')
     #fig.savefig('Stylized Plots.png', dpi=300, bbox_inches='tight', transparent=True)
 
 
