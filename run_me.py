@@ -73,13 +73,13 @@ N_PRED = 1 # prediction horizon
 # Configuration
 
 ##### METHOD CHOICE - Choose which linearization method you want to test
-RUN_LM = lm.BASELINE
-RUN_LM = lm.PHYSCAL
-RUN_LM = lm.DEM
-RUN_LM = lm.NSDCAL
+# RUN_LM = lm.BASELINE
+# RUN_LM = lm.PHYSCAL
+# RUN_LM = lm.DEM
+# RUN_LM = lm.NSDCAL
 # RUN_LM = lm.SHPD
 # RUN_LM = lm.PHFD
-# RUN_LM = lm.MPC # lm.MPC or lm.MHOQ
+RUN_LM = lm.MPC # lm.MPC or lm.MHOQ
 # RUN_LM = lm.ILC
 # RUN_LM = lm.ILC_SIMP
 
@@ -101,14 +101,14 @@ N_lp = 3  # filter order
 # Fs = 1e6
 #Fs = 25e6
 #Fs = 250e6
-# Fs = 1022976
+Fs = 1022976
 #Fs = 16367616
 # Fs = 32735232
 # Fs = 65470464
 #Fs = 130940928
 #Fs = 261881856
 # Fs = 209715200
-Fs = 226719135.13513514400
+# Fs = 226719135.13513514400
 
 Ts = 1/Fs  # sampling time
 
@@ -122,7 +122,7 @@ Xcs_FREQ = 1000  # Hz
 #QConfig = qws.w_16bit_ARTI
 # QConfig = qws.w_16bit_6t_ARTI
 QConfig = qws.w_6bit_ARTI
-QConfig = qws.w_10bit_ARTI
+# QConfig = qws.w_10bit_ARTI
 # QConfig = qws.w_6bit_2ch_SPICE
 # QConfig = qws.w_16bit_2ch_SPICE
 Nb, Mq, Vmin, Vmax, Rng, Qstep, YQ, Qtype = quantiser_configurations(QConfig)
@@ -520,6 +520,8 @@ match SC.lin.method:
             HEADROOM = 10  # 6 bit DAC
         elif QConfig == qws.w_16bit_2ch_SPICE:
             HEADROOM = 10  # 16 bit DAC
+        elif QConfig == qws.w_10bit_ARTI:
+            HEADROOM = 10  # 16 bit DAC
         else:
             sys.exit('Fix qconfig')
 
@@ -537,7 +539,7 @@ match SC.lin.method:
         # Adding some "measurement/model error" in the levels
         if QConfig == qws.w_16bit_SPICE or QConfig == qws.w_16bit_ARTI or QConfig == qws.w_16bit_2ch_SPICE:
             ML_err_rng = Qstep  # 16 bit DAC
-        elif QConfig == qws.w_6bit_ARTI or QConfig == qws.w_6bit_2ch_SPICE:
+        elif QConfig == qws.w_6bit_ARTI or QConfig == qws.w_6bit_2ch_SPICE or QConfig == qws.w_10bit_ARTI:
             ML_err_rng = Qstep/1024 # 6 bit DAC
         else:
             sys.exit('Unknown QConfig')

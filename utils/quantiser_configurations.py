@@ -121,7 +121,8 @@ def quantiser_configurations(QConfig):
     
     Qstep = Rng/Mq  # step-size (LSB)
     
-    YQ = np.arange(Vmin, Vmax+Qstep, Qstep)  # ideal ouput levels (mid-tread quantizer)
+    # YQ = np.arange(Vmin, Vmax+Qstep, Qstep)  # ideal ouput levels (mid-tread quantizer)
+    YQ = np.linspace(Vmin, Vmax, Mq+1)
     YQ = np.reshape(YQ, (-1, YQ.shape[0]))  # generate 2d array with 1 row
     
     return Nb, Mq, Vmin, Vmax, Rng, Qstep, YQ, Qtype

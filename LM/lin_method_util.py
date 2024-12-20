@@ -37,7 +37,7 @@ class lm:  # linearisation method
             case lm.PHFD:
                 return 'PHFD'
             case lm.MPC | lm.MHOQ:
-                return 'MHOQ / MPC'
+                return 'MHOQ'
             case lm.ILC:
                 return 'ILC'
             case lm.ILC_SIMP:
