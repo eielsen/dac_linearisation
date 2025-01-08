@@ -121,9 +121,9 @@ Xcs_FREQ = 1000  # Hz
 #QConfig = qws.w_16bit_SPICE
 #QConfig = qws.w_16bit_ARTI
 # QConfig = qws.w_16bit_6t_ARTI
-QConfig = qws.w_6bit_ARTI
+# QConfig = qws.w_6bit_ARTI
 # QConfig = qws.w_10bit_ARTI
-# QConfig = qws.w_6bit_2ch_SPICE
+QConfig = qws.w_6bit_2ch_SPICE
 # QConfig = qws.w_16bit_2ch_SPICE
 Nb, Mq, Vmin, Vmax, Rng, Qstep, YQ, Qtype = quantiser_configurations(QConfig)
 
