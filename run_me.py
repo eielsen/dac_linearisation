@@ -74,11 +74,11 @@ N_PRED = 1 # prediction horizon
 
 ##### METHOD CHOICE - Choose which linearization method you want to test
 RUN_LM = lm.BASELINE
-RUN_LM = lm.PHYSCAL
+# RUN_LM = lm.PHYSCAL
 RUN_LM = lm.DEM
 RUN_LM = lm.NSDCAL
-# RUN_LM = lm.SHPD
-# RUN_LM = lm.PHFD
+RUN_LM = lm.SHPD
+RUN_LM = lm.PHFD
 # RUN_LM = lm.MPC # lm.MPC or lm.MHOQ
 # RUN_LM = lm.ILC
 # RUN_LM = lm.ILC_SIMP
@@ -102,13 +102,16 @@ N_lp = 3  # filter order
 #Fs = 25e6
 #Fs = 250e6
 # Fs = 1022976
+# Fs = 9362285.714285715
 #Fs = 16367616
+# Fs = 18724571.42857143
 # Fs = 32735232
 # Fs = 65470464
 #Fs = 130940928
 #Fs = 261881856
 # Fs = 209715200
 Fs = 226719135.13513514400
+# Fs = 3276800
 
 Ts = 1/Fs  # sampling time
 
@@ -122,14 +125,16 @@ Xcs_FREQ = 1000  # Hz
 #QConfig = qws.w_16bit_ARTI
 # QConfig = qws.w_16bit_6t_ARTI
 QConfig = qws.w_6bit_ARTI
-QConfig = qws.w_10bit_ARTI
+QConfig = qws.w_6bit_ztc_ARTI
+# QConfig = qws.w_10bit_ARTI
+# QConfig = qws.w_10bit_Sky
 # QConfig = qws.w_6bit_2ch_SPICE
 # QConfig = qws.w_16bit_2ch_SPICE
 Nb, Mq, Vmin, Vmax, Rng, Qstep, YQ, Qtype = quantiser_configurations(QConfig)
 
 PLOTS = False
 PLOT_CURVE_FIT = False
-SAVE_CODES_TO_FILE_AND_STOP = False
+SAVE_CODES_TO_FILE_AND_STOP = True
 #SAVE_CODES_TO_FILE_AND_STOP = True
 SAVE_CODES_TO_FILE = True
 #SAVE_CODES_TO_FILE = True
@@ -148,7 +153,7 @@ match 2:
             Np = 3  # no. of periods for carrier
 
 Npt = 1  # no. of carrier periods to use to account for transients
-Np = 9 # Np + 2*Npt
+Np = 39 # Np + 2*Npt
 
 t_end = Np/Xcs_FREQ  # time vector duration
 t = np.arange(0, t_end, Ts)  # time vector
@@ -245,10 +250,12 @@ match SC.lin.method:
         
         if QConfig == qws.w_16bit_SPICE:
             HEADROOM = 10  # 16 bit DAC
-        elif QConfig == qws.w_6bit_ARTI:
+        elif QConfig in [qws.w_6bit_ARTI, qws.w_6bit_ztc_ARTI]:
             HEADROOM = 15  # 6 bit DAC
         elif QConfig == qws.w_10bit_ARTI:
             HEADROOM = 15  # 10 bit DAC
+        elif QConfig == qws.w_10bit_Sky:
+            HEADROOM = 50  # 10 bit DAC
         elif QConfig == qws.w_16bit_ARTI:
             HEADROOM = 10  # 16 bit DAC
         elif QConfig == qws.w_6bit_2ch_SPICE:
@@ -268,9 +275,9 @@ match SC.lin.method:
         MLns = ML[0]  # measured ouput levels (convert from 2d to 1d)
 
         # Adding some "measurement/model error" in the levels
-        if QConfig in [qws.w_16bit_SPICE, qws.w_16bit_ARTI, qws.w_16bit_2ch_SPICE, qws.w_16bit_6t_ARTI]:
+        if QConfig in [qws.w_16bit_SPICE, qws.w_16bit_ARTI, qws.w_16bit_2ch_SPICE, qws.w_16bit_6t_ARTI, qws.w_10bit_Sky]:
             ML_err_rng = Qstep  # 16 bit DAC
-        elif QConfig in [qws.w_6bit_ARTI, qws.w_6bit_2ch_SPICE, qws.w_10bit_ARTI]:
+        elif QConfig in [qws.w_6bit_ARTI, qws.w_6bit_ztc_ARTI, qws.w_6bit_2ch_SPICE, qws.w_10bit_ARTI]:
             ML_err_rng = Qstep/1024 # 6 bit DAC
         else:
             sys.exit('NSDCAL: Unknown QConfig for ML error')
@@ -300,7 +307,7 @@ match SC.lin.method:
         # Large high-pass dither set-up
         #Xscale = 10  # carrier to dither ratio (between 0% and 100%)
         #Xscale = 5  # carrier to dither ratio (between 0% and 100%)
-        if QConfig == qws.w_6bit_ARTI:
+        if QConfig in [qws.w_6bit_ARTI, qws.w_6bit_ztc_ARTI]:
             if Fs == 65470464:
                 Xscale = 20
                 Fc_hf = 200e3
@@ -317,6 +324,19 @@ match SC.lin.method:
             elif Fs in [209715200, 226719135.13513514400]:
                 Xscale = 30
                 Fc_hf = 30.0e6
+            elif Fs == 261881856:
+                Xscale = 10
+                Fc_hf = 0.20e6
+            else:
+                sys.exit('SHPD: Missing config.')
+
+        elif QConfig == qws.w_10bit_Sky:
+            if Fs == 65470464:
+                Xscale = 20
+                Fc_hf = 200e3
+            elif Fs in [209715200, 226719135.13513514400]:
+                Xscale = 80
+                Fc_hf = 20.0e6
             elif Fs == 261881856:
                 Xscale = 10
                 Fc_hf = 0.20e6
@@ -443,17 +463,20 @@ match SC.lin.method:
         Xcs = matlib.repmat(Xcs, Nch, 1)
 
         # Optimising scale and freq. using grid search (elsewhere; TODO: convert MATLAB code for grid search)
-        # Scale: carrier to dither ratio (between 0% and 100%)
+        # Xscale: carrier to dither ratio (between 0% and 100%)
         if QConfig == qws.w_16bit_SPICE:
-            Xscale = 50  # carrier to dither ratio (between 0% and 100%)
-        elif QConfig == qws.w_6bit_ARTI:
-            Xscale = 50  # carrier to dither ratio (between 0% and 100%)
+            Xscale = 50
+        elif QConfig in [qws.w_6bit_ARTI, qws.w_6bit_ztc_ARTI]:
+            Xscale = 50
             Dfreq = 5.0e6 # Fs262Mhz - 6 bit ARTI
         elif QConfig == qws.w_10bit_ARTI:
-            Xscale = 50  # carrier to dither ratio (between 0% and 100%)
+            Xscale = 50
             Dfreq = 5.0e6
+        elif QConfig == qws.w_10bit_Sky:
+            Xscale = 50 # 50
+            Dfreq = 5.0e6 # 5.0e6
         elif QConfig == qws.w_16bit_ARTI:
-            Xscale = 50  # carrier to dither ratio (between 0% and 100%)
+            Xscale = 50
             Dfreq = 5.0e6 #10.0e6 # Fs262Mhz - 16 bit ARTI
         elif QConfig == qws.w_16bit_6t_ARTI:
             if Fs == 65470464:
@@ -512,7 +535,7 @@ match SC.lin.method:
         # Also need room for re-quantisation dither
         if QConfig == qws.w_16bit_SPICE:
             HEADROOM = 10  # 16 bit DAC
-        elif QConfig == qws.w_6bit_ARTI:
+        elif QConfig in [qws.w_6bit_ARTI, qws.w_6bit_ztc_ARTI]:
             HEADROOM = 15  # 6 bit DAC
         elif QConfig == qws.w_16bit_ARTI:
             HEADROOM = 1  # 16 bit DAC
@@ -537,7 +560,7 @@ match SC.lin.method:
         # Adding some "measurement/model error" in the levels
         if QConfig == qws.w_16bit_SPICE or QConfig == qws.w_16bit_ARTI or QConfig == qws.w_16bit_2ch_SPICE:
             ML_err_rng = Qstep  # 16 bit DAC
-        elif QConfig == qws.w_6bit_ARTI or QConfig == qws.w_6bit_2ch_SPICE:
+        elif QConfig in [qws.w_6bit_ARTI, qws.w_6bit_ztc_ARTI, qws.w_6bit_2ch_SPICE]:
             ML_err_rng = Qstep/1024 # 6 bit DAC
         else:
             sys.exit('Unknown QConfig')
@@ -589,7 +612,7 @@ match SC.lin.method:
         # Headrooom for requantisation
         if QConfig == qws.w_16bit_SPICE:
             HEADROOM = 10  # 16 bit DAC
-        elif QConfig == qws.w_6bit_ARTI:
+        elif QConfig in [qws.w_6bit_ARTI, qws.w_6bit_ztc_ARTI]:
             HEADROOM = 15  # 6 bit DAC
         elif QConfig == qws.w_16bit_ARTI:
             HEADROOM = 10  # 16 bit DAC
@@ -612,7 +635,7 @@ match SC.lin.method:
         # Adding some "measurement/model error" in the levels
         if QConfig == qws.w_16bit_SPICE or QConfig == qws.w_16bit_ARTI or QConfig == qws.w_16bit_2ch_SPICE:
             ML_err_rng = Qstep  # 16 bit DAC
-        elif QConfig == qws.w_6bit_ARTI or QConfig == qws.w_6bit_2ch_SPICE:
+        elif QConfig in [qws.w_6bit_ARTI, qws.w_6bit_ztc_ARTI, qws.w_6bit_2ch_SPICE]:
             ML_err_rng = Qstep/1024 # 6 bit DAC
         else:
             sys.exit('NSDCAL: Unknown QConfig for ML error')

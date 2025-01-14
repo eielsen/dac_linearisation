@@ -29,6 +29,8 @@ class qws:  # quantiser_word_size
     w_16bit_2ch_SPICE = 10
     w_16bit_6t_ARTI = 11
     w_10bit_ARTI = 12
+    w_10bit_Sky = 13
+    w_6bit_ztc_ARTI = 14
 
 
 
@@ -81,6 +83,13 @@ def quantiser_configurations(QConfig):
             Vmin = -0.019294419 # Ampere
             Vmax = 0.019317969 # Ampere
             Qtype = quantiser_type.midtread
+        case qws.w_6bit_ztc_ARTI:
+            # 6-bit DAC. All bits are binary-weighted
+            Nb = 6 # word-size
+            Mq = 2**Nb - 1; # max. code
+            Vmin = -0.019466165 # Ampere
+            Vmax = 0.019554285577790063 # Ampere
+            Qtype = quantiser_type.midtread
         case qws.w_10bit_ARTI:
             # 6-bit DAC. All bits are binary-weighted
             Nb = 10 # word-size
@@ -114,6 +123,12 @@ def quantiser_configurations(QConfig):
             Vmin =  -0.08022664 # volt
             Vmax = 0.08024051 # volt
             Qtype = quantiser_type.midtread
+        case qws.w_10bit_Sky:
+            Nb = 10 # word-size
+            Mq = 2**Nb - 1; # max. code
+            Vmin =  -0.018117286812961302 # volt
+            Vmax = 0.01807699084446083 # volt
+            Qtype = quantiser_type.midtread
         case _:
             sys.exit("Invalid quantiser configuration selected.")
 
@@ -121,7 +136,8 @@ def quantiser_configurations(QConfig):
     
     Qstep = Rng/Mq  # step-size (LSB)
     
-    YQ = np.arange(Vmin, Vmax+Qstep, Qstep)  # ideal ouput levels (mid-tread quantizer)
+    YQ = np.linspace(Vmin, Vmax, Mq+1) # ideal ouput levels (mid-tread quantizer) # Using linspace ensures that you get the correct number of levels.
+    # YQ = np.arange(Vmin, Vmax+Qstep, Qstep)  # ideal ouput levels (mid-tread quantizer)
     YQ = np.reshape(YQ, (-1, YQ.shape[0]))  # generate 2d array with 1 row
     
     return Nb, Mq, Vmin, Vmax, Rng, Qstep, YQ, Qtype
@@ -199,6 +215,11 @@ def get_measured_levels(QConfig, lmethod=lm.BASELINE):
             infile = 'DC_levels_ARTI_6bit.npy'
             CSV_filename = 'ARTI_cs_dac_6b_levels.csv'
             return get_ML(inpath, infile, CSV_filename)
+        
+        case qws.w_6bit_ztc_ARTI:
+            infile = 'DC_levels_ARTI_6bit_ztc.npy'
+            CSV_filename = 'ARTI_cs_dac_6b_ztc_levels.csv'
+            return get_ML(inpath, infile, CSV_filename)
                 
         case qws.w_10bit_ARTI:
             infile = 'DC_levels_ARTI_10bit.npy'
@@ -213,6 +234,11 @@ def get_measured_levels(QConfig, lmethod=lm.BASELINE):
         case qws.w_16bit_6t_ARTI:
             infile = 'DC_levels_ARTI_16bit_6t.npy'
             CSV_filename = 'ARTI_cs_dac_16b_6t_levels.csv'
+            return get_ML(inpath, infile, CSV_filename)
+        
+        case qws.w_10bit_Sky:
+            infile = 'DC_levels_SKY_10bit.npy'
+            CSV_filename = 'SKY_cs_dac_10b_levels.csv'
             return get_ML(inpath, infile, CSV_filename)
         
         case qws.w_6bit_2ch_SPICE:
