@@ -46,7 +46,6 @@ class lm:  # linearisation method
                 return '-'
             
 
-
 class dm:  # DAC model
     STATIC = 1  # static model
     SPICE = 2  # spice model
@@ -70,7 +69,6 @@ def main():
     """
     lmethod = lm(lm.BASELINE)
 
-    
 
 if __name__ == "__main__":
     main()
