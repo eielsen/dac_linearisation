@@ -1,21 +1,34 @@
-current-steering dac 6-bit inl
+current-steering dac 10-bit inl
 
-.option gmin=1e-19 reltol=200u abstol=100f vntol=100n seed=2
+.option gmin=1e-19 reltol=10u abstol=10f vntol=10n seed=1
 
 .param mc_mm_switch = 1
 .param vdd = 1.5
 
 vdd vdd 0 dc vdd
-xdac1 vdd 0 b16 b15 b14 b13 b12 b11 bb16 bb15 bb14 bb13 bb12 bb11 outp1 outn1 dac
-xdac2 vdd 0 b26 b25 b24 b23 b22 b21 bb26 bb25 bb24 bb23 bb22 bb21 outp2 outn2 dac
-rlp1 outp1 0 0.02
-rln1 outn1 0 0.02
-rlp2 outp2 0 0.02
-rln2 outn2 0 0.02
-e1 out1 0 outp1 outn1 10
-rl1 out1 0 1k
-e2 out2 0 outp2 outn2 10
-rl2 out 0 1k
+vb1 b1 0 dc 0
+vbb1 bb1 0 dc 1.5
+vb2 b2 0 dc 0
+vbb2 bb2 0 dc 1.5
+vb3 b3 0 dc 0
+vbb3 bb3 0 dc 1.5
+vb4 b4 0 dc 0
+vbb4 bb4 0 dc 1.5
+vb5 b5 0 dc 0
+vbb5 bb5 0 dc 1.5
+vb6 b6 0 dc 0
+vbb6 bb6 0 dc 1.5
+vb7 b7 0 dc 0
+vbb7 bb7 0 dc 1.5
+vb8 b8 0 dc 0
+vbb8 bb8 0 dc 1.5
+vb9 b9 0 dc 0
+vbb9 bb9 0 dc 1.5
+vb10 b10 0 dc 0
+vbb10 bb10 0 dc 1.5
+xdac vdd 0 b10 b9 b8 b7 b6 b5 b4 b3 b2 b1 bb10 bb9 bb8 bb7 bb6 bb5 bb4 bb3 bb2 bb1 outp outn dac
+rlp outp 0 0.02
+rln outn 0 0.02
 
 .op
 
@@ -23,13 +36,13 @@ rl2 out 0 1k
 set filetype=ascii
 set appendwrite
 run
-*write output.txt v(out1) v(out2)
-wrdata $inputdir/cs_dac_06bit_2ch_DC_levels.txt v(out1) v(out2)
+*write output.txt v(outp) v(outn)
+wrdata $inputdir/cs_dac_10bit_2ch_DC_levels.txt v(outp) v(outn)
 .endc
 
 .subckt pfet d g s b
 .param mfac = 1
-xm d g s b sky130_fd_pr__pfet_01v8_lvt l=350n w=550n as=145.75f ad=145.75f ps=1.63u pd=1.63u mult=mfac m=mfac
+xm1 d g s b sky130_fd_pr__pfet_01v8_lvt l=350n w=550n as=145.75f ad=145.75f ps=1.63u pd=1.63u mult=mfac m=mfac
 .ends
 
 .subckt cell vdd vss bp b bb outp outn weight=1
@@ -40,15 +53,19 @@ xm2p outp bb d1 vdd pfet mfac=weight
 xm2n outn b d1 vdd pfet mfac=weight
 .ends
 
-.subckt dac vdd vss b6 b5 b4 b3 b2 b1 bb6 bb5 bb4 bb3 bb2 bb1 outp outn
-xmb1 bp bp vdd vdd pfet mfac=1
-xmb2 0 0 bp vdd pfet mfac=1
-xdc1 vdd 0 bp b1 bb1 outp outn cell weight=1
-xdc2 vdd 0 bp b2 bb2 outp outn cell weight=2
-xdc3 vdd 0 bp b3 bb3 outp outn cell weight=4
-xdc4 vdd 0 bp b4 bb4 outp outn cell weight=8
-xdc5 vdd 0 bp b5 bb5 outp outn cell weight=16
-xdc6 vdd 0 bp b6 bb6 outp outn cell weight=32
+.subckt dac vdd vss b10 b9 b8 b7 b6 b5 b4 b3 b2 b1 bb10 bb9 bb8 bb7 bb6 bb5 bb4 bb3 bb2 bb1 outp outn
+xmb1 bp bp vdd vdd pfet mfac=2
+xmb2 0 0 bp vdd pfet mfac=2
+xdc1 vdd 0 bp b1 bb1 outp outn cell weight=4
+xdc2 vdd 0 bp b2 bb2 outp outn cell weight=8
+xdc3 vdd 0 bp b3 bb3 outp outn cell weight=16
+xdc4 vdd 0 bp b4 bb4 outp outn cell weight=32
+xdc5 vdd 0 bp b5 bb5 outp outn cell weight=64
+xdc6 vdd 0 bp b6 bb6 outp outn cell weight=128
+xdc7 vdd 0 bp b7 bb7 outp outn cell weight=256
+xdc8 vdd 0 bp b8 bb8 outp outn cell weight=512
+xdc9 vdd 0 bp b9 bb9 outp outn cell weight=1024
+xdc10 vdd 0 bp b10 bb10 outp outn cell weight=2048
 .ends
 
 .param
@@ -363,4 +380,3 @@ msky130_fd_pr__pfet_01v8_lvt d g s b sky130_fd_pr__pfet_01v8_lvt__model l = {l} 
 + steta0 = 0.0
 + tku0 = 0.0
 .ends sky130_fd_pr__pfet_01v8_lvt
-

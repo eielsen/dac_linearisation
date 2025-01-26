@@ -25,6 +25,12 @@ def addtexttofile(filename, text):
 
 
 def generate_dc_input(Nb, v, tempdir='utils/spice_temp', geninputfile='input_for_spice_sim.txt'):
+    """
+    Generate all the requried inputs for the SPICE simulation.
+    Defining voltage sources for the input pattern with the required voltage levels
+    as well as the inverse pattern. 
+    """
+    
     bstr = np.base_repr(v, base=2, padding=Nb)
     bstri = ''.join('1' if x == '0' else '0' for x in bstr)
     bstr_len = len(bstr)
@@ -54,23 +60,23 @@ def generate_dc_input(Nb, v, tempdir='utils/spice_temp', geninputfile='input_for
 
 def generate_and_run_dc_spice_batch_file(timestamp, circname, tempdir='utils/spice_temp', geninputfile='input_for_spice_sim.txt'):
     """
-    Run operating point analysis for all bit patterns
+    Run operating point analysis for a given bit pattern input stored in a file.
     """
     
-    circdir = 'spice_circuits'
+    circdir = 'spice_circuits'  # location of the SPICE circuit files
     
-    outdir = os.path.join('utils/spice_output_dc', circname + '_' + timestamp)
+    outdir = os.path.join('utils/spice_output_dc', circname + '_' + timestamp)  # desintation
 
     if os.path.exists(outdir):
         print('Putting output files in existing directory: ' + outdir)
     else:
         os.mkdir(outdir) 
 
-    
     circf = circname + '.cir'  # circuit description
-    spicelogf = circname + '_batch.log'  # spice log file
-    spicef = circname + '_batch.cir'  # complete spice input file
+    spicelogf = circname + '_batch.log'  # SPICE log file
+    spicef = circname + '_batch.cir'  # complete SPICE input file
     
+    # joining the circuit description file and the input file
     with open(os.path.join(outdir, spicef), 'w') as fout:
         fins = [os.path.join(circdir, circf),
                 os.path.join(tempdir, geninputfile)]
@@ -78,24 +84,22 @@ def generate_and_run_dc_spice_batch_file(timestamp, circname, tempdir='utils/spi
         for line in fin:
             fout.write(line)
         fin.close()
-
     
     #spice_path = '/home/eielsen/ngspice_files/bin/ngspice'  # newest ver., fastest (local)
-    spice_path = 'ngspice'  #
+    spice_path = 'ngspice'  # assume PATH is set to ngspice
     cmd = [spice_path, '-o', os.path.join(outdir, spicelogf),
-           '-b', os.path.join(outdir, spicef)]
+           '-b', os.path.join(outdir, spicef)]  # generate CLI string to run SPICE
 
     print(cmd)
     
-    subprocess.run(cmd)
-    #return 
+    subprocess.run(cmd)  # run SPICE, hope for the best
 
 
 def read_spice_output_and_save_to_npy(circname, timestamp):
     actual_1 = []
     actual_2 = []
     
-    outdir = os.path.join('spice_output_dc', circname + '_' + timestamp)
+    outdir = os.path.join('utils/spice_output_dc', circname + '_' + timestamp)
     lvlsfile = circname + '_levels.txt'
 
     with open(os.path.join(outdir, lvlsfile), newline='') as in_file:
@@ -122,21 +126,33 @@ def read_spice_output_and_save_to_npy(circname, timestamp):
     np.save(outfile, ML)
 
 
-def run_dc_analysis_for_all_permutations(Nb, circname, timestamp):
-    for v in range(0, 2**Nb):  # generate all bit pattern permutations 
+def run_dc_analysis_for_all_bit_pattern_combinations(Nb, circname, timestamp):
+    """
+    Generate all bit patterns for Nb bits (all codes between 0 and 2^Nb-1)
+    and run DC analysis for each bit pattern;
+    this yields the static response for each code, i.e. the INL
+    """
+
+    for v in range(0, 2**Nb):  # generate all bit pattern combinations 
         generate_dc_input(Nb, v)
         generate_and_run_dc_spice_batch_file(timestamp, circname)
 
 
-Nb = 6  ## no. of bits
-circname = 'cs_dac_06bit_2ch_DC'
-#Nb = 16  ## no. of bits
-#circname = 'cs_dac_16bit_2ch_DC'
+match 3:
+    case 1:
+        Nb = 6  ## no. of bits
+        circname = 'cs_dac_06bit_2ch_DC'
+    case 2:
+        Nb = 10  ## no. of bits
+        circname = 'cs_dac_10bit_2ch_DC'
+    case 3:
+        Nb = 16  ## no. of bits
+        circname = 'cs_dac_16bit_2ch_DC'
 
-timestamp = datetime.datetime.now().strftime("%Y%m%dT%H%M%S")
-run_dc_analysis_for_all_permutations(Nb, circname, timestamp)
+if 0:
+    timestamp = datetime.datetime.now().strftime("%Y%m%dT%H%M%S")
+    run_dc_analysis_for_all_bit_pattern_combinations(Nb, circname, timestamp)
 
-#read_spice_output_and_save_to_npy(circname, '20240419T171216')
-#read_spice_output_and_save_to_npy(circname, '20240420T000236')
-
-#read_spice_output_and_save_to_npy(circname, timestamp)
+if 0:
+    timestamp = '20250126T131543'
+    read_spice_output_and_save_to_npy(circname, timestamp)
