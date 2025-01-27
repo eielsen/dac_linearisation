@@ -20,9 +20,9 @@ from scipy import signal
 from scipy import integrate
 from matplotlib import pyplot as plt
 
-from utils.welch_psd import welch_psd
-from utils.psd_measurements import find_psd_peak
-from utils.fit_sinusoid import fit_sinusoid, sin_p
+from welch_psd import welch_psd
+from psd_measurements import find_psd_peak
+from fit_sinusoid import fit_sinusoid, sin_p
 
 
 def TS_SINAD(x, t, make_plot=False, plot_label=''):
@@ -168,10 +168,10 @@ def main():
     x = x + 0.5*x**2 + 0.25*x**3 + 0.125*x**4 + 0.0625*x**5
     x = x + 0.01*np.random.randn(t.size)
 
-    R_FFT = FFT_SINAD(x, Fs)
+    R_FFT = FFT_SINAD(x, Fs, make_plot=True)
     R_TS = TS_SINAD(x, t)
 
-    print("SINAD from FFT: {} SINAD from curve fit: {}".format(R_FFT, R_TS))
+    print("SINAD from FFT: {}\nSINAD from curve-fit: {}".format(R_FFT, R_TS))
 
 
 if __name__ == "__main__":

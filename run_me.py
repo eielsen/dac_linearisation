@@ -69,8 +69,9 @@ def test_signal(SCALE, MAXAMP, FREQ, OFFSET, t):
     return (SCALE/100)*MAXAMP*np.cos(2*np.pi*FREQ*t) + OFFSET
 
 
+#%% Configuration
+
 N_PRED = 1 # prediction horizon
-# Configuration
 
 ##### METHOD CHOICE - Choose which linearisation method you want to test
 METHOD_CHOICE = 1
@@ -97,7 +98,7 @@ match METHOD_CHOICE:
 lin = lm(RUN_LM)
 
 ##### MODEL CHOICE
-MODEL_CHOICE = 1
+MODEL_CHOICE = 2
 match MODEL_CHOICE:
     case 1:
         dac = dm(dm.STATIC)  # use static non-linear quantiser model to simulate DAC
@@ -142,13 +143,13 @@ QConfig = qws.w_6bit_2ch_SPICE
 # QConfig = qws.w_16bit_2ch_SPICE
 Nb, Mq, Vmin, Vmax, Rng, Qstep, YQ, Qtype = quantiser_configurations(QConfig)
 
-PLOTS = False
-PLOT_CURVE_FIT = False
+PLOTS = True
+PLOT_CURVE_FIT = True
 SAVE_CODES_TO_FILE_AND_STOP = False
 #SAVE_CODES_TO_FILE_AND_STOP = True
 SAVE_CODES_TO_FILE = True
 #SAVE_CODES_TO_FILE = True
-run_SPICE = False
+run_SPICE = True
 
 # Generate time vector
 match 2:
@@ -163,7 +164,7 @@ match 2:
             Np = 3  # no. of periods for carrier
 
 Npt = 1  # no. of carrier periods to use to account for transients
-Np = 9 # Np + 2*Npt
+Np = 7 # Np + 2*Npt
 
 t_end = Np/Xcs_FREQ  # time vector duration
 t = np.arange(0, t_end, Ts)  # time vector
@@ -717,7 +718,8 @@ match SC.lin.method:
 
 
 # %% Post processing
-# generate DAC output
+
+# Generate DAC output
 match SC.dac.model:
     case dm.STATIC:  # use static non-linear quantiser model to simulate DAC
         if SAVE_CODES_TO_FILE:
@@ -734,7 +736,7 @@ match SC.dac.model:
         timestamp = datetime.datetime.now().strftime("%Y%m%dT%H%M%S")
         outdirname = str(SC.lin).replace(" ", "_") + '_' + timestamp
 
-        outdir = 'spice_output/' + outdirname + '/'
+        outdir = 'spice_sim/output/' + outdirname + '/'
 
         if os.path.exists(outdir):
             print('Putting output files in existing directory: ' + outdirname)
@@ -752,7 +754,7 @@ match SC.dac.model:
         outputf_list = []
         
         if QConfig == qws.w_6bit_2ch_SPICE or QConfig == qws.w_16bit_2ch_SPICE:
-            SEPARATE_FILE_PER_CHANNEL = False  # TODO: Mr. Tidy and Mr. Neat cannot stand a mess
+            SEPARATE_FILE_PER_CHANNEL = False
         else:
             SEPARATE_FILE_PER_CHANNEL = True
         
@@ -765,15 +767,18 @@ match SC.dac.model:
                 outputf_list.append(outputf)
         else:
             spicef, outputf = gen_spice_sim_file(C, Nb, t, Ts, QConfig, outdir)
+            spicef_list.append(spicef)  # list with 1 entry
+            outputf_list.append(outputf)
         
         if run_SPICE:  # run SPICE
-            spice_path = '/home/eielsen/ngspice_files/bin/ngspice'  # newest ver., fastest (local)
-            #spice_path = 'ngspice'  # 
+            #spice_path = '/home/eielsen/ngspice_files/bin/ngspice'  # newest ver., fastest (local)
+            spice_path = 'ngspice'  # 
 
             if False:
                 for k in range(0,Nch):
                     run_spice_sim(spicef_list[k], outputf_list[k], outdir, spice_path)
-            else:
+            else:  # use shell escape interface to run ngspice as parallel procs.
+                print('Running SPICE...')
                 run_spice_sim_parallel(spicef_list, outputf_list, outdir, spice_path)
             
             YM = np.zeros([Nch, t.size])
@@ -782,6 +787,7 @@ match SC.dac.model:
                 t_spice, y_spice = read_spice_bin_file(outdir, outputf_list[k] + '.bin')
                 y_resamp = np.interp(t, t_spice, y_spice)  # re-sample
                 YM[k,:] = y_resamp
+
 
 if run_SPICE or SC.dac.model == dm.STATIC:
     # Summation stage TODO: Tidy up, this is case dependent
@@ -793,7 +799,6 @@ if run_SPICE or SC.dac.model == dm.STATIC:
             K = 1/Nch
     elif SC.lin.method in [lm.NSDCAL, lm.MPC, lm.MHOQ, lm.ILC]:
         if QConfig == qws.w_6bit_2ch_SPICE or QConfig == qws.w_16bit_2ch_SPICE:
-
             K = np.ones((2,1))
             K[1] = 0.0  # secondary channel will have zero input, null to remove any noise
         else:

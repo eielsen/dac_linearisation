@@ -19,6 +19,9 @@ import pickle
 from prefixed import Float
 from tabulate import tabulate
 
+import sys
+sys.path.append('../')
+
 from LM.lin_method_util import lm, dm
 from utils.figures_of_merit import FFT_SINAD, TS_SINAD
 from utils.quantiser_configurations import qws
@@ -152,7 +155,7 @@ def run_spice_sim(spicef, outputf, outdir='spice_output/', spice_path='ngspice')
     subprocess.run(cmd)
 
 
-def run_spice_sim_parallel(spicef_list, outputf_list, outdir='spice_output/', spice_path='ngspice'):
+def run_spice_sim_parallel(spicef_list, outputf_list, outdir='spice_sim/output/', spice_path='ngspice'):
     """
     Run SPICE simulaton using provided filenames
 
@@ -165,9 +168,10 @@ def run_spice_sim_parallel(spicef_list, outputf_list, outdir='spice_output/', sp
     for k in range(0, len(spicef_list)):
         cmd = [spice_path, '-o', outdir + outputf_list[k] + '.log',
             #'-r', outdir + outputf_list[k] + '.bin',
-            '-b', outdir + spicef_list[k]]
-        print(cmd)
+            '-b', outdir + spicef_list[k]]    
         cmd_list.append(cmd)
+    
+    print(cmd_list)
 
     procs_list = [subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE) for cmd in cmd_list]
     
@@ -194,8 +198,8 @@ def gen_spice_sim_file(C, Nb, t, Ts, QConfig, outdir, seed=1, seq=0):
     wavf = 'spice_pwl_wav.txt'
     cmdf = 'spice_cmds.txt'
     
-    tempdir = 'spice_temp'
-    circdir = 'spice_circuits'
+    tempdir = 'spice_sim/temp'
+    circdir = 'spice_sim/circuits'
     #outdir = os.path.join('spice_output', outdirname)
 
     if os.path.exists(outdir):
@@ -440,6 +444,8 @@ def process_sim_output(ty, y, Fc, Fs, Nf, TRANSOFF, SINAD_COMP_SEL, plot=False, 
             y = y.reshape(-1, 1)  # ensure the vector is a column vector
             y_avg = y.squeeze()
     
+    print(y_avg.shape)
+
     match SINAD_COMP_SEL:
         case sinad_comp.FFT:  # use FFT based method to detemine SINAD
             R = FFT_SINAD(y_avg[TRANSOFF:-TRANSOFF], Fs, plot, descr)
@@ -460,22 +466,26 @@ def main():
     """
     Read results from a given SPICE simulation and process the data.
     """
-    outdir = 'spice_output'
+    outdir = '../spice_sim/output'
 
     rundirs = os.listdir(outdir)
     rundirs.sort()
 
     print('No. dirs.: ' + str(len(rundirs)))
 
-    #method_str = 'baseline'
+    method_str = 'baseline'
     #method_str = 'physical_level_calibration'
     #method_str = 'periodic_dither'
     #method_str = 'noise_dither'
-    method_str = 'digital_calibration'
+    #method_str = 'digital_calibration'
     #method_str = 'dynamic_element_matching'
     #method_str = 'ilc'
     
-    matching = [s for s in rundirs if method_str in s]
+    matching = [s for s in rundirs if method_str.upper() in s]
+
+    if not matching:  # list empty?
+        print("No matching simlation cases found for: {}".format(method_str))
+        return
 
     #rundir = rundirs[16]  # pick run
     rundir = matching[0]  # pick run
@@ -495,6 +505,10 @@ def main():
 
     binfiles = [file for file in os.listdir(bindir) if file.endswith('.bin')]
     binfiles.sort()
+
+    if not binfiles:  # list empty?
+        print("No output found for case: {}".format(method_str))
+        return
 
     if True:
         Nbf = len(binfiles)  # number of bin (binary data) files
