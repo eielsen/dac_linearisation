@@ -13,6 +13,8 @@ from scipy import signal
 from scipy import special
 import matplotlib.pyplot as plt
 
+plt.rcParams['text.usetex'] = True
+
 from utils.fir_filter_ls import fir_filter_ls
 
 
@@ -175,7 +177,7 @@ def dual_dither(N=int(1e6), make_plots=False):
     #        z, _ = signal.lfilter(g, 1, v, zi=zi*v[0])
             #x_ = filter(g, 1, v)
 
-    x = z/np.std(z) # normalise (should strictly not be neccessary)
+    x = z/np.std(z) # normalise (should strictly not be necessary)
 
     # non-lin. transform
     y = 2*(0.5*(1 - special.erf(-x/np.sqrt(2))) - 0.5)
@@ -192,7 +194,7 @@ def hist_and_psd(y):
     plt.title("Histogram of non-lin. transform output")
     plt.show()
     
-    # PSD to check spectral specifcation
+    # PSD to check spectral specification
     fy, Pyy = signal.welch(y, fs=1, nperseg=y.size/500)
 
     plt.plot(fy, 10*np.log10(Pyy))
@@ -207,7 +209,7 @@ def hist_and_psd_cmp(w, Ihlf, S_fr_, y):
     plt.title("Histogram of non-lin. transform output")
     plt.show()
     
-    # PSD to check spectral specifcation
+    # PSD to check spectral specification
     fy, Pyy = signal.welch(y, fs=1, nperseg=y.size/500)
     fn = w[Ihlf]/(2*np.pi)
     fn = fn.squeeze()

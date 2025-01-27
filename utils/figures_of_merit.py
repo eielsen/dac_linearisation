@@ -1,6 +1,12 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""Implementation of some figures-of-metrit (FOM) for DAC testing
+"""Implementations of figures-of-merit (FOM) for DAC testing.
+
+Presently there SINAD is used as the main FOM, this file provides
+two different methods for determining the SINAD from measurements,
+an FFT-based and a curve-fitting-based.
+
+The curve-fitting-based method is recommended based on extensive testing.
 
 @author: Arnfinn Aas Eielsen
 @date: 22.02.2024
@@ -53,7 +59,7 @@ def TS_SINAD(x, t, make_plot=False, plot_label=''):
 def FFT_SINAD(x, Fs, make_plot=False, plot_label=''):
     """
     Take a time-series for computation of the SINAD using an FFT-based method.
-    Typically needs a farily long time-series for sufficient frequency resolution.
+    Typically needs a fairly long time-series for sufficient frequency resolution.
     Rule of thumb: More than 100 periods of the fundamental carrier.
     """
 
@@ -165,7 +171,7 @@ def main():
     R_FFT = FFT_SINAD(x, Fs)
     R_TS = TS_SINAD(x, t)
 
-    print("SINAD from FFT: {} SINAD from curvefit: {}".format(R_FFT, R_TS))
+    print("SINAD from FFT: {} SINAD from curve fit: {}".format(R_FFT, R_TS))
 
 
 if __name__ == "__main__":

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""Hold some quantiser parameter configurations (matching various DAC implementations)
+"""Define quantiser parameter configurations (matching various DAC implementations)
 
 @author: Arnfinn Aas Eielsen
 @date: 22.02.2024
@@ -16,6 +16,7 @@ import scipy
 
 from utils.static_dac_model import quantiser_type
 
+
 class qws:  # quantiser_word_size
     w_04bit = 1
     w_06bit = 2
@@ -29,7 +30,7 @@ class qws:  # quantiser_word_size
     w_16bit_2ch_SPICE = 10
     w_16bit_6t_ARTI = 11
     w_10bit_ARTI = 12
-
+    w_10bit_2ch_SPICE = 13
 
 
 def quantiser_configurations(QConfig):
@@ -114,6 +115,12 @@ def quantiser_configurations(QConfig):
             Vmin =  -0.08022664 # volt
             Vmax = 0.08024051 # volt
             Qtype = quantiser_type.midtread
+        case qws.w_10bit_2ch_SPICE:
+            Nb = 10 # word-size
+            Mq = 2**Nb - 1; # max. code
+            Vmin = -10e-05 # volt
+            Vmax = 10e-05 # volt
+            Qtype = quantiser_type.midtread
         case _:
             sys.exit("Invalid quantiser configuration selected.")
 
@@ -121,7 +128,7 @@ def quantiser_configurations(QConfig):
     
     Qstep = Rng/Mq  # step-size (LSB)
     
-    # YQ = np.arange(Vmin, Vmax+Qstep, Qstep)  # ideal ouput levels (mid-tread quantizer)
+    # YQ = np.arange(Vmin, Vmax+Qstep, Qstep)  # ideal output levels (mid-tread quantiser)
     YQ = np.linspace(Vmin, Vmax, Mq+1)
     YQ = np.reshape(YQ, (-1, YQ.shape[0]))  # generate 2d array with 1 row
     
@@ -131,7 +138,7 @@ def quantiser_configurations(QConfig):
 def get_ML(inpath, infile, CSV_filename):
     CSV_file = os.path.join(inpath, CSV_filename)
 
-    # Numpoy file does not exist
+    # Numpy file does not exist
     if (os.path.exists(os.path.join(inpath, infile)) is False):
         if (os.path.exists(CSV_file) is True):
             ML = np.transpose(np.genfromtxt(CSV_file, delimiter=',', skip_header=1))[1:,:]

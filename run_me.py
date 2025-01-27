@@ -7,8 +7,8 @@
 @license: BSD 3-Clause
 """
 
-# %reload_ext autoreload
-# %autoreload 2
+%reload_ext autoreload
+%autoreload 2
 
 # %%
 # Imports
@@ -72,22 +72,37 @@ def test_signal(SCALE, MAXAMP, FREQ, OFFSET, t):
 N_PRED = 1 # prediction horizon
 # Configuration
 
-##### METHOD CHOICE - Choose which linearization method you want to test
-# RUN_LM = lm.BASELINE
-# RUN_LM = lm.PHYSCAL
-# RUN_LM = lm.DEM
-# RUN_LM = lm.NSDCAL
-# RUN_LM = lm.SHPD
-# RUN_LM = lm.PHFD
-RUN_LM = lm.MPC # lm.MPC or lm.MHOQ
-# RUN_LM = lm.ILC
-# RUN_LM = lm.ILC_SIMP
+##### METHOD CHOICE - Choose which linearisation method you want to test
+METHOD_CHOICE = 1
+match METHOD_CHOICE:
+    case 1:
+        RUN_LM = lm.BASELINE
+    case 2:
+        RUN_LM = lm.PHYSCAL
+    case 3:
+        RUN_LM = lm.DEM
+    case 4:
+        RUN_LM = lm.NSDCAL
+    case 5:
+        RUN_LM = lm.SHPD
+    case 6:
+        RUN_LM = lm.PHFD
+    case 7:
+        RUN_LM = lm.MPC # lm.MPC or lm.MHOQ
+    case 8:
+        RUN_LM = lm.ILC
+    case 9:
+        RUN_LM = lm.ILC_SIMP
 
 lin = lm(RUN_LM)
 
 ##### MODEL CHOICE
-dac = dm(dm.STATIC)  # use static non-linear quantiser model to simulate DAC
-#dac = dm(dm.SPICE)  # use SPICE to simulate DAC output
+MODEL_CHOICE = 1
+match MODEL_CHOICE:
+    case 1:
+        dac = dm(dm.STATIC)  # use static non-linear quantiser model to simulate DAC
+    case 2:
+        dac = dm(dm.SPICE)  # use SPICE to simulate DAC output
 
 # Chose how to compute SINAD
 SINAD_COMP_SEL = sinad_comp.CFIT  # use curve-fit (best for short time-series)

@@ -5,7 +5,7 @@
 <tr><th>Time (UTC+00:00)     </th><th>Method    </th><th>Fs   </th><th>Fc    </th><th>Fx  </th><th style="text-align: right;">  Ncyc</th><th style="text-align: right;">  ENOB</th></tr>
 </thead>
 <tbody>
-<tr><td>Never                </td><td>BASELINE  </td><td>0.00 </td><td>0.0   </td><td>0.0 </td><td style="text-align: right;">     0</td><td style="text-align: right;"> 0    </td></tr>
+<tr><td>2025-01-27 - 11:37:00</td><td>BASELINE  </td><td>1.02M</td><td>100.0k</td><td>1.0k</td><td style="text-align: right;">     7</td><td style="text-align: right;"> 6.089</td></tr>
 <tr><td>Never                </td><td>PHYSCAL   </td><td>0.00 </td><td>0.0   </td><td>0.0 </td><td style="text-align: right;">     0</td><td style="text-align: right;"> 0    </td></tr>
 <tr><td>Never                </td><td>DEM       </td><td>0.00 </td><td>0.0   </td><td>0.0 </td><td style="text-align: right;">     0</td><td style="text-align: right;"> 0    </td></tr>
 <tr><td>Never                </td><td>NSDCAL    </td><td>0.00 </td><td>0.0   </td><td>0.0 </td><td style="text-align: right;">     0</td><td style="text-align: right;"> 0    </td></tr>

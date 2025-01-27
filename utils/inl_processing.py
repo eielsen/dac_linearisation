@@ -17,12 +17,12 @@ from scipy import signal
 from matplotlib import pyplot as plt
 from utils.quantiser_configurations import quantiser_configurations, get_measured_levels, qws
 
-def generate_random_output_levels(QuantizerConfig=4):
+def generate_random_output_levels(QConfig=4):
     """
     Generates random errors for the output levels +/-1 LSB and saves to file
     """
     # Quantiser model
-    Nb, Mq, Vmin, Vmax, Rng, Qstep, YQ, Qtype = quantiser_configurations(QuantizerConfig)
+    Nb, Mq, Vmin, Vmax, Rng, Qstep, YQ, Qtype = quantiser_configurations(QConfig)
 
     CD = np.arange(0, 2**Nb)
     CD = np.append(CD, CD[-1]+1)
@@ -50,7 +50,7 @@ def generate_random_output_levels(QuantizerConfig=4):
     gno = 1
     while True:
         outpath = "generated_output_levels"
-        outfile_str = "generated_output_levels_{0}_bit_{1}_QuantizerConfig_{2}.npy".format(Nb, gno, QuantizerConfig)
+        outfile_str = "generated_output_levels_{0}_bit_{1}_QuantiserConfig_{2}.npy".format(Nb, gno, QConfig)
         outfile = os.path.join(outpath, outfile_str)
         if os.path.exists(outfile):
             gno = gno + 1
@@ -150,35 +150,35 @@ def gen_physcal_lut(QConfig=qws.w_16bit_NI_card, SAVE_LUT=0):
     plt.ylabel('Ideal output level')
     plt.legend()
 
-    QQ = np.hstack([qs, np.ones(qs.shape)]) # codes matrix for straight line least-squares fit
-    YY = np.hstack([YQ, np.ones(qs.shape)]) # ideal levels matrix
+    QQ = np.hstack([qs, np.ones(qs.shape)])  # codes matrix for straight line least-squares fit
+    YY = np.hstack([YQ, np.ones(qs.shape)])  # ideal levels matrix
 
-    MLm = PRILVLS; # use channel 1 as Main/primary (measured levels)
-    MLm = MLm.reshape(-1, 1) # ensure column vector
+    MLm = PRILVLS;  # use channel 1 as Main/primary (measured levels)
+    MLm = MLm.reshape(-1, 1)  # ensure column vector
 
-    thetam = np.linalg.lstsq(QQ, MLm, rcond=None)[0] # staight line fit; theta[0] is slope, theta[1] is offset
+    thetam = np.linalg.lstsq(QQ, MLm, rcond=None)[0]  # straight line fit; theta[0] is slope, theta[1] is offset
 
-    ML = MLm - thetam[1] # remove fitted offset for measured levels
-    INL = (ML - YQ)/Qstep # find the INL
+    ML = MLm - thetam[1]  # remove fitted offset for measured levels
+    INL = (ML - YQ)/Qstep  # find the INL
 
-    CLm = SECLVLS; # use channel 2 to calibrate/secondary (measured levels)
-    CLm = CLm.reshape(-1, 1) # ensure column vector
+    CLm = SECLVLS  # use channel 2 to calibrate/secondary (measured levels)
+    CLm = CLm.reshape(-1, 1)  # ensure column vector
 
-    thetacq = np.linalg.lstsq(QQ, CLm, rcond=None)[0] # staight line fit
+    thetacq = np.linalg.lstsq(QQ, CLm, rcond=None)[0]  # straight line fit
     print(thetacq)
 
-    Qcal = thetacq[0] # effective quantization step for secondary channel (effective gain/scale)
-    CL = Qcal*qs # resort to using scaled, ideal output for secondary calibration channel
-    # (level measurements for seconduary too noisy for monotonic behavior, i.e. does more harm than good)
+    Qcal = thetacq[0]  # effective quantization step for secondary channel (effective gain/scale)
+    CL = Qcal*qs  # resort to using scaled, ideal output for secondary calibration channel
+    # (level measurements for secondary too noisy for monotonic behavior, i.e. does more harm than good)
 
     # Generate the look-up table by minimising the primary output deviation from ideal
     # for every code value by adding or subtracting using the secondary
     Nl = Mq + 1  # number of output levels
-    LUTcal = np.zeros(Nl)  # initalise look-up table (LUT)
+    LUTcal = np.zeros(Nl)  # initialise look-up table (LUT)
     err = ML - YQ  # compute level errors (same as INL*Qstep)
     for k in range(0,Nl):
         errc = abs(err[k] + CL)  # given all secondary outputs, compute the errors for a given primary code
-        LUTcal[k] = np.argmin(errc)  # save the secodary code that yields the smallest error
+        LUTcal[k] = np.argmin(errc)  # save the secondary code that yields the smallest error
 
     LUTcal = LUTcal.astype(np.uint16)  # convert to integers
 

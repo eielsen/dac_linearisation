@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""Generate INL values for a SPICE file
+"""Generate INL values for a DAC design in a given SPICE file.
+
+This is specific for the current steering DAC topologies used in this project,
+and requires suitably prepared SPICE netlists.
 
 @author: Arnfinn Eielsen, Bikash Adhikari
 @date: 22.02.2024
@@ -26,7 +29,7 @@ def addtexttofile(filename, text):
 
 def generate_dc_input(Nb, v, tempdir='utils/spice_temp', geninputfile='input_for_spice_sim.txt'):
     """
-    Generate all the requried inputs for the SPICE simulation.
+    Generate all the required inputs for the SPICE simulation.
     Defining voltage sources for the input pattern with the required voltage levels
     as well as the inverse pattern. 
     """
