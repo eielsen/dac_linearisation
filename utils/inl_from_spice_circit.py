@@ -138,7 +138,7 @@ def run_dc_analysis_for_all_bit_pattern_combinations(Nb, circname, timestamp):
         generate_and_run_dc_spice_batch_file(timestamp, circname)
 
 
-match 3:
+match 2:
     case 1:
         Nb = 6  ## no. of bits
         circname = 'cs_dac_06bit_2ch_DC'
@@ -153,6 +153,7 @@ if 0:
     timestamp = datetime.datetime.now().strftime("%Y%m%dT%H%M%S")
     run_dc_analysis_for_all_bit_pattern_combinations(Nb, circname, timestamp)
 
-if 0:
+if 1:
     timestamp = '20250126T131543'
+    timestamp = '20250126T141847'
     read_spice_output_and_save_to_npy(circname, timestamp)

@@ -6,29 +6,16 @@ current-steering dac 10-bit inl
 .param vdd = 1.5
 
 vdd vdd 0 dc vdd
-vb1 b1 0 dc 0
-vbb1 bb1 0 dc 1.5
-vb2 b2 0 dc 0
-vbb2 bb2 0 dc 1.5
-vb3 b3 0 dc 0
-vbb3 bb3 0 dc 1.5
-vb4 b4 0 dc 0
-vbb4 bb4 0 dc 1.5
-vb5 b5 0 dc 0
-vbb5 bb5 0 dc 1.5
-vb6 b6 0 dc 0
-vbb6 bb6 0 dc 1.5
-vb7 b7 0 dc 0
-vbb7 bb7 0 dc 1.5
-vb8 b8 0 dc 0
-vbb8 bb8 0 dc 1.5
-vb9 b9 0 dc 0
-vbb9 bb9 0 dc 1.5
-vb10 b10 0 dc 0
-vbb10 bb10 0 dc 1.5
-xdac vdd 0 b10 b9 b8 b7 b6 b5 b4 b3 b2 b1 bb10 bb9 bb8 bb7 bb6 bb5 bb4 bb3 bb2 bb1 outp outn dac
-rlp outp 0 0.02
-rln outn 0 0.02
+xdac1 vdd 0 b110 b19 b18 b17 b16 b15 b14 b13 b12 b11 bb110 bb19 bb18 bb17 bb16 bb15 bb14 bb13 bb12 bb11 outp1 outn1 dac
+xdac2 vdd 0 b210 b29 b28 b27 b26 b25 b24 b23 b22 b21 bb210 bb29 bb28 bb27 bb26 bb25 bb24 bb23 bb22 bb21 outp2 outn2 dac
+rlp1 outp1 0 0.02
+rln1 outn1 0 0.02
+rlp2 outp2 0 0.02
+rln2 outn2 0 0.02
+e1 out1 0 outp1 outn1 10
+rl1 out1 0 1k
+e2 out2 0 outp2 outn2 10
+rl2 out 0 1k
 
 .op
 
@@ -37,7 +24,7 @@ set filetype=ascii
 set appendwrite
 run
 *write output.txt v(outp) v(outn)
-wrdata $inputdir/cs_dac_10bit_2ch_DC_levels.txt v(outp) v(outn)
+wrdata $inputdir/cs_dac_10bit_2ch_DC_levels.txt v(out1) v(out2)
 .endc
 
 .subckt pfet d g s b
