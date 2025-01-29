@@ -15,11 +15,13 @@ from tabulate import tabulate
 from scipy import signal
 
 from matplotlib import pyplot as plt
-from utils.quantiser_configurations import quantiser_configurations, get_measured_levels, qws
+from utils.quantiser_configurations import quantiser_configurations, get_measured_levels, qs
 
 def generate_random_output_levels(QConfig=4):
     """
-    Generates random errors for the output levels +/-1 LSB and saves to file
+    Generate random errors for the output levels
+    with a deviation not exceeding +/-1 LSB (to maintain monotone transfer)
+    and save to file.
     """
     # Quantiser model
     Nb, Mq, Vmin, Vmax, Rng, Qstep, YQ, Qtype = quantiser_configurations(QConfig)
@@ -60,27 +62,24 @@ def generate_random_output_levels(QConfig=4):
 
 
 def get_physcal_gain(QConfig):
+    """
+    Tuned gain coefficients for the secondary channel when using
+    physical calibration (PHYCAL).
+    """
+    
     match QConfig:  # gain tuning (make sure secondary DAC does not saturate)
-        case qws.w_16bit_NI_card:
-            K_SEC = 1
-        case qws.w_16bit_SPICE:
-            K_SEC = 1e-2
-        case qws.w_6bit_ARTI:
-            K_SEC = 7.5e-2
-        case qws.w_16bit_ARTI:
-            K_SEC = 2e-1  # find out
-        case qws.w_6bit_2ch_SPICE:
-            K_SEC = 12.5e-2
-        case qws.w_16bit_2ch_SPICE:
-            K_SEC = 1e-2
-        case qws.w_16bit_6t_ARTI:
-            K_SEC = 2e-2
-        case _:
-            K_SEC = 1
+        case qs.w_16bit_NI_card: K_SEC = 1
+        case qs.w_16bit_SPICE: K_SEC = 1e-2
+        case qs.w_6bit_ARTI: K_SEC = 7.5e-2
+        case qs.w_16bit_ARTI: K_SEC = 2e-1  # find out
+        case qs.w_6bit_2ch_SPICE: K_SEC = 12.5e-2
+        case qs.w_16bit_2ch_SPICE: K_SEC = 1e-2
+        case qs.w_16bit_6t_ARTI: K_SEC = 2e-2
+        case _: K_SEC = 1
     return K_SEC
 
 
-def plot_inl(QConfig=qws.w_16bit_NI_card, Ch_sel=0):
+def plot_inl(QConfig=qs.w_16bit_NI_card, Ch_sel=0):
     """
     Make an INL plot, according to best practice, i.e. removing linear trend and offset.
     """
@@ -115,12 +114,12 @@ def plot_inl(QConfig=qws.w_16bit_NI_card, Ch_sel=0):
     #fig.savefig('Stylized Plots.png', dpi=300, bbox_inches='tight', transparent=True)
 
 
-def gen_physcal_lut(QConfig=qws.w_16bit_NI_card, SAVE_LUT=0):
+def gen_physcal_lut(QConfig=qs.w_16bit_NI_card, SAVE_LUT=0):
     """
     Generate physical level calibration look up table.
 
     Least-squares minimisation of element mismatch via a look-up table (LUT)
-    to be used when a secondary calibration DAC is available
+    to be used when a secondary calibration DAC is available.
     """
 
     # Quantiser model
@@ -142,7 +141,6 @@ def gen_physcal_lut(QConfig=qws.w_16bit_NI_card, SAVE_LUT=0):
 
     YQ = YQ.reshape(-1,1) # ensure column vector for ideal levels
     
-    #%%
     plt.figure(10)
     plt.plot(qs, YQ, label='Uniform')
     plt.plot(qs, PRILVLS, label='Measured')

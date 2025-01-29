@@ -24,7 +24,7 @@ sys.path.append('../')
 
 from LM.lin_method_util import lm, dm
 from utils.figures_of_merit import FFT_SINAD, TS_SINAD
-from utils.quantiser_configurations import qws
+from utils.quantiser_configurations import qs
 
 
 class sinad_comp:
@@ -210,7 +210,7 @@ def gen_spice_sim_file(C, Nb, t, Ts, QConfig, outdir, seed=1, seq=0):
     wav_str = ''
     
     match QConfig:
-        case qws.w_06bit:  # 6 bit DAC
+        case qs.w_06bit:  # 6 bit DAC
             c = C.astype(int)
             nsamples = len(c)
 
@@ -234,7 +234,7 @@ def gen_spice_sim_file(C, Nb, t, Ts, QConfig, outdir, seed=1, seq=0):
             
             ctrl_str = '\n' + '.save v(outf)' + '\n' + '.tran 10u ' + str(t[-1]) + '\n'
 
-        case qws.w_16bit_SPICE:  # 16 bit DAC
+        case qs.w_16bit_SPICE:  # 16 bit DAC
             c = C.astype(int)
             nsamples = len(c)
 
@@ -280,7 +280,7 @@ def gen_spice_sim_file(C, Nb, t, Ts, QConfig, outdir, seed=1, seq=0):
                 'tran 10u ' + str(t[-1]) + '\n' + \
                 'write $inputdir/' + outputf + '.bin' + ' v(out)\n' + \
                 '.endc\n'
-        case qws.w_6bit_2ch_SPICE:  # 6 bit DAC, 2 channels
+        case qs.w_6bit_2ch_SPICE:  # 6 bit DAC, 2 channels
             c1 = C[0,:].astype(int)
             c2 = C[1,:].astype(int)
             nsamples1 = len(c1)
@@ -316,7 +316,7 @@ def gen_spice_sim_file(C, Nb, t, Ts, QConfig, outdir, seed=1, seq=0):
                 'tran 10u ' + str(t[-1]) + '\n' + \
                 'write $inputdir/' + outputf + '.bin' + ' v(out1) v(out2)\n' + \
                 '.endc\n'
-        case qws.w_16bit_2ch_SPICE:  # 16 bit DAC, 2 channels
+        case qs.w_16bit_2ch_SPICE:  # 16 bit DAC, 2 channels
             c1 = C[0,:].astype(int)
             c2 = C[1,:].astype(int)
             nsamples1 = len(c1)

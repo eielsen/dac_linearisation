@@ -17,9 +17,9 @@ import scipy
 from utils.static_dac_model import quantiser_type
 
 
-class qws:  # quantiser_word_size
-    w_04bit = 1
-    w_06bit = 2
+class qs:  # quantiser specification (given DAC implementation)
+    w_4bit = 1
+    w_6bit = 2
     w_12bit = 3
     w_16bit = 4
     w_16bit_NI_card = 5
@@ -35,104 +35,103 @@ class qws:  # quantiser_word_size
     w_10bit_ZTC_ARTI = 15
 
 
-
 def quantiser_configurations(QConfig):
     """
     Return specified quantiser model configuration, given QConfig selector.
     """
     
     match QConfig:
-        case qws.w_04bit:
+        case qs.w_4bit:
             Nb = 4 # word-size
             Mq = 2**Nb - 1; # max. code
             Vmin = -1 # volt
             Vmax = 1 # volt
             Qtype = quantiser_type.midtread
-        case qws.w_06bit:
+        case qs.w_6bit:
             Nb = 6 # word-size
             Mq = 2**Nb - 1; # max. code
             Vmin = -1 # volt
             Vmax = 1 # volt
             Qtype = quantiser_type.midtread
-        case qws.w_12bit:
+        case qs.w_12bit:
             Nb = 12 # word-size
             Mq = 2**Nb - 1; # max. code
             Vmin = -5 # volt
             Vmax = 5 # volt
             Qtype = quantiser_type.midtread
-        case qws.w_16bit:
+        case qs.w_16bit:
             Nb = 16 # word-size
             Mq = 2**Nb - 1; # max. code
             Vmin = -1 # volt
             Vmax = 1 # volt
             Qtype = quantiser_type.midtread
-        case qws.w_16bit_NI_card:
+        case qs.w_16bit_NI_card:
             Nb = 16 # word-size
             Mq = 2**Nb - 1 # max. code
             Vmin = -10 # volt
             Vmax = 10 # volt
             Qtype = quantiser_type.midtread
-        case qws.w_16bit_SPICE:
+        case qs.w_16bit_SPICE:
             Nb = 16 # word-size
             Mq = 2**Nb - 1 # max. code
             Vmin = -8 # volt
             Vmax = 8 # volt
             Qtype = quantiser_type.midtread
-        case qws.w_6bit_ARTI:
+        case qs.w_6bit_ARTI:
             # 6-bit DAC. All bits are binary-weighted
             Nb = 6 # word-size
             Mq = 2**Nb - 1; # max. code
             Vmin = -0.019294419 # Ampere
             Vmax = 0.019317969 # Ampere
             Qtype = quantiser_type.midtread
-        case qws.w_6bit_ZTC_ARTI: # ZTC - Zero temperature coefficient
+        case qs.w_6bit_ZTC_ARTI: # ZTC - Zero temperature coefficient
             # 6-bit DAC. All bits are binary-weighted
             Nb = 6 # word-size
             Mq = 2**Nb - 1; # max. code
             Vmin = -0.01990203 # Ampere
             Vmax = 0.019906069024198073 # Ampere
             Qtype = quantiser_type.midtread
-        case qws.w_10bit_ARTI:
+        case qs.w_10bit_ARTI:
             # 6-bit DAC. All bits are binary-weighted
             Nb = 10 # word-size
             Mq = 2**Nb - 1; # max. code
             Vmin = -0.018117286 # Ampere
             Vmax = 0.018076990 # Ampere
             Qtype = quantiser_type.midtread
-        case qws.w_10bit_ZTC_ARTI: # ZTC - Zero temperature coefficient
+        case qs.w_10bit_ZTC_ARTI: # ZTC - Zero temperature coefficient
             # 6-bit DAC. All bits are binary-weighted
             Nb = 10 # word-size
             Mq = 2**Nb - 1; # max. code
             Vmin = -0.019769005 # Ampere
             Vmax = 0.019769606441919794 # Ampere
             Qtype = quantiser_type.midtread
-        case qws.w_16bit_ARTI:
+        case qs.w_16bit_ARTI:
             # 16-bit DAC. All bits are binary-weighted
             Nb = 16 # word-size
             Mq = 2**Nb - 1; # max. code
             Vmin =  -0.022337035 # Ampere
             Vmax = 0.022341269 # Ampere
             Qtype = quantiser_type.midtread
-        case qws.w_16bit_6t_ARTI:
+        case qs.w_16bit_6t_ARTI:
             # 16-bit DAC. The 10 first bits are binary-weighted, and the upper 6 bits are thermometer-weighted.
             Nb = 16 # word-size
             Mq = 2**Nb - 1; # max. code
             Vmin = -0.02060208 # Ampere
             Vmax = 0.020602487 # Ampere
             Qtype = quantiser_type.midtread
-        case qws.w_6bit_2ch_SPICE:
+        case qs.w_6bit_2ch_SPICE:
             Nb = 6 # word-size
             Mq = 2**Nb - 1; # max. code
             Vmin = -8.00371104e-05 # volt
             Vmax = 7.99005702e-05 # volt
             Qtype = quantiser_type.midtread
-        case qws.w_16bit_2ch_SPICE:
+        case qs.w_16bit_2ch_SPICE:
             Nb = 16 # word-size
             Mq = 2**Nb - 1; # max. code
             Vmin =  -0.08022664 # volt
             Vmax = 0.08024051 # volt
             Qtype = quantiser_type.midtread
-        case qws.w_10bit_2ch_SPICE:
+        case qs.w_10bit_2ch_SPICE:
             Nb = 10 # word-size
             Mq = 2**Nb - 1; # max. code
             Vmin = -10e-05 # volt
@@ -173,23 +172,30 @@ def get_ML(inpath, infile, CSV_filename):
 def get_measured_levels(QConfig, lmethod=lm.BASELINE):
     """
     Load measured or generated output levels for a given quanstiser model.
+
+    Arguments
+        QConfig - the desired configuation
+        lmethod - some configs have method dependent measurements (given lab setup)
+    
+    Returns
+        ML - measured levels (rows corresponds to channels)
     """
 
     inpath = 'measurements_and_data'
     infile = ''
 
     match QConfig:
-        case qws.w_06bit:  # re-generate ideal levels
+        case qs.w_6bit:  # re-generate ideal levels
             Nb, Mq, Vmin, Vmax, Rng, Qstep, YQ, Qtype = quantiser_configurations(QConfig)
             Nch = 2
             ML = matlib.repmat(YQ, Nch, 1)
             
-        case qws.w_16bit:  # re-generate ideal levels
+        case qs.w_16bit:  # re-generate ideal levels
             Nb, Mq, Vmin, Vmax, Rng, Qstep, YQ, Qtype = quantiser_configurations(QConfig)
             Nch = 2
             ML = matlib.repmat(YQ, Nch, 1)
 
-        case qws.w_16bit_NI_card:  # load measured levels for given qconfig
+        case qs.w_16bit_NI_card:  # load measured levels for given qconfig
             # load measured levels given linearisation method (measured for a given physical set-up)
             match lmethod:
                 case lm.BASELINE | lm.DEM | lm.NSDCAL | lm.SHPD | lm.PHFD | lm.ILC | lm.MPC:
@@ -217,48 +223,51 @@ def get_measured_levels(QConfig, lmethod=lm.BASELINE):
                     ML = np.stack((ML_1, ML_2))
             return ML
         
-        case qws.w_16bit_SPICE:
+        case qs.w_16bit_SPICE:
             infile = 'DC_levels_16bit.npy'
 
-        case qws.w_6bit_ARTI:
+        case qs.w_6bit_ARTI:
             infile = 'DC_levels_ARTI_6bit.npy'
             CSV_filename = 'ARTI_cs_dac_6b_levels.csv'
             return get_ML(inpath, infile, CSV_filename)
         
-        case qws.w_6bit_ZTC_ARTI:
+        case qs.w_6bit_ZTC_ARTI:
             infile = 'DC_levels_ARTI_6bit_ZTC.npy'
             CSV_filename = 'ARTI_cs_dac_6b_ztc_levels.csv'
             return get_ML(inpath, infile, CSV_filename)
                 
-        case qws.w_10bit_ARTI:
+        case qs.w_10bit_ARTI:
             infile = 'DC_levels_ARTI_10bit.npy'
             CSV_filename = 'ARTI_cs_dac_10b_levels.csv'
             return get_ML(inpath, infile, CSV_filename)
         
-        case qws.w_10bit_ZTC_ARTI:
+        case qs.w_10bit_ZTC_ARTI:
             infile = 'DC_levels_ARTI_10bit_ZTC.npy'
             CSV_filename = 'ARTI_cs_dac_10b_ztc_levels.csv'
             return get_ML(inpath, infile, CSV_filename)
                 
-        case qws.w_16bit_ARTI:
+        case qs.w_16bit_ARTI:
             infile = 'DC_levels_ARTI_16bit.npy'
             CSV_filename = 'ARTI_cs_dac_16b_levels.csv'
             return get_ML(inpath, infile, CSV_filename)
     
-        case qws.w_16bit_6t_ARTI:
+        case qs.w_16bit_6t_ARTI:
             infile = 'DC_levels_ARTI_16bit_6t.npy'
             CSV_filename = 'ARTI_cs_dac_16b_6t_levels.csv'
             return get_ML(inpath, infile, CSV_filename)
         
-        case qws.w_6bit_2ch_SPICE:
+        case qs.w_6bit_2ch_SPICE:
             infile = 'cs_dac_06bit_2ch_DC_levels.npy'
 
-        case qws.w_16bit_2ch_SPICE:
+        case qs.w_16bit_2ch_SPICE:
             infile = 'cs_dac_16bit_2ch_DC_levels.npy'
+
+        case qs.w_10bit_2ch_SPICE:
+            infile = 'cs_dac_10bit_2ch_DC_levels.npy'
     
     if os.path.exists(os.path.join(inpath, infile)):
         ML = np.load(os.path.join(inpath, infile))
-    else: # can't recover from this
+    else:  # can't recover from this
         raise SystemExit('No level measurements file found.')
     
     return ML

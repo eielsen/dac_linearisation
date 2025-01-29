@@ -141,6 +141,8 @@ def run_dc_analysis_for_all_bit_pattern_combinations(Nb, circname, timestamp):
         generate_and_run_dc_spice_batch_file(timestamp, circname)
 
 
+# %%
+
 match 2:
     case 1:
         Nb = 6  ## no. of bits

@@ -17,7 +17,7 @@ from matplotlib import pyplot as plt
 
 import utils.dither_generation as dither_generation
 from utils.static_dac_model import generate_dac_output, quantise_signal, generate_codes, quantiser_type
-from utils.quantiser_configurations import quantiser_configurations, qws
+from utils.quantiser_configurations import quantiser_configurations, qs
 
 def ilc_simple(r, G, Qfilt, Qstep, Nb, Qtype=quantiser_type.midtread, kp=0.25, kd=10.0, Niter=25):
     """
@@ -122,7 +122,7 @@ def main():
         Qstep = Rng/Mq  # step-size (LSB)
         Qtype = quantiser_type.midtrea
     else:
-        QConfig = qws.w_16bit_SPICE
+        QConfig = qs.w_16bit_SPICE
         Nb, Mq, Vmin, Vmax, Rng, Qstep, YQ, Qtype = quantiser_configurations(QConfig)
 
     # Generate reference signal
