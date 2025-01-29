@@ -740,7 +740,7 @@ hash_stamp = hashlib.sha1(SC.__str__().encode('utf-8')).hexdigest()
 
 top_d = 'generated_codes/'  # directory for generated codes and configuration info
 
-method_d = top_d + str(SC.lin).replace(" ", "_") + '/'  # file outputs according to method
+method_d = top_d + str(SC.lin).replace(" ", "_") + '/'  # archive outputs according to method
 os.makedirs(method_d, exist_ok=True)  # make sure the method directory exists
 
 out_d = method_d + hash_stamp + '/'
