@@ -71,10 +71,22 @@ def test_signal(SCALE, MAXAMP, FREQ, OFFSET, t):
 
 #%% Configuration
 
+METHOD_CHOICE = 1
+DAC_MODEL_CHOICE = 2
+FS_CHOICE = 4
+SINAD_COMP = 1
+
+# Carrier signal (to be recovered on the output)
+Xcs_SCALE = 100  # %
+Xcs_FREQ = 1000  # Hz
+
+# Output low-pass filter configuration
+Fc_lp = 100e3  # cut-off frequency in hertz
+N_lp = 3  # filter order
+
 N_PRED = 1 # prediction horizon
 
 ##### METHOD CHOICE - Choose which linearisation method you want to test
-METHOD_CHOICE = 1
 match METHOD_CHOICE:
     case 1: RUN_LM = lm.BASELINE
     case 2: RUN_LM = lm.PHYSCAL
@@ -88,50 +100,66 @@ match METHOD_CHOICE:
 
 lin = lm(RUN_LM)
 
-##### MODEL CHOICE
-MODEL_CHOICE = 1
-match MODEL_CHOICE:
-    case 1: dac = dm(dm.STATIC)  # use static non-linear quantiser model to simulate DAC
-    case 2: dac = dm(dm.SPICE)  # use SPICE to simulate DAC output
+##### DAC MODEL CHOICE
+match DAC_MODEL_CHOICE:
+    case 1:
+        dac = dm(dm.STATIC)  # use static non-linear quantiser model to simulate DAC
+    case 2:
+        dac = dm(dm.SPICE)  # use SPICE to simulate DAC output
 
-# Chose how to compute SINAD
-SINAD_COMP_SEL = sinad_comp.CFIT  # use curve-fit (best for short time-series)
-# SINAD_COMP_SEL = sinad_comp.FFT  # use frequency response (better for long time-series)
+##### Chose how to compute SINAD
+match SINAD_COMP:
+    case 1:
+        SINAD_COMP_SEL = sinad_comp.CFIT  # use curve-fit (best for short time-series)
+    case 2:
+        SINAD_COMP_SEL = sinad_comp.FFT  # use frequency response (better for long time-series)
 
-# Output low-pass filter configuration
-Fc_lp = 100e3  # cut-off frequency in hertz
-N_lp = 3  # filter order
-
-# Sampling rate (over-sampling) in hertz
-# Fs = 1e6
-#Fs = 25e6
-#Fs = 250e6
-Fs = 1022976//4
-#Fs = 16367616
-# Fs = 32735232
-# Fs = 65470464
-#Fs = 130940928
-#Fs = 261881856
-Fs = 209715200 # Fits perfectly with 5 periods/cycles and 1 kHz fundamental if you want to use coherent sampling
-# Fs = 226719135.13513514400
+##### Sampling rate (over-sampling) in hertz
+match FS_CHOICE:
+    case 1:
+        Fs = 1e6
+    case 2:
+        Fs = 25e6
+    case 3:
+        Fs = 250e6
+    case 4:
+        Fs = 1022976
+    case 5:
+        Fs = 16367616
+    case 6:
+        Fs = 32735232
+    case 7:
+        Fs = 65470464
+    case 8:
+        Fs = 130940928
+    case 9:
+        Fs = 261881856
+    case 10:
+        Fs = 209715200
+    case 11:
+        Fs = 226719135.13513514400
 
 Ts = 1/Fs  # sampling time
 
-# Carrier signal (to be recovered on the output)
-Xcs_SCALE = 100  # %
-Xcs_FREQ = 1000  # Hz
+##### Set DAC circuit model
+match 7:
+    case 1:
+        QConfig = qws.w_06bit
+    case 2:
+        QConfig = qws.w_16bit_SPICE
+    case 3:
+        QConfig = qws.w_16bit_ARTI
+    case 4:
+        QConfig = qws.w_16bit_6t_ARTI
+    case 5:
+        QConfig = qws.w_6bit_ARTI
+    case 6:
+        QConfig = qws.w_10bit_ARTI
+    case 7:
+        QConfig = qws.w_6bit_2ch_SPICE
+    case 8:
+        QConfig = qws.w_16bit_2ch_SPICE
 
-##### Set quantiser model
-# QConfig = qws.w_06bit
-#QConfig = qws.w_16bit_SPICE
-#QConfig = qws.w_16bit_ARTI
-# QConfig = qws.w_16bit_6t_ARTI
-# QConfig = qws.w_6bit_ARTI
-QConfig = qws.w_6bit_ZTC_ARTI
-# QConfig = qws.w_10bit_ARTI
-# QConfig = qws.w_10bit_ZTC_ARTI
-# QConfig = qws.w_6bit_2ch_SPICE
-# QConfig = qws.w_16bit_2ch_SPICE
 Nb, Mq, Vmin, Vmax, Rng, Qstep, YQ, Qtype = quantiser_configurations(QConfig)
 
 PLOTS = True
@@ -151,11 +179,10 @@ match 2:
         if SINAD_COMP_SEL == sinad_comp.FFT:
             Np = 200  # no. of periods for carrier
         else:
-            #Np = 8  # no. of periods for carrier
-            Np = 3  # no. of periods for carrier
+            Np = 5  # no. of periods for carrier
 
 Npt = 1  # no. of carrier periods to use to account for transients
-Np = 7 # Np + 2*Npt
+Np = Np + 2*Npt
 
 t_end = Np/Xcs_FREQ  # time vector duration
 t = np.arange(0, t_end, Ts)  # time vector
@@ -810,12 +837,19 @@ match SC.dac.model:
                 print('Running SPICE...')
                 run_spice_sim_parallel(spicef_list, outputf_list, outdir, spice_path)
             
+            # re-sample SPICE output for uniform sampling (for FFT)
             YM = np.zeros([Nch, t.size])
             tm = t
-            for k in range(0,Nch):
-                t_spice, y_spice = read_spice_bin_file(outdir, outputf_list[k] + '.bin')
-                y_resamp = np.interp(t, t_spice, y_spice)  # re-sample
-                YM[k,:] = y_resamp
+            if SEPARATE_FILE_PER_CHANNEL:
+                for k in range(0, Nch):
+                    t_spice, y_spice = read_spice_bin_file(outdir, outputf_list[k] + '.bin')
+                    y_resamp = np.interp(t, t_spice, y_spice)  # re-sample
+                    YM[k,:] = y_resamp
+            else:
+                t_spice, y_spice = read_spice_bin_file(outdir, outputf_list[0] + '.bin')
+                for k in range(0, y_spice.shape[0]):
+                    y_resamp = np.interp(t, t_spice, y_spice[k,:])  # re-sample
+                    YM[k,:] = y_resamp
 
 
 if run_SPICE or SC.dac.model == dm.STATIC:
