@@ -20,9 +20,9 @@ from scipy import signal
 from scipy import integrate
 from matplotlib import pyplot as plt
 
-from welch_psd import welch_psd
-from psd_measurements import find_psd_peak
-from fit_sinusoid import fit_sinusoid, sin_p
+from utils.welch_psd import welch_psd
+from utils.psd_measurements import find_psd_peak
+from utils.fit_sinusoid import fit_sinusoid, sin_p
 
 
 def TS_SINAD(x, t, make_plot=False, plot_label=''):

@@ -31,6 +31,9 @@ class qws:  # quantiser_word_size
     w_16bit_6t_ARTI = 11
     w_10bit_ARTI = 12
     w_10bit_2ch_SPICE = 13
+    w_6bit_ZTC_ARTI = 14
+    w_10bit_ZTC_ARTI = 15
+
 
 
 def quantiser_configurations(QConfig):
@@ -82,12 +85,26 @@ def quantiser_configurations(QConfig):
             Vmin = -0.019294419 # Ampere
             Vmax = 0.019317969 # Ampere
             Qtype = quantiser_type.midtread
+        case qws.w_6bit_ZTC_ARTI: # ZTC - Zero temperature coefficient
+            # 6-bit DAC. All bits are binary-weighted
+            Nb = 6 # word-size
+            Mq = 2**Nb - 1; # max. code
+            Vmin = -0.01990203 # Ampere
+            Vmax = 0.019906069024198073 # Ampere
+            Qtype = quantiser_type.midtread
         case qws.w_10bit_ARTI:
             # 6-bit DAC. All bits are binary-weighted
             Nb = 10 # word-size
             Mq = 2**Nb - 1; # max. code
             Vmin = -0.018117286 # Ampere
             Vmax = 0.018076990 # Ampere
+            Qtype = quantiser_type.midtread
+        case qws.w_10bit_ZTC_ARTI: # ZTC - Zero temperature coefficient
+            # 6-bit DAC. All bits are binary-weighted
+            Nb = 10 # word-size
+            Mq = 2**Nb - 1; # max. code
+            Vmin = -0.019769005 # Ampere
+            Vmax = 0.019769606441919794 # Ampere
             Qtype = quantiser_type.midtread
         case qws.w_16bit_ARTI:
             # 16-bit DAC. All bits are binary-weighted
@@ -207,10 +224,20 @@ def get_measured_levels(QConfig, lmethod=lm.BASELINE):
             infile = 'DC_levels_ARTI_6bit.npy'
             CSV_filename = 'ARTI_cs_dac_6b_levels.csv'
             return get_ML(inpath, infile, CSV_filename)
+        
+        case qws.w_6bit_ZTC_ARTI:
+            infile = 'DC_levels_ARTI_6bit_ZTC.npy'
+            CSV_filename = 'ARTI_cs_dac_6b_ztc_levels.csv'
+            return get_ML(inpath, infile, CSV_filename)
                 
         case qws.w_10bit_ARTI:
             infile = 'DC_levels_ARTI_10bit.npy'
             CSV_filename = 'ARTI_cs_dac_10b_levels.csv'
+            return get_ML(inpath, infile, CSV_filename)
+        
+        case qws.w_10bit_ZTC_ARTI:
+            infile = 'DC_levels_ARTI_10bit_ZTC.npy'
+            CSV_filename = 'ARTI_cs_dac_10b_ztc_levels.csv'
             return get_ML(inpath, infile, CSV_filename)
                 
         case qws.w_16bit_ARTI:

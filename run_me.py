@@ -7,8 +7,8 @@
 @license: BSD 3-Clause
 """
 
-%reload_ext autoreload
-%autoreload 2
+# %reload_ext autoreload
+# %autoreload 2
 
 # %%
 # Imports
@@ -76,34 +76,23 @@ N_PRED = 1 # prediction horizon
 ##### METHOD CHOICE - Choose which linearisation method you want to test
 METHOD_CHOICE = 1
 match METHOD_CHOICE:
-    case 1:
-        RUN_LM = lm.BASELINE
-    case 2:
-        RUN_LM = lm.PHYSCAL
-    case 3:
-        RUN_LM = lm.DEM
-    case 4:
-        RUN_LM = lm.NSDCAL
-    case 5:
-        RUN_LM = lm.SHPD
-    case 6:
-        RUN_LM = lm.PHFD
-    case 7:
-        RUN_LM = lm.MPC # lm.MPC or lm.MHOQ
-    case 8:
-        RUN_LM = lm.ILC
-    case 9:
-        RUN_LM = lm.ILC_SIMP
+    case 1: RUN_LM = lm.BASELINE
+    case 2: RUN_LM = lm.PHYSCAL
+    case 3: RUN_LM = lm.DEM
+    case 4: RUN_LM = lm.NSDCAL
+    case 5: RUN_LM = lm.SHPD
+    case 6: RUN_LM = lm.PHFD
+    case 7: RUN_LM = lm.MPC # lm.MPC or lm.MHOQ
+    case 8: RUN_LM = lm.ILC
+    case 9: RUN_LM = lm.ILC_SIMP
 
 lin = lm(RUN_LM)
 
 ##### MODEL CHOICE
-MODEL_CHOICE = 2
+MODEL_CHOICE = 1
 match MODEL_CHOICE:
-    case 1:
-        dac = dm(dm.STATIC)  # use static non-linear quantiser model to simulate DAC
-    case 2:
-        dac = dm(dm.SPICE)  # use SPICE to simulate DAC output
+    case 1: dac = dm(dm.STATIC)  # use static non-linear quantiser model to simulate DAC
+    case 2: dac = dm(dm.SPICE)  # use SPICE to simulate DAC output
 
 # Chose how to compute SINAD
 SINAD_COMP_SEL = sinad_comp.CFIT  # use curve-fit (best for short time-series)
@@ -117,13 +106,13 @@ N_lp = 3  # filter order
 # Fs = 1e6
 #Fs = 25e6
 #Fs = 250e6
-Fs = 1022976
+Fs = 1022976//4
 #Fs = 16367616
 # Fs = 32735232
 # Fs = 65470464
 #Fs = 130940928
 #Fs = 261881856
-# Fs = 209715200
+Fs = 209715200 # Fits perfectly with 5 periods/cycles and 1 kHz fundamental if you want to use coherent sampling
 # Fs = 226719135.13513514400
 
 Ts = 1/Fs  # sampling time
@@ -138,8 +127,10 @@ Xcs_FREQ = 1000  # Hz
 #QConfig = qws.w_16bit_ARTI
 # QConfig = qws.w_16bit_6t_ARTI
 # QConfig = qws.w_6bit_ARTI
+QConfig = qws.w_6bit_ZTC_ARTI
 # QConfig = qws.w_10bit_ARTI
-QConfig = qws.w_6bit_2ch_SPICE
+# QConfig = qws.w_10bit_ZTC_ARTI
+# QConfig = qws.w_6bit_2ch_SPICE
 # QConfig = qws.w_16bit_2ch_SPICE
 Nb, Mq, Vmin, Vmax, Rng, Qstep, YQ, Qtype = quantiser_configurations(QConfig)
 
@@ -149,7 +140,7 @@ SAVE_CODES_TO_FILE_AND_STOP = False
 #SAVE_CODES_TO_FILE_AND_STOP = True
 SAVE_CODES_TO_FILE = True
 #SAVE_CODES_TO_FILE = True
-run_SPICE = True
+run_SPICE = False
 
 # Generate time vector
 match 2:
@@ -182,7 +173,7 @@ match SC.lin.method:
     case lm.BASELINE:  # baseline, only carrier
         # Generate unmodified DAC output without any corrections.
 
-        if QConfig == qws.w_6bit_2ch_SPICE or QConfig == qws.w_16bit_2ch_SPICE:
+        if QConfig in [qws.w_6bit_2ch_SPICE, qws.w_16bit_2ch_SPICE]:
             Nch = 2  # number of channels to use (averaging to reduce noise floor)
         else:
             Nch = 1
@@ -263,7 +254,11 @@ match SC.lin.method:
             HEADROOM = 10  # 16 bit DAC
         elif QConfig == qws.w_6bit_ARTI:
             HEADROOM = 15  # 6 bit DAC
+        elif QConfig == qws.w_6bit_ZTC_ARTI:
+            HEADROOM = 15  # 6 bit DAC
         elif QConfig == qws.w_10bit_ARTI:
+            HEADROOM = 15  # 10 bit DAC
+        elif QConfig == qws.w_10bit_ZTC_ARTI:
             HEADROOM = 15  # 10 bit DAC
         elif QConfig == qws.w_16bit_ARTI:
             HEADROOM = 10  # 16 bit DAC
@@ -286,8 +281,9 @@ match SC.lin.method:
         # Adding some "measurement/model error" in the levels
         if QConfig in [qws.w_16bit_SPICE, qws.w_16bit_ARTI, qws.w_16bit_2ch_SPICE, qws.w_16bit_6t_ARTI]:
             ML_err_rng = Qstep  # 16 bit DAC
-        elif QConfig in [qws.w_6bit_ARTI, qws.w_6bit_2ch_SPICE, qws.w_10bit_ARTI]:
+        elif QConfig in [qws.w_6bit_ARTI, qws.w_6bit_2ch_SPICE, qws.w_10bit_ARTI, qws.w_6bit_ZTC_ARTI, qws.w_10bit_ZTC_ARTI]:
             ML_err_rng = Qstep/1024 # 6 bit DAC
+            ML_err_rng = Qstep/pow(2, 0) # 6 bit DAC
         else:
             sys.exit('NSDCAL: Unknown QConfig for ML error')
         
@@ -326,7 +322,30 @@ match SC.lin.method:
             else:
                 sys.exit('SHPD: Missing config.')
 
+        if QConfig == qws.w_6bit_ZTC_ARTI:
+            if Fs == 65470464:
+                Xscale = 20
+                Fc_hf = 200e3
+            elif Fs in [209715200, 226719135.13513514400, 261881856]:
+                Xscale = 90
+                Fc_hf = 20e6
+            else:
+                sys.exit('SHPD: Missing config.')
+
         elif QConfig == qws.w_10bit_ARTI:
+            if Fs == 65470464:
+                Xscale = 20
+                Fc_hf = 200e3
+            elif Fs in [209715200, 226719135.13513514400]:
+                Xscale = 30
+                Fc_hf = 30.0e6
+            elif Fs == 261881856:
+                Xscale = 10
+                Fc_hf = 0.20e6
+            else:
+                sys.exit('SHPD: Missing config.')
+
+        elif QConfig == qws.w_10bit_ZTC_ARTI:
             if Fs == 65470464:
                 Xscale = 20
                 Fc_hf = 200e3
@@ -462,10 +481,16 @@ match SC.lin.method:
         # Scale: carrier to dither ratio (between 0% and 100%)
         if QConfig == qws.w_16bit_SPICE:
             Xscale = 50  # carrier to dither ratio (between 0% and 100%)
-        elif QConfig == qws.w_6bit_ARTI:
+        elif QConfig == qws.w_6bit_ZTC_ARTI:
             Xscale = 50  # carrier to dither ratio (between 0% and 100%)
             Dfreq = 5.0e6 # Fs262Mhz - 6 bit ARTI
+        elif QConfig == qws.w_6bit_ARTI:
+            Xscale = 80  # carrier to dither ratio (between 0% and 100%)
+            Dfreq = 15.0e6 # Fs262Mhz - 6 bit ARTI
         elif QConfig == qws.w_10bit_ARTI:
+            Xscale = 50  # carrier to dither ratio (between 0% and 100%)
+            Dfreq = 5.0e6
+        elif QConfig == qws.w_10bit_ZTC_ARTI:
             Xscale = 50  # carrier to dither ratio (between 0% and 100%)
             Dfreq = 5.0e6
         elif QConfig == qws.w_16bit_ARTI:
@@ -530,6 +555,8 @@ match SC.lin.method:
             HEADROOM = 10  # 16 bit DAC
         elif QConfig == qws.w_6bit_ARTI:
             HEADROOM = 15  # 6 bit DAC
+        elif QConfig == qws.w_6bit_ZTC_ARTI:
+            HEADROOM = 15  # 6 bit DAC
         elif QConfig == qws.w_16bit_ARTI:
             HEADROOM = 1  # 16 bit DAC
         elif QConfig == qws.w_6bit_2ch_SPICE:
@@ -537,6 +564,8 @@ match SC.lin.method:
         elif QConfig == qws.w_16bit_2ch_SPICE:
             HEADROOM = 10  # 16 bit DAC
         elif QConfig == qws.w_10bit_ARTI:
+            HEADROOM = 10  # 16 bit DAC
+        elif QConfig == qws.w_10bit_ZTC_ARTI:
             HEADROOM = 10  # 16 bit DAC
         else:
             sys.exit('Fix qconfig')
@@ -553,9 +582,9 @@ match SC.lin.method:
         MLns = ML[0]
 
         # Adding some "measurement/model error" in the levels
-        if QConfig == qws.w_16bit_SPICE or QConfig == qws.w_16bit_ARTI or QConfig == qws.w_16bit_2ch_SPICE:
+        if QConfig in [qws.w_16bit_SPICE, qws.w_16bit_ARTI, qws.w_16bit_2ch_SPICE, qws.w_6bit_ZTC_ARTI, qws.w_10bit_ZTC_ARTI]:
             ML_err_rng = Qstep  # 16 bit DAC
-        elif QConfig == qws.w_6bit_ARTI or QConfig == qws.w_6bit_2ch_SPICE or QConfig == qws.w_10bit_ARTI:
+        elif QConfig == [qws.w_6bit_ARTI, qws.w_6bit_2ch_SPICE, qws.w_10bit_ARTI]:
             ML_err_rng = Qstep/1024 # 6 bit DAC
         else:
             sys.exit('Unknown QConfig')

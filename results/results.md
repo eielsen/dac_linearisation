@@ -80,6 +80,88 @@
 
 
 
+# DAC Configuration: 15 
+### Model: static 
+<table>
+<thead>
+<tr><th>Time (UTC+00:00)     </th><th>Method    </th><th>Fs     </th><th>Fc    </th><th>Fx  </th><th style="text-align: right;">  Ncyc</th><th style="text-align: right;">  ENOB</th></tr>
+</thead>
+<tbody>
+<tr><td>2025-01-28 - 23:40:12</td><td>BASELINE  </td><td>209.72M</td><td>100.0k</td><td>1.0k</td><td style="text-align: right;">     5</td><td style="text-align: right;"> 8.029</td></tr>
+<tr><td>Never                </td><td>PHYSCAL   </td><td>0.00   </td><td>0.0   </td><td>0.0 </td><td style="text-align: right;">     0</td><td style="text-align: right;"> 0    </td></tr>
+<tr><td>2025-01-28 - 23:29:25</td><td>DEM       </td><td>209.72M</td><td>100.0k</td><td>1.0k</td><td style="text-align: right;">     5</td><td style="text-align: right;">12.383</td></tr>
+<tr><td>2025-01-28 - 23:42:12</td><td>NSDCAL    </td><td>209.72M</td><td>100.0k</td><td>1.0k</td><td style="text-align: right;">     5</td><td style="text-align: right;">20.562</td></tr>
+<tr><td>2025-01-28 - 23:28:15</td><td>SHPD      </td><td>209.72M</td><td>100.0k</td><td>1.0k</td><td style="text-align: right;">     5</td><td style="text-align: right;"> 9.643</td></tr>
+<tr><td>2025-01-28 - 23:28:02</td><td>PHFD      </td><td>209.72M</td><td>100.0k</td><td>1.0k</td><td style="text-align: right;">     5</td><td style="text-align: right;">14.405</td></tr>
+<tr><td>Never                </td><td>MHOQ      </td><td>0.00   </td><td>0.0   </td><td>0.0 </td><td style="text-align: right;">     0</td><td style="text-align: right;"> 0    </td></tr>
+<tr><td>Never                </td><td>ILC       </td><td>0.00   </td><td>0.0   </td><td>0.0 </td><td style="text-align: right;">     0</td><td style="text-align: right;"> 0    </td></tr>
+<tr><td>Never                </td><td>ILC simple</td><td>0.00   </td><td>0.0   </td><td>0.0 </td><td style="text-align: right;">     0</td><td style="text-align: right;"> 0    </td></tr>
+</tbody>
+</table>
+
+### Model: spice 
+<table>
+<thead>
+<tr><th>Time (UTC+00:00)  </th><th>Method    </th><th style="text-align: right;">  Fs</th><th style="text-align: right;">  Fc</th><th style="text-align: right;">  Fx</th><th style="text-align: right;">  Ncyc</th><th style="text-align: right;">  ENOB</th></tr>
+</thead>
+<tbody>
+<tr><td>Never             </td><td>BASELINE  </td><td style="text-align: right;">   0</td><td style="text-align: right;">   0</td><td style="text-align: right;">   0</td><td style="text-align: right;">     0</td><td style="text-align: right;">     0</td></tr>
+<tr><td>Never             </td><td>PHYSCAL   </td><td style="text-align: right;">   0</td><td style="text-align: right;">   0</td><td style="text-align: right;">   0</td><td style="text-align: right;">     0</td><td style="text-align: right;">     0</td></tr>
+<tr><td>Never             </td><td>DEM       </td><td style="text-align: right;">   0</td><td style="text-align: right;">   0</td><td style="text-align: right;">   0</td><td style="text-align: right;">     0</td><td style="text-align: right;">     0</td></tr>
+<tr><td>Never             </td><td>NSDCAL    </td><td style="text-align: right;">   0</td><td style="text-align: right;">   0</td><td style="text-align: right;">   0</td><td style="text-align: right;">     0</td><td style="text-align: right;">     0</td></tr>
+<tr><td>Never             </td><td>SHPD      </td><td style="text-align: right;">   0</td><td style="text-align: right;">   0</td><td style="text-align: right;">   0</td><td style="text-align: right;">     0</td><td style="text-align: right;">     0</td></tr>
+<tr><td>Never             </td><td>PHFD      </td><td style="text-align: right;">   0</td><td style="text-align: right;">   0</td><td style="text-align: right;">   0</td><td style="text-align: right;">     0</td><td style="text-align: right;">     0</td></tr>
+<tr><td>Never             </td><td>MHOQ      </td><td style="text-align: right;">   0</td><td style="text-align: right;">   0</td><td style="text-align: right;">   0</td><td style="text-align: right;">     0</td><td style="text-align: right;">     0</td></tr>
+<tr><td>Never             </td><td>ILC       </td><td style="text-align: right;">   0</td><td style="text-align: right;">   0</td><td style="text-align: right;">   0</td><td style="text-align: right;">     0</td><td style="text-align: right;">     0</td></tr>
+<tr><td>Never             </td><td>ILC simple</td><td style="text-align: right;">   0</td><td style="text-align: right;">   0</td><td style="text-align: right;">   0</td><td style="text-align: right;">     0</td><td style="text-align: right;">     0</td></tr>
+</tbody>
+</table>
+
+
+
+
+
+# DAC Configuration: 14 
+### Model: static 
+<table>
+<thead>
+<tr><th>Time (UTC+00:00)     </th><th>Method    </th><th>Fs     </th><th>Fc    </th><th>Fx  </th><th style="text-align: right;">  Ncyc</th><th style="text-align: right;">  ENOB</th></tr>
+</thead>
+<tbody>
+<tr><td>2025-01-29 - 00:06:37</td><td>BASELINE  </td><td>209.72M</td><td>100.0k</td><td>1.0k</td><td style="text-align: right;">     5</td><td style="text-align: right;">10.784</td></tr>
+<tr><td>Never                </td><td>PHYSCAL   </td><td>0.00   </td><td>0.0   </td><td>0.0 </td><td style="text-align: right;">     0</td><td style="text-align: right;"> 0    </td></tr>
+<tr><td>2025-01-28 - 23:56:55</td><td>DEM       </td><td>209.72M</td><td>100.0k</td><td>1.0k</td><td style="text-align: right;">     5</td><td style="text-align: right;">10.869</td></tr>
+<tr><td>2025-01-28 - 23:50:27</td><td>NSDCAL    </td><td>209.72M</td><td>100.0k</td><td>1.0k</td><td style="text-align: right;">     5</td><td style="text-align: right;"> 6.282</td></tr>
+<tr><td>2025-01-29 - 00:00:03</td><td>SHPD      </td><td>209.72M</td><td>100.0k</td><td>1.0k</td><td style="text-align: right;">     5</td><td style="text-align: right;">10.824</td></tr>
+<tr><td>2025-01-29 - 00:01:22</td><td>PHFD      </td><td>209.72M</td><td>100.0k</td><td>1.0k</td><td style="text-align: right;">     5</td><td style="text-align: right;">10.45 </td></tr>
+<tr><td>2025-01-28 - 23:24:11</td><td>MHOQ      </td><td>1.02M  </td><td>100.0k</td><td>1.0k</td><td style="text-align: right;">     5</td><td style="text-align: right;"> 5.411</td></tr>
+<tr><td>Never                </td><td>ILC       </td><td>0.00   </td><td>0.0   </td><td>0.0 </td><td style="text-align: right;">     0</td><td style="text-align: right;"> 0    </td></tr>
+<tr><td>Never                </td><td>ILC simple</td><td>0.00   </td><td>0.0   </td><td>0.0 </td><td style="text-align: right;">     0</td><td style="text-align: right;"> 0    </td></tr>
+</tbody>
+</table>
+
+### Model: spice 
+<table>
+<thead>
+<tr><th>Time (UTC+00:00)  </th><th>Method    </th><th style="text-align: right;">  Fs</th><th style="text-align: right;">  Fc</th><th style="text-align: right;">  Fx</th><th style="text-align: right;">  Ncyc</th><th style="text-align: right;">  ENOB</th></tr>
+</thead>
+<tbody>
+<tr><td>Never             </td><td>BASELINE  </td><td style="text-align: right;">   0</td><td style="text-align: right;">   0</td><td style="text-align: right;">   0</td><td style="text-align: right;">     0</td><td style="text-align: right;">     0</td></tr>
+<tr><td>Never             </td><td>PHYSCAL   </td><td style="text-align: right;">   0</td><td style="text-align: right;">   0</td><td style="text-align: right;">   0</td><td style="text-align: right;">     0</td><td style="text-align: right;">     0</td></tr>
+<tr><td>Never             </td><td>DEM       </td><td style="text-align: right;">   0</td><td style="text-align: right;">   0</td><td style="text-align: right;">   0</td><td style="text-align: right;">     0</td><td style="text-align: right;">     0</td></tr>
+<tr><td>Never             </td><td>NSDCAL    </td><td style="text-align: right;">   0</td><td style="text-align: right;">   0</td><td style="text-align: right;">   0</td><td style="text-align: right;">     0</td><td style="text-align: right;">     0</td></tr>
+<tr><td>Never             </td><td>SHPD      </td><td style="text-align: right;">   0</td><td style="text-align: right;">   0</td><td style="text-align: right;">   0</td><td style="text-align: right;">     0</td><td style="text-align: right;">     0</td></tr>
+<tr><td>Never             </td><td>PHFD      </td><td style="text-align: right;">   0</td><td style="text-align: right;">   0</td><td style="text-align: right;">   0</td><td style="text-align: right;">     0</td><td style="text-align: right;">     0</td></tr>
+<tr><td>Never             </td><td>MHOQ      </td><td style="text-align: right;">   0</td><td style="text-align: right;">   0</td><td style="text-align: right;">   0</td><td style="text-align: right;">     0</td><td style="text-align: right;">     0</td></tr>
+<tr><td>Never             </td><td>ILC       </td><td style="text-align: right;">   0</td><td style="text-align: right;">   0</td><td style="text-align: right;">   0</td><td style="text-align: right;">     0</td><td style="text-align: right;">     0</td></tr>
+<tr><td>Never             </td><td>ILC simple</td><td style="text-align: right;">   0</td><td style="text-align: right;">   0</td><td style="text-align: right;">   0</td><td style="text-align: right;">     0</td><td style="text-align: right;">     0</td></tr>
+</tbody>
+</table>
+
+
+
+
+
 # DAC Configuration: 12 
 ### Model: static 
 <table>
