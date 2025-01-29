@@ -8,6 +8,14 @@
 """
 
 import os
+import pickle
+import numpy as np
+
+from utils.test_util import sim_config
+from utils.quantiser_configurations import quantiser_configurations, qs
+from LM.lin_method_util import lm, dm
+from utils.spice_utils import run_spice_sim, run_spice_sim_parallel, gen_spice_sim_file, read_spice_bin_file, process_sim_output
+
 
 # choose method
 method_str = 'baseline'
@@ -18,17 +26,77 @@ method_str = 'baseline'
 #method_str = 'dynamic_element_matching'
 #method_str = 'ilc'
 
-
 top_d = 'generated_codes/'  # directory for generated codes and configuration info
-method_d = top_d + method_str.upper().replace(" ", "_") + '/'
+method_d = os.path.join(top_d, method_str.upper().replace(" ", "_"))
 
-out_dirs = os.listdir(method_d)
+codes_dirs = os.listdir(method_d)
 
-if not out_dirs:  # list empty?
+if not codes_dirs:  # list empty?
     print('No codes found...')
     exit(-1)
 
-out_dir = out_dirs[0]  # pick run
+codes_d = codes_dirs[0]  # pick run
+
+# read pickled (marshalled) state/config object
+with open(os.path.join(method_d, codes_d, 'sim_config.pickle'), 'rb') as fin:
+    SC = pickle.load(fin)
+
+hash_stamp = codes_d
+spice_case_d = os.path.join('spice_sim', 'cases', str(SC.lin).replace(' ', '_'), hash_stamp)
+
+if os.path.exists(spice_case_d):
+    print('Putting output files in existing directory: ' + spice_case_d)
+else:
+    os.makedirs(spice_case_d)
+
+spicef_list = []
+outputf_list = []
+
+# Read some config. params.
+if not SC.dac.model == dm.SPICE:
+    raise SystemExit('Configuration error.')
+
+QConfig = SC.qconfig
+Nch = SC.nch
+Ts = 1/SC.fs  # sampling time
+
+# regenerate time vector
+t_end = SC.ncyc/SC.ref_freq  # time vector duration
+t = np.arange(0, t_end, Ts)  # time vector
+
+Nb, Mq, Vmin, Vmax, Rng, Qstep, YQ, Qtype = quantiser_configurations(QConfig)
+
+if QConfig == qs.w_6bit_2ch_SPICE or QConfig == qs.w_16bit_2ch_SPICE or QConfig == qs.w_10bit_2ch_SPICE:
+    SEPARATE_FILE_PER_CHANNEL = False
+else:
+    SEPARATE_FILE_PER_CHANNEL = True
+
+codes_fn = 'codes.npy'  # TODO: magic constant, name of codes file
+
+if os.path.exists(os.path.join(method_d, codes_d, codes_fn)):  # codes exists
+    C = np.load(os.path.join(method_d, codes_d, codes_fn))
+else:
+    raise SystemExit('No codes file found.')
+
+if SEPARATE_FILE_PER_CHANNEL:
+    for k in range(0,Nch):
+        c = C[k,:]
+        seed = k + 1
+        spicef, outputf = gen_spice_sim_file(c, Nb, t, Ts, QConfig, spice_case_d, seed, k)
+        spicef_list.append(spicef)
+        outputf_list.append(outputf)
+else:
+    spicef, outputf = gen_spice_sim_file(C, Nb, t, Ts, QConfig, spice_case_d)
+    spicef_list.append(spicef)  # list with 1 entry
+    outputf_list.append(outputf)
+
+
+
+
+
+
+
+
 
 if False:
 

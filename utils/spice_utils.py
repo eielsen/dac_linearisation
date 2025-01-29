@@ -12,7 +12,7 @@ import numpy as np
 from matplotlib import pyplot as plt
 import fileinput
 import subprocess
-import datetime
+#import datetime
 from scipy import signal
 from scipy import interpolate
 import pickle
@@ -22,40 +22,10 @@ from tabulate import tabulate
 import sys
 sys.path.append('../')
 
+from utils.test_util import sinad_comp
 from LM.lin_method_util import lm, dm
 from utils.figures_of_merit import FFT_SINAD, TS_SINAD
 from utils.quantiser_configurations import qs
-
-
-class sinad_comp:
-    FFT = 1  # FFT based
-    CFIT = 2  # curve fit
-
-
-class sim_config:
-    def __init__(self, qconfig, lin, dac, fs, t, fc, nf, carrier_scale, carrier_freq, Ncyc):
-        self.qconfig = qconfig
-        self.lin = lin
-        self.dac = dac
-        self.fs = fs
-        self.t = t
-        self.fc = fc
-        self.nf = nf
-        self.carrier_scale = carrier_scale
-        self.carrier_freq = carrier_freq
-        self.Ncyc = Ncyc # Number of periods/cycles of the fundamental/carrier
-    
-    def __str__(self):
-        s = str(self.qconfig) + '\n'
-        s = s + str(self.lin) + '\n'
-        s = s + str(self.dac) + '\n'
-        s = s + 'Fs=' + f'{Float(self.fs):.0h}' + '\n'
-        s = s + 'Fc=' + f'{Float(self.fc):.0h}' + '\n'
-        s = s + 'Nf=' + f'{Float(self.nf):.0h}' + '\n'
-        s = s + 'Xs=' + f'{Float(self.carrier_scale):.0h}' + '\n'
-        s = s + 'Fx=' + f'{Float(self.carrier_freq):.0h}' + '\n'
-
-        return s + '\n'
 
 
 def addtexttofile(filename, text):
@@ -85,6 +55,7 @@ def get_pwl_string(c, Ts, Ns, dnum, vbpc, vdd, trisefall):
     Returns
         rval - PWL string
     """
+
     if get_bit(c[0], dnum) == 0:
         rval = "0," + vdd + " "
     else:
@@ -116,6 +87,7 @@ def get_inverted_pwl_string(c, Ts, Ns, dnum, vbpc, vdd, trisefall):
     Returns
         rval - PWL string
     """
+    
     if get_bit(c[0], dnum) == 0:
         rval = "0," + vbpc + " "
     else:
@@ -210,7 +182,7 @@ def gen_spice_sim_file(C, Nb, t, Ts, QConfig, outdir, seed=1, seq=0):
     wav_str = ''
     
     match QConfig:
-        case qs.w_06bit:  # 6 bit DAC
+        case qs.w_6bit:  # 6 bit DAC
             c = C.astype(int)
             nsamples = len(c)
 

@@ -45,10 +45,10 @@ from LM.lin_method_mpc_bin import MPC_BIN
 from LM.lin_method_dsm_ilc import DSM_ILC
 from LM.lin_method_util import lm, dm
 
-from utils.test_util import test_signal
+from utils.test_util import sim_config, sinad_comp, test_signal
 from utils.inl_processing import get_physcal_gain
 
-from utils.spice_utils import run_spice_sim, run_spice_sim_parallel, gen_spice_sim_file, read_spice_bin_file, sim_config, process_sim_output, sinad_comp
+from utils.spice_utils import run_spice_sim, run_spice_sim_parallel, gen_spice_sim_file, read_spice_bin_file, process_sim_output
 
 
 #%% Configure DAC and test conditions
@@ -142,12 +142,12 @@ match 2:
             Np = 5  # no. of periods for carrier (IEEE recommended for curve-fit)
 
 Npt = 1  # no. of test signal periods to use to account for transients
-Np = Np+2*Npt
+Ncyc = Np + 2*Npt
 
-t_end = Np/Xcs_FREQ  # time vector duration
+t_end = Ncyc/Xcs_FREQ  # time vector duration
 t = np.arange(0, t_end, Ts)  # time vector
 
-SC = sim_config(QConfig, lin, dac, Fs, t, Fc_lp, N_lp, Xcs_SCALE, Xcs_FREQ, Np-2*Npt)
+SC = sim_config(QConfig, lin, dac, Fs, t, Fc_lp, N_lp, Xcs_SCALE, Xcs_FREQ, Ncyc)
 
 # Generate test/reference signal
 SIGNAL_MAXAMP = Rng/2 - Qstep  # make headroom for noise dither (see below)
@@ -155,8 +155,8 @@ SIGNAL_OFFSET = -Qstep/2  # try to center given quantiser type
 Xcs = test_signal(Xcs_SCALE, SIGNAL_MAXAMP, Xcs_FREQ, SIGNAL_OFFSET, t)
 
 # %% Configure and run linearisation methods
-# Each method should produce a vector of codes C that can be input
-# to a given DAC circuit.
+# Each method should produce a vector of codes 'C'
+# that can be input to a given DAC circuit.
 
 match SC.lin.method:
     case lm.BASELINE:  # baseline, only carrier
@@ -167,7 +167,7 @@ match SC.lin.method:
         else:
             Nch = 1
         
-        # Quantisation dither
+        # Quantisation dither (eliminate harm. distortion from quantisation)
         Dq = dither_generation.gen_stochastic(t.size, Nch, Qstep, dither_generation.pdf.triangular_hp)
 
         # Repeat carrier on all channels
@@ -734,6 +734,8 @@ match SC.lin.method:
 
 # %% Generate DAC output
 
+SC.nch = Nch  # update with no. channels set for simulation
+
 # Use the config to generate a hash; overwrite results for identical configurations 
 import hashlib
 hash_stamp = hashlib.sha1(SC.__str__().encode('utf-8')).hexdigest()
@@ -743,17 +745,17 @@ top_d = 'generated_codes/'  # directory for generated codes and configuration in
 method_d = top_d + str(SC.lin).replace(" ", "_") + '/'  # archive outputs according to method
 os.makedirs(method_d, exist_ok=True)  # make sure the method directory exists
 
-out_d = method_d + hash_stamp + '/'
-os.makedirs(out_d)
+codes_d = method_d + hash_stamp + '/'
+os.makedirs(codes_d, exist_ok=True)
 
 config_f = 'sim_config'  # file with configuration info
-with open(os.path.join(out_d, config_f + '.txt'), 'w') as fout:  # save as plain text
+with open(os.path.join(codes_d, config_f + '.txt'), 'w') as fout:  # save as plain text
     fout.write(SC.__str__())
-with open(os.path.join(out_d, config_f + '.pickle'), 'wb') as fout:  # marshalled object
+with open(os.path.join(codes_d, config_f + '.pickle'), 'wb') as fout:  # marshalled object
     pickle.dump(SC, fout)
 
-code_f = out_d + 'codes'
-np.save(code_f, C)
+codes_f = codes_d + 'codes'
+np.save(codes_f, C)
 
 if False:
     match SC.dac.model:

@@ -154,20 +154,17 @@ def quantiser_configurations(QConfig):
 def get_ML(inpath, infile, CSV_filename):
     CSV_file = os.path.join(inpath, CSV_filename)
 
-    # Numpy file does not exist
-    if (os.path.exists(os.path.join(inpath, infile)) is False):
+    if (os.path.exists(os.path.join(inpath, infile)) is False): # Numpy file does not exist
         if (os.path.exists(CSV_file) is True):
             ML = np.transpose(np.genfromtxt(CSV_file, delimiter=',', skip_header=1))[1:,:]
             np.save(os.path.join(inpath, infile), ML)
             return ML
-    
-    # Numpy file exists
-    elif os.path.exists(os.path.join(inpath, infile)):
+    elif os.path.exists(os.path.join(inpath, infile)): # Numpy file exists
         ML = np.load(os.path.join(inpath, infile))
         return ML
-    
     else:
         raise SystemExit('No level measurements file found.')
+
 
 def get_measured_levels(QConfig, lmethod=lm.BASELINE):
     """
