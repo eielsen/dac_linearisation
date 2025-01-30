@@ -43,8 +43,7 @@ method_d = os.path.join(top_d, method_str.upper().replace(" ", "_"))
 codes_dirs = os.listdir(method_d)
 
 if not codes_dirs:  # list empty?
-    print('No codes found...')
-    exit(-1)
+    raise SystemExit('No codes found.')
 
 codes_d = codes_dirs[0]  # pick run
 
