@@ -127,7 +127,7 @@ def run_spice_sim(spicef, outputf, outdir='spice_output/', spice_path='ngspice')
     subprocess.run(cmd)
 
 
-def run_spice_sim_parallel(spicef_list, outputf_list, outdir='spice_sim/output/', spice_path='ngspice'):
+def run_spice_sim_parallel(spicef_list, outputf_list, out_d='spice_sim/output/', spice_path='ngspice'):
     """
     Run SPICE simulaton using provided filenames
 
@@ -138,9 +138,9 @@ def run_spice_sim_parallel(spicef_list, outputf_list, outdir='spice_sim/output/'
     
     cmd_list = []
     for k in range(0, len(spicef_list)):
-        cmd = [spice_path, '-o', outdir + outputf_list[k] + '.log',
+        cmd = [spice_path, '-o', out_d + outputf_list[k] + '.log',
             #'-r', outdir + outputf_list[k] + '.bin',
-            '-b', outdir + spicef_list[k]]    
+            '-b', out_d + spicef_list[k]]    
         cmd_list.append(cmd)
     
     print(cmd_list)
@@ -170,9 +170,8 @@ def gen_spice_sim_file(C, Nb, t, Ts, QConfig, outdir, seed=1, seq=0):
     wavf = 'spice_pwl_wav.txt'
     cmdf = 'spice_cmds.txt'
     
-    tempdir = 'spice_sim/temp'
-    circdir = 'spice_sim/circuits'
-    #outdir = os.path.join('spice_output', outdirname)
+    tempdir = os.path.join('spice_sim', 'temp')
+    circdir = os.path.join('spice_sim', 'circuits')
 
     if os.path.exists(outdir):
         print('Putting output files in existing directory: ' + outdir)
@@ -202,10 +201,9 @@ def gen_spice_sim_file(C, Nb, t, Ts, QConfig, outdir, seed=1, seq=0):
             circf = 'cs_dac_06bit_ngspice.cir'  # circuit description
             spicef = 'cs_dac_06bit_ngspice_batch.cir'  # complete spice input file
 
-            outputf = 'cs_dac_16bit_ngspice_batch_' + str(seq)
+            outputf = 'cs_dac_06bit_ngspice_batch_' + str(seq)
             
             ctrl_str = '\n' + '.save v(outf)' + '\n' + '.tran 10u ' + str(t[-1]) + '\n'
-
         case qs.w_16bit_SPICE:  # 16 bit DAC
             c = C.astype(int)
             nsamples = len(c)
@@ -277,10 +275,10 @@ def gen_spice_sim_file(C, Nb, t, Ts, QConfig, outdir, seed=1, seq=0):
                     get_inverted_pwl_string(c2, Ts, nsamples2, k, vbpc, vdd, Tr)
             wav_str = tvb1 + tvbb1 + tvb2 + tvbb2
 
-            circf = 'cs_dac_06bit_2ch_TRAN.cir'  # circuit description
-            spicef = 'cs_dac_06bit_2ch_TRAN_ngspice_batch.cir'  # complete spice input file
+            circf = 'cs_dac_6bit_2ch_TRAN.cir'  # circuit description
+            spicef = 'cs_dac_6bit_2ch_TRAN_ngspice_batch.cir'  # complete spice input file
 
-            outputf = 'cs_dac_06bit_2ch_TRAN_ngspice_batch'
+            outputf = 'cs_dac_6bit_2ch_TRAN_ngspice_batch'
             
             ctrl_str = '\n.option method=trap TRTOL=5 gmin=1e-19 reltol=200u abstol=100f vntol=100n seed=2\n'
             ctrl_str = ctrl_str + \
@@ -319,6 +317,42 @@ def gen_spice_sim_file(C, Nb, t, Ts, QConfig, outdir, seed=1, seq=0):
             outputf = 'cs_dac_16bit_2ch_TRAN_ngspice_batch'
             
             ctrl_str = '\n.option method=trap TRTOL=5 gmin=1e-19 reltol=200u abstol=100f vntol=100n seed=1\n'
+            ctrl_str = ctrl_str + \
+                '\n.control\n' + \
+                'tran 10u ' + str(t[-1]) + '\n' + \
+                'write $inputdir/' + outputf + '.bin' + ' v(out1) v(out2)\n' + \
+                '.endc\n'
+        case qs.w_10bit_2ch_SPICE:  # 10 bit DAC, 2 channels
+            c1 = C[0,:].astype(int)
+            c2 = C[1,:].astype(int)
+            nsamples1 = len(c1)
+            nsamples2 = len(c2)
+
+            tvb1 = '\n'
+            tvb2 = '\n'
+            tvbb1 = '\n'
+            tvbb2 = '\n'
+            vbpc = '0'
+            vdd = '1.5'
+            Tr = 1e-3  # the rise-time for edges, in µs
+            for k in range(0, Nb):  # generate PWL strings
+                k_str = str(k + 1)
+                tvb1 += 'vb1' + k_str + ' b1' + k_str + ' 0 pwl ' + \
+                    get_pwl_string(c1, Ts, nsamples1, k, vbpc, vdd, Tr)
+                tvbb1 += 'vbb1' + k_str + ' bb1' + k_str + ' 0 pwl ' + \
+                    get_inverted_pwl_string(c1, Ts, nsamples1, k, vbpc, vdd, Tr)
+                tvb2 += 'vb2' + k_str + ' b2' + k_str + ' 0 pwl ' + \
+                    get_pwl_string(c2, Ts, nsamples2, k, vbpc, vdd, Tr)
+                tvbb2 += 'vbb2' + k_str + ' bb2' + k_str + ' 0 pwl ' + \
+                    get_inverted_pwl_string(c2, Ts, nsamples2, k, vbpc, vdd, Tr)
+            wav_str = tvb1 + tvbb1 + tvb2 + tvbb2
+
+            circf = 'cs_dac_10bit_2ch_TRAN.cir'  # circuit description
+            spicef = 'cs_dac_10bit_2ch_TRAN_ngspice_batch.cir'  # complete spice input file
+
+            outputf = 'cs_dac_10bit_2ch_TRAN_ngspice_batch'
+            
+            ctrl_str = '\n.option method=trap TRTOL=5 gmin=1e-19 reltol=200u abstol=100f vntol=100n seed=2\n'
             ctrl_str = ctrl_str + \
                 '\n.control\n' + \
                 'tran 10u ' + str(t[-1]) + '\n' + \

@@ -91,7 +91,17 @@ else:
     outputf_list.append(outputf)
 
 
+spice_path = 'ngspice'  # 
 
+out_d = os.path.join('spice_sim', 'output')
+
+if False:
+    for k in range(0,Nch):
+        run_spice_sim(spicef_list[k], outputf_list[k], out_d, spice_path)
+else:  # use shell escape interface to run ngspice as parallel procs.
+    print('Running SPICE...')
+    run_spice_sim_parallel(spicef_list, outputf_list, out_d, spice_path)
+    
 
 
 
@@ -127,6 +137,8 @@ if False:
 
     #rundir = rundirs[16]  # pick run
     rundir = matching[0]  # pick run
+
+
 
 
     from utils.spice_utils import run_spice_sim, run_spice_sim_parallel, gen_spice_sim_file, read_spice_bin_file, sim_config, process_sim_output, sinad_comp
