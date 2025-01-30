@@ -2,10 +2,21 @@
 # -*- coding: utf-8 -*-
 """Run DAC simulations via SPICE (ngspice)
 
+Currently this script will generate the required input to ngspice
+by sourcing a circuit description and adding the PWL input signal
+description and a suitable control block for transient simulation.
+
+Will produce the command line string for running ngspice,
+which can be done manually. The shell escape provided by Python
+prevents good debugging of ngspice execution.
+
 @author: Arnfinn Eielsen
 @date: 29.01.2025
 @license: BSD 3-Clause
 """
+
+%reload_ext autoreload
+%autoreload 2
 
 import os
 import pickle
@@ -92,14 +103,16 @@ else:
 
 
 spice_path = 'ngspice'  # 
+#out_d = os.path.join('spice_sim', 'output')
 
-out_d = os.path.join('spice_sim', 'output')
-
-if False:
-    for k in range(0,Nch):
-        run_spice_sim(spicef_list[k], outputf_list[k], out_d, spice_path)
-else:  # use shell escape interface to run ngspice as parallel procs.
-    print('Running SPICE...')
+#print('Running SPICE...')
+if True:  # run ngspice sequentially for ech channel
+    if SEPARATE_FILE_PER_CHANNEL:
+        for k in range(0,Nch):
+            run_spice_sim(spicef_list[k], outputf_list[k], spice_case_d, spice_path, run_spice=False)
+    else:
+        run_spice_sim(spicef_list[0], outputf_list[0], spice_case_d, spice_path, run_spice=False)
+else:  # use shell escape interface to run ngspice as parallel processes
     run_spice_sim_parallel(spicef_list, outputf_list, out_d, spice_path)
     
 

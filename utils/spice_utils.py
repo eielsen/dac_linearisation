@@ -106,9 +106,9 @@ def get_inverted_pwl_string(c, Ts, Ns, dnum, vbpc, vdd, trisefall):
     return rval
 
 
-def run_spice_sim(spicef, outputf, outdir='spice_output/', spice_path='ngspice'):
+def run_spice_sim(spicef, outputf, outdir='spice_output/', spice_path='ngspice', run_spice=False):
     """
-    Run SPICE simulaton using provided filenames
+    Run SPICE simulation using provided filenames
 
     Arguments
         spicef - SPICE batch file
@@ -118,18 +118,19 @@ def run_spice_sim(spicef, outputf, outdir='spice_output/', spice_path='ngspice')
     print(spicef)
     print(outputf)
 
-    cmd = [spice_path, '-o', outdir + outputf + '.log',
+    cmd = [spice_path, '-o', os.path.join(outdir, outputf) + '.log',
                     # '-r', outdir + outputf + '.bin',
-                    '-b', outdir + spicef]
+                    '-b', os.path.join(outdir, spicef)]
 
-    print(cmd)
+    print(' '.join(cmd))
 
-    subprocess.run(cmd)
+    if run_spice:
+        subprocess.run(cmd)
 
 
 def run_spice_sim_parallel(spicef_list, outputf_list, out_d='spice_sim/output/', spice_path='ngspice'):
     """
-    Run SPICE simulaton using provided filenames
+    Run SPICE simulation using provided filenames
 
     Arguments
         spicef_list - SPICE batch files
@@ -150,6 +151,9 @@ def run_spice_sim_parallel(spicef_list, outputf_list, out_d='spice_sim/output/',
     for proc in procs_list:
         print('Waiting for SPICE to return...')
         proc.wait()
+    
+    print('SPICE returned...')
+    
 
 
 def gen_spice_sim_file(C, Nb, t, Ts, QConfig, outdir, seed=1, seq=0):
@@ -274,12 +278,11 @@ def gen_spice_sim_file(C, Nb, t, Ts, QConfig, outdir, seed=1, seq=0):
                 tvbb2 += 'vbb2' + k_str + ' bb2' + k_str + ' 0 pwl ' + \
                     get_inverted_pwl_string(c2, Ts, nsamples2, k, vbpc, vdd, Tr)
             wav_str = tvb1 + tvbb1 + tvb2 + tvbb2
-
-            circf = 'cs_dac_6bit_2ch_TRAN.cir'  # circuit description
-            spicef = 'cs_dac_6bit_2ch_TRAN_ngspice_batch.cir'  # complete spice input file
-
-            outputf = 'cs_dac_6bit_2ch_TRAN_ngspice_batch'
             
+            circf = 'cs_dac_06bit_2ch_TRAN.cir'  # circuit description
+            outputf = 'cs_dac_06bit_2ch_TRAN_ngspice_batch'
+            spicef = outputf + '.cir'  # complete spice input file
+
             ctrl_str = '\n.option method=trap TRTOL=5 gmin=1e-19 reltol=200u abstol=100f vntol=100n seed=2\n'
             ctrl_str = ctrl_str + \
                 '\n.control\n' + \
