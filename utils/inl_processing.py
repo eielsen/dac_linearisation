@@ -13,8 +13,11 @@ import os
 import sys
 from tabulate import tabulate
 from scipy import signal
-
 from matplotlib import pyplot as plt
+
+import sys
+sys.path.append('../')
+
 from utils.quantiser_configurations import quantiser_configurations, get_measured_levels, qs
 
 def generate_random_output_levels(QConfig=4):
@@ -63,8 +66,11 @@ def generate_random_output_levels(QConfig=4):
 
 def get_physcal_gain(QConfig):
     """
-    Tuned gain coefficients for the secondary channel when using
-    physical calibration (PHYCAL).
+    Tuned gain coefficients for the secondary channel when using physical calibration (PHYCAL).
+
+    This is tune manually at this point
+        - ensure full range og secondary DAC matches maximum linear error (i.e. INL) on the primary DAC
+        - reduce gain to ensure some headroom, mainly to be able to compensate for errors in gain and offset 
     """
     
     match QConfig:  # gain tuning (make sure secondary DAC does not saturate)
@@ -72,7 +78,7 @@ def get_physcal_gain(QConfig):
         case qs.w_16bit_SPICE: K_SEC = 1e-2
         case qs.w_6bit_ARTI: K_SEC = 7.5e-2
         case qs.w_16bit_ARTI: K_SEC = 2e-1  # find out
-        case qs.w_6bit_2ch_SPICE: K_SEC = 12.5e-2
+        case qs.w_6bit_2ch_SPICE: K_SEC = 12.0e-2 #12.5e-2
         case qs.w_16bit_2ch_SPICE: K_SEC = 1e-2
         case qs.w_16bit_6t_ARTI: K_SEC = 2e-2
         case _: K_SEC = 1
@@ -114,13 +120,15 @@ def plot_inl(QConfig=qs.w_16bit_NI_card, Ch_sel=0):
     #fig.savefig('Stylized Plots.png', dpi=300, bbox_inches='tight', transparent=True)
 
 
-def gen_physcal_lut(QConfig=qs.w_16bit_NI_card, SAVE_LUT=0):
+def generate_physcal_lut(QConfig=qs.w_16bit_NI_card, SAVE_LUT=0):
     """
     Generate physical level calibration look up table.
 
     Least-squares minimisation of element mismatch via a look-up table (LUT)
     to be used when a secondary calibration DAC is available.
     """
+
+    outpath = '../generated_physcal_luts'
 
     # Quantiser model
     Nb, Mq, Vmin, Vmax, Rng, Qstep, YQ, Qtype = quantiser_configurations(QConfig)
@@ -151,7 +159,7 @@ def gen_physcal_lut(QConfig=qs.w_16bit_NI_card, SAVE_LUT=0):
     QQ = np.hstack([qs, np.ones(qs.shape)])  # codes matrix for straight line least-squares fit
     YY = np.hstack([YQ, np.ones(qs.shape)])  # ideal levels matrix
 
-    MLm = PRILVLS;  # use channel 1 as Main/primary (measured levels)
+    MLm = PRILVLS;  # use channel 1 as main/primary (measured levels)
     MLm = MLm.reshape(-1, 1)  # ensure column vector
 
     thetam = np.linalg.lstsq(QQ, MLm, rcond=None)[0]  # straight line fit; theta[0] is slope, theta[1] is offset
@@ -181,7 +189,7 @@ def gen_physcal_lut(QConfig=qs.w_16bit_NI_card, SAVE_LUT=0):
     LUTcal = LUTcal.astype(np.uint16)  # convert to integers
 
     if SAVE_LUT:
-        lutfile = os.path.join('generated_physcal_luts', 'LUTcal_' + str(QConfig))
+        lutfile = os.path.join(outpath, 'LUTcal_' + str(QConfig))
         np.save(lutfile, LUTcal)
 
     #%%

@@ -22,16 +22,20 @@ from LM.lin_method_util import lm, dm
 from utils.test_util import sim_config, sinad_comp, test_signal
 
 # choose method
-method_str = 'baseline'
-#method_str = 'physical_level_calibration'
-#method_str = 'periodic_dither'
-#method_str = 'noise_dither'
-#method_str = 'digital_calibration'
-#method_str = 'dynamic_element_matching'
-#method_str = 'ilc'
+METHOD_CHOICE = 4
+match METHOD_CHOICE:
+    case 1: RUN_LM = lm.BASELINE
+    case 2: RUN_LM = lm.PHYSCAL
+    case 3: RUN_LM = lm.DEM
+    case 4: RUN_LM = lm.NSDCAL
+    case 5: RUN_LM = lm.SHPD
+    case 6: RUN_LM = lm.PHFD
+    case 7: RUN_LM = lm.MPC # lm.MPC or lm.MHOQ
+    case 8: RUN_LM = lm.ILC
+    case 9: RUN_LM = lm.ILC_SIMP
 
 top_d = 'generated_codes/'  # directory for generated codes and configuration info
-method_d = os.path.join(top_d, method_str.upper().replace(" ", "_"))
+method_d = os.path.join(top_d, str(lm(RUN_LM)))
 
 codes_dirs = os.listdir(method_d)
 
@@ -81,7 +85,7 @@ if Nbf == 1:  # may contain several channels in ngspice bin file
         K = np.ones((Nch,1))
     elif SC.lin.method == lm.PHYSCAL:
         K = np.ones((Nch,1))
-        K[1] = 1e-2
+        K[1] = get_physcal_gain(QConfig)
     else:
         K = 1/Nch
     
@@ -89,9 +93,9 @@ if Nbf == 1:  # may contain several channels in ngspice bin file
     print(K)
 
     t_end = t_spice[-1] #7/Fx  # time vector duration
-    #Fs_ = Fs*72  # semi-optimal factor for most sims with different non-uniform sampling per file
+    Fs_ = Fs*72  # semi-optimal factor for most sims with different non-uniform sampling per file
     #Fs_ = Fs
-    Fs_ = 1/np.mean(np.diff(t_spice))
+    #Fs_ = 1/np.mean(np.diff(t_spice))
 
     print(f'Fs: {Float(Fs):.0h}')
     t_ = np.arange(0, t_end, 1/Fs_)  # time vector

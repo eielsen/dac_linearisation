@@ -26,26 +26,30 @@ from utils.test_util import sim_config
 from utils.quantiser_configurations import quantiser_configurations, qs
 from LM.lin_method_util import lm, dm
 from utils.spice_utils import run_spice_sim, run_spice_sim_parallel, gen_spice_sim_file, read_spice_bin_file, process_sim_output
-
+from utils.inl_processing import get_physcal_gain
 
 # choose method
-method_str = 'baseline'
-#method_str = 'physical_level_calibration'
-#method_str = 'periodic_dither'
-#method_str = 'noise_dither'
-#method_str = 'digital_calibration'
-#method_str = 'dynamic_element_matching'
-#method_str = 'ilc'
+METHOD_CHOICE = 4
+match METHOD_CHOICE:
+    case 1: RUN_LM = lm.BASELINE
+    case 2: RUN_LM = lm.PHYSCAL
+    case 3: RUN_LM = lm.DEM
+    case 4: RUN_LM = lm.NSDCAL
+    case 5: RUN_LM = lm.SHPD
+    case 6: RUN_LM = lm.PHFD
+    case 7: RUN_LM = lm.MPC # lm.MPC or lm.MHOQ
+    case 8: RUN_LM = lm.ILC
+    case 9: RUN_LM = lm.ILC_SIMP
 
 top_d = 'generated_codes/'  # directory for generated codes and configuration info
-method_d = os.path.join(top_d, method_str.upper().replace(" ", "_"))
+method_d = os.path.join(top_d, str(lm(RUN_LM)))
 
 codes_dirs = os.listdir(method_d)
 
 if not codes_dirs:  # list empty?
     raise SystemExit('No codes found.')
 
-codes_d = codes_dirs[0]  # pick run
+codes_d = codes_dirs[0]  ###################### pick run
 
 # read pickled (marshalled) state/config object
 with open(os.path.join(method_d, codes_d, 'sim_config.pickle'), 'rb') as fin:
@@ -63,16 +67,20 @@ spicef_list = []
 outputf_list = []
 
 # Read some config. params.
-if not SC.dac.model == dm.SPICE:
-    raise SystemExit('Configuration error.')
+
+# the dac model flag appears to be superfluous, deprecated it?
+#if not SC.dac.model == dm.SPICE:
+#    raise SystemExit('Configuration error.')
 
 QConfig = SC.qconfig
 Nch = SC.nch
 Ts = 1/SC.fs  # sampling time
 
 # regenerate time vector
-t_end = SC.ncyc/SC.ref_freq  # time vector duration
-t = np.arange(0, t_end, Ts)  # time vector
+#t_end = SC.ncyc/SC.ref_freq  # time vector duration
+#t = np.arange(0, t_end, Ts)  # time vector
+# copy time vector
+t = SC.t
 
 Nb, Mq, Vmin, Vmax, Rng, Qstep, YQ, Qtype = quantiser_configurations(QConfig)
 

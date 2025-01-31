@@ -53,8 +53,7 @@ from utils.spice_utils import run_spice_sim, run_spice_sim_parallel, gen_spice_s
 
 #%% Configure DAC and test conditions
 
-METHOD_CHOICE = 1
-DAC_MODEL_CHOICE = 2
+METHOD_CHOICE = 6
 FS_CHOICE = 4
 SINAD_COMP = 1
 
@@ -82,7 +81,8 @@ match METHOD_CHOICE:
 
 lin = lm(RUN_LM)
 
-##### DAC MODEL CHOICE
+##### DAC MODEL CHOICE (looks like this can be deprecated; set to 1 for now)
+DAC_MODEL_CHOICE = 1
 match DAC_MODEL_CHOICE:
     case 1: dac = dm(dm.STATIC)  # use static non-linear quantiser model to simulate DAC
     case 2: dac = dm(dm.SPICE)  # use SPICE to simulate DAC output
@@ -121,14 +121,6 @@ match 7:
     case 9: QConfig = qs.w_10bit_2ch_SPICE
 
 Nb, Mq, Vmin, Vmax, Rng, Qstep, YQ, Qtype = quantiser_configurations(QConfig)
-
-PLOTS = True
-PLOT_CURVE_FIT = True
-SAVE_CODES_TO_FILE_AND_STOP = False
-#SAVE_CODES_TO_FILE_AND_STOP = True
-SAVE_CODES_TO_FILE = True
-#SAVE_CODES_TO_FILE = True
-run_SPICE = False
 
 # Generate time vector
 match 2:
@@ -261,8 +253,8 @@ match SC.lin.method:
         if QConfig in [qs.w_16bit_SPICE, qs.w_16bit_ARTI, qs.w_16bit_2ch_SPICE, qs.w_16bit_6t_ARTI]:
             ML_err_rng = Qstep  # 16 bit DAC
         elif QConfig in [qs.w_6bit_ARTI, qs.w_6bit_2ch_SPICE, qs.w_10bit_ARTI, qs.w_6bit_ZTC_ARTI, qs.w_10bit_ZTC_ARTI]:
-            ML_err_rng = Qstep/1024 # 6 bit DAC
-            ML_err_rng = Qstep/pow(2, 0) # 6 bit DAC
+            ML_err_rng = Qstep/pow(2, 10) # 6 bit DAC
+            #ML_err_rng = 0 # 6 bit DAC
         else:
             sys.exit('NSDCAL: Unknown QConfig for ML error')
         
@@ -293,71 +285,73 @@ match SC.lin.method:
         # Large high-pass dither set-up
         #Xscale = 10  # carrier to dither ratio (between 0% and 100%)
         #Xscale = 5  # carrier to dither ratio (between 0% and 100%)
-        if QConfig == qs.w_6bit_ARTI:
-            if Fs == 65470464:
-                Xscale = 20
-                Fc_hf = 200e3
-            elif Fs in [209715200, 226719135.13513514400, 261881856]:
-                Xscale = 10
-                Fc_hf = 0.20e6
-            else:
-                sys.exit('SHPD: Missing config.')
 
-        if QConfig == qs.w_6bit_ZTC_ARTI:
-            if Fs == 65470464:
-                Xscale = 20
-                Fc_hf = 200e3
-            elif Fs in [209715200, 226719135.13513514400, 261881856]:
-                Xscale = 90
-                Fc_hf = 20e6
-            else:
+        match QConfig:
+            case qs.w_6bit_2ch_SPICE:
+                if Fs == 1022976:
+                    Xscale = 50
+                    Fc_hf = 250e3
+                else:
+                    sys.exit('SHPD: Missing config.')
+            case  qs.w_6bit_ARTI:
+                if Fs == 65470464:
+                    Xscale = 20
+                    Fc_hf = 200e3
+                elif Fs in [209715200, 226719135.13513514400, 261881856]:
+                    Xscale = 10
+                    Fc_hf = 0.20e6
+                else:
+                    sys.exit('SHPD: Missing config.')
+            case qs.w_6bit_ZTC_ARTI:
+                if Fs == 65470464:
+                    Xscale = 20
+                    Fc_hf = 200e3
+                elif Fs in [209715200, 226719135.13513514400, 261881856]:
+                    Xscale = 90
+                    Fc_hf = 20e6
+                else:
+                    sys.exit('SHPD: Missing config.')
+            case qs.w_10bit_ARTI:
+                if Fs == 65470464:
+                    Xscale = 20
+                    Fc_hf = 200e3
+                elif Fs in [209715200, 226719135.13513514400]:
+                    Xscale = 30
+                    Fc_hf = 30.0e6
+                elif Fs == 261881856:
+                    Xscale = 10
+                    Fc_hf = 0.20e6
+                else:
+                    sys.exit('SHPD: Missing config.')
+            case qs.w_10bit_ZTC_ARTI:
+                if Fs == 65470464:
+                    Xscale = 20
+                    Fc_hf = 200e3
+                elif Fs in [209715200, 226719135.13513514400]:
+                    Xscale = 30
+                    Fc_hf = 30.0e6
+                elif Fs == 261881856:
+                    Xscale = 10
+                    Fc_hf = 0.20e6
+                else:
+                    sys.exit('SHPD: Missing config.')
+            case qs.w_16bit_6t_ARTI:
+                if Fs == 65470464:
+                    Xscale = 10
+                    Fc_hf = 200e3
+                elif Fs == 261881856:
+                    Xscale = 10
+                    Fc_hf = 200e3
+                else:
+                    sys.exit('SHPD: Missing config.')
+            case qs.w_16bit_ARTI:
+                if Fs == 65470464:
+                    Xscale = 50
+                    Fc_hf = 200e3
+                else:
+                    sys.exit('SHPD: Missing config.')
+            case _:
                 sys.exit('SHPD: Missing config.')
-
-        elif QConfig == qs.w_10bit_ARTI:
-            if Fs == 65470464:
-                Xscale = 20
-                Fc_hf = 200e3
-            elif Fs in [209715200, 226719135.13513514400]:
-                Xscale = 30
-                Fc_hf = 30.0e6
-            elif Fs == 261881856:
-                Xscale = 10
-                Fc_hf = 0.20e6
-            else:
-                sys.exit('SHPD: Missing config.')
-
-        elif QConfig == qs.w_10bit_ZTC_ARTI:
-            if Fs == 65470464:
-                Xscale = 20
-                Fc_hf = 200e3
-            elif Fs in [209715200, 226719135.13513514400]:
-                Xscale = 30
-                Fc_hf = 30.0e6
-            elif Fs == 261881856:
-                Xscale = 10
-                Fc_hf = 0.20e6
-            else:
-                sys.exit('SHPD: Missing config.')
-
-        elif QConfig == qs.w_16bit_6t_ARTI:
-            if Fs == 65470464:
-                Xscale = 10
-                Fc_hf = 200e3
-            elif Fs == 261881856:
-                Xscale = 10
-                Fc_hf = 200e3
-            else:
-                sys.exit('SHPD: Missing config.')
-
-        elif QConfig == qs.w_16bit_ARTI:
-            if Fs == 65470464:
-                Xscale = 50
-                Fc_hf = 200e3
-            else:
-                sys.exit('SHPD: Missing config.')
-
-        else:
-            sys.exit('SHPD: Missing config.')
 
         Dscale = 100 - Xscale  # dither to carrier ratio
 
@@ -490,10 +484,10 @@ match SC.lin.method:
             else:
                 sys.exit('PHFD: Missing config.')
         elif QConfig == qs.w_6bit_2ch_SPICE:
-            #Xscale = 80  # Fs1022976 - 6 bit 2 Ch
-            Xscale = 50  # Fs1022976 - 6 bit 2 Ch
-            #Dfreq = 250e3 # Fs1022976 - 6 bit 2 Ch
-            Dfreq = 1.0e6 # Fs32735232 - 6 bit 2 Ch
+            Xscale = 81  # Fs1022976 - 6 bit 2 Ch
+            #Xscale = 50  # Fs1022976 - 6 bit 2 Ch
+            Dfreq = 192e3 # Fs1022976 - 6 bit 2 Ch
+            #Dfreq = 1.0e6 # Fs32735232 - 6 bit 2 Ch
         elif QConfig == qs.w_16bit_2ch_SPICE:
             Xscale = 50  # carrier to dither ratio (between 0% and 100%)
             Dfreq = 250e3 # Fs1022976 - 16 bit 2 Ch
@@ -518,7 +512,8 @@ match SC.lin.method:
         else:
             sys.exit("Invalid channel config. for periodic dithering.")
 
-        X = (Xscale/100)*Xcs + (Dscale/100)*Dp + Dq
+        #X = (Xscale/100)*Xcs + (Dscale/100)*Dp + Dq
+        X = (Xscale/100)*Xcs + (Dscale/100)*Dp
 
         Q = quantise_signal(X, Qstep, Qtype)
         C = generate_codes(Q, Nb, Qtype)  ##### output codes
@@ -756,56 +751,3 @@ with open(os.path.join(codes_d, config_f + '.pickle'), 'wb') as fout:  # marshal
 
 codes_f = codes_d + 'codes'
 np.save(codes_f, C)
-
-if False:
-    match SC.dac.model:
-        case dm.STATIC:  # use static non-linear quantiser model to simulate DAC
-            if SAVE_CODES_TO_FILE:
-                outfile = 'generated_codes/' + str(SC.lin).replace(" ", "_")
-                np.save(outfile, C)
-                if SAVE_CODES_TO_FILE_AND_STOP:
-                    sys.exit('Codes saved, stopping.')
-            
-            ML = get_measured_levels(QConfig, SC.lin.method)
-            YM = generate_dac_output(C.astype(int), ML)  # using measured or randomised levels
-            tm = t[0:YM.size]
-
-        case dm.SPICE:  # use SPICE to simulate DAC output
-            timestamp = datetime.datetime.now().strftime("%Y%m%dT%H%M%S")
-            outdirname = str(SC.lin).replace(" ", "_") + '_' + timestamp
-
-            outdir = 'spice_sim/output/' + outdirname + '/'
-
-            if os.path.exists(outdir):
-                print('Putting output files in existing directory: ' + outdirname)
-            else:
-                os.mkdir(outdir)
-            
-            configf = 'sim_config'
-            with open(os.path.join(outdir, configf + '.txt'), 'w') as fout:
-                fout.write(SC.__str__())
-
-            with open(os.path.join(outdir, configf + '.pickle'), 'wb') as fout:
-                pickle.dump(SC, fout)
-            
-            spicef_list = []
-            outputf_list = []
-            
-            if QConfig == qs.w_6bit_2ch_SPICE or QConfig == qs.w_16bit_2ch_SPICE or QConfig == qs.w_10bit_2ch_SPICE:
-                SEPARATE_FILE_PER_CHANNEL = False
-            else:
-                SEPARATE_FILE_PER_CHANNEL = True
-            
-            if SEPARATE_FILE_PER_CHANNEL:
-                for k in range(0,Nch):
-                    c = C[k,:]
-                    seed = k + 1
-                    spicef, outputf = gen_spice_sim_file(c, Nb, t, Ts, QConfig, outdir, seed, k)
-                    spicef_list.append(spicef)
-                    outputf_list.append(outputf)
-            else:
-                spicef, outputf = gen_spice_sim_file(C, Nb, t, Ts, QConfig, outdir)
-                spicef_list.append(spicef)  # list with 1 entry
-                outputf_list.append(outputf)
-
-# %%

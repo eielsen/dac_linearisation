@@ -214,3 +214,68 @@ Ks =
 # ax1.set_xlabel('frequency [Hz]')
 # ax1.set_ylabel('PSD [V**2/Hz]')
 # plt.show()
+
+
+PLOTS = True
+PLOT_CURVE_FIT = True
+SAVE_CODES_TO_FILE_AND_STOP = False
+#SAVE_CODES_TO_FILE_AND_STOP = True
+SAVE_CODES_TO_FILE = True
+#SAVE_CODES_TO_FILE = True
+run_SPICE = False
+
+if False:
+    match SC.dac.model:
+        case dm.STATIC:  # use static non-linear quantiser model to simulate DAC
+            if SAVE_CODES_TO_FILE:
+                outfile = 'generated_codes/' + str(SC.lin).replace(" ", "_")
+                np.save(outfile, C)
+                if SAVE_CODES_TO_FILE_AND_STOP:
+                    sys.exit('Codes saved, stopping.')
+            
+            ML = get_measured_levels(QConfig, SC.lin.method)
+            YM = generate_dac_output(C.astype(int), ML)  # using measured or randomised levels
+            tm = t[0:YM.size]
+
+        case dm.SPICE:  # use SPICE to simulate DAC output
+            timestamp = datetime.datetime.now().strftime("%Y%m%dT%H%M%S")
+            outdirname = str(SC.lin).replace(" ", "_") + '_' + timestamp
+
+            outdir = 'spice_sim/output/' + outdirname + '/'
+
+            if os.path.exists(outdir):
+                print('Putting output files in existing directory: ' + outdirname)
+            else:
+                os.mkdir(outdir)
+            
+            configf = 'sim_config'
+            with open(os.path.join(outdir, configf + '.txt'), 'w') as fout:
+                fout.write(SC.__str__())
+
+            with open(os.path.join(outdir, configf + '.pickle'), 'wb') as fout:
+                pickle.dump(SC, fout)
+            
+            spicef_list = []
+            outputf_list = []
+            
+            if QConfig == qs.w_6bit_2ch_SPICE or QConfig == qs.w_16bit_2ch_SPICE or QConfig == qs.w_10bit_2ch_SPICE:
+                SEPARATE_FILE_PER_CHANNEL = False
+            else:
+                SEPARATE_FILE_PER_CHANNEL = True
+            
+            if SEPARATE_FILE_PER_CHANNEL:
+                for k in range(0,Nch):
+                    c = C[k,:]
+                    seed = k + 1
+                    spicef, outputf = gen_spice_sim_file(c, Nb, t, Ts, QConfig, outdir, seed, k)
+                    spicef_list.append(spicef)
+                    outputf_list.append(outputf)
+            else:
+                spicef, outputf = gen_spice_sim_file(C, Nb, t, Ts, QConfig, outdir)
+                spicef_list.append(spicef)  # list with 1 entry
+                outputf_list.append(outputf)
+
+# %%
+
+
+

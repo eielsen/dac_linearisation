@@ -178,7 +178,9 @@ def get_measured_levels(QConfig, lmethod=lm.BASELINE):
         ML - measured levels (rows corresponds to channels)
     """
 
-    inpath = 'measurements_and_data'
+    from pathlib import Path
+    inpath = Path(__file__).parent / '../measurements_and_data'  # absolute path
+    #inpath = '../measurements_and_data'
     infile = ''
 
     match QConfig:
@@ -262,6 +264,8 @@ def get_measured_levels(QConfig, lmethod=lm.BASELINE):
         case qs.w_10bit_2ch_SPICE:
             infile = 'cs_dac_10bit_2ch_DC_levels.npy'
     
+    print('Opening {}'.format(os.path.join(inpath, infile)))
+
     if os.path.exists(os.path.join(inpath, infile)):
         ML = np.load(os.path.join(inpath, infile))
     else:  # can't recover from this

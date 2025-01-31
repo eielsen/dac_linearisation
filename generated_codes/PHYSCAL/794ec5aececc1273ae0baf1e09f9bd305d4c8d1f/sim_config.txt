@@ -1,6 +1,6 @@
 9
-BASELINE
-spice
+PHYSCAL
+static
 Fs=1M
 Fc=100k
 Nf=3
