@@ -100,6 +100,7 @@ def run_static_model_and_post_processing(METHOD_CHOICE, hash_stamp):
     print(K)
 
     ym = np.sum(K*YM, 0)
+    t = t[0:len(ym)]
 
     TRANSOFF = np.floor(1*Fs/Fx).astype(int)  # remove transient effects from output
 

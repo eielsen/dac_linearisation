@@ -7,8 +7,9 @@
 @license: BSD 3-Clause
 """
 
-%reload_ext autoreload
-%autoreload 2
+# %%
+# %reload_ext autoreload
+# %autoreload 2
 
 # Imports
 import sys
@@ -54,7 +55,7 @@ from run_static_model_and_post_processing import run_static_model_and_post_proce
 
 #%% Configure DAC and test conditions
 
-METHOD_CHOICE = 7
+METHOD_CHOICE = 4
 FS_CHOICE = 4
 SINAD_COMP = 1
 
@@ -112,7 +113,7 @@ match FS_CHOICE:
 Ts = 1/Fs  # sampling time
 
 ##### Set DAC circuit model
-match 7:
+match 5:
     case 1: QConfig = qs.w_6bit  # "ideal" model (no circuit sim.)
     case 2: QConfig = qs.w_16bit_SPICE
     case 3: QConfig = qs.w_16bit_ARTI
@@ -302,7 +303,10 @@ match SC.lin.method:
                 else:
                     sys.exit('SHPD: Missing config.')
             case  qs.w_6bit_ARTI:
-                if Fs == 65470464:
+                if Fs == 1022976:
+                    Xscale = 50
+                    Fc_hf = 200e3
+                elif Fs == 65470464:
                     Xscale = 20
                     Fc_hf = 200e3
                 elif Fs in [209715200, 226719135.13513514400, 261881856]:
@@ -562,7 +566,7 @@ match SC.lin.method:
             sys.exit('Fix qconfig')
 
         Xscale = (100-HEADROOM)/100
-        Xcs = Xscale*Xcs  # input
+        # Xcs = Xscale*Xcs  # input
 
         SC.ref_scale = Xscale  # save param.
 
@@ -578,7 +582,7 @@ match SC.lin.method:
         # Adding some "measurement/model error" in the levels
         if QConfig in [qs.w_16bit_SPICE, qs.w_16bit_ARTI, qs.w_16bit_2ch_SPICE, qs.w_6bit_ZTC_ARTI, qs.w_10bit_ZTC_ARTI]:
             ML_err_rng = Qstep  # 16 bit DAC
-        elif QConfig == [qs.w_6bit_ARTI, qs.w_6bit_2ch_SPICE, qs.w_10bit_ARTI]:
+        elif QConfig in [qs.w_6bit_ARTI, qs.w_6bit_2ch_SPICE, qs.w_10bit_ARTI]:
             ML_err_rng = Qstep/1024 # 6 bit DAC
         else:
             sys.exit('Unknown QConfig')
@@ -608,10 +612,14 @@ match SC.lin.method:
         # Quantiser model
         QMODEL = 2 #: 1 - no calibration, 2 - Calibration
 
-        # Run MPC
+        # Run MPC Binary variables
         MPC = MPC_BIN(Nb, Qstep, QMODEL, A1, B1, C1, D1)
         C= MPC.get_codes(N_PRED, Xcs, YQns, MLns_E)  ##### output codes
 
+
+        # Run MPC integer variables Scaled
+        # MPC = MPC(Nb, Qstep, QMODEL, A1, B1, C1, D1)
+        # C= MPC.get_codes(N_PRED, Xcs, YQns, MLns_E)  ##### output codes
         # Slice time samples based on the size of C
         t = t[0:C.size]
 

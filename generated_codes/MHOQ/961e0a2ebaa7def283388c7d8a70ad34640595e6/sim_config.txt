@@ -1,0 +1,10 @@
+7
+MHOQ
+static
+Fs=1M
+Fc=100k
+Nf=3
+Xs=850m
+Fx=1k
+Ncyc=7
+Nch=1
