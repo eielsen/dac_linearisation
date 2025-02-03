@@ -55,6 +55,7 @@ from run_static_model_and_post_processing import run_static_model_and_post_proce
 
 #%% Configure DAC and test conditions
 
+METHOD_CHOICE = 7
 METHOD_CHOICE = 4
 FS_CHOICE = 4
 SINAD_COMP = 1
