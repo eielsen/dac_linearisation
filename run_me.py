@@ -50,12 +50,15 @@ from utils.inl_processing import get_physcal_gain
 
 from utils.spice_utils import run_spice_sim, run_spice_sim_parallel, gen_spice_sim_file, read_spice_bin_file, process_sim_output
 
+from run_static_model_and_post_processing import run_static_model_and_post_processing
 
 #%% Configure DAC and test conditions
 
-METHOD_CHOICE = 6
+METHOD_CHOICE = 7
 FS_CHOICE = 4
 SINAD_COMP = 1
+
+PLOTS = 1
 
 # Test/reference signal spec. (to be recovered on the output)
 Xcs_SCALE = 100  # %
@@ -81,7 +84,7 @@ match METHOD_CHOICE:
 
 lin = lm(RUN_LM)
 
-##### DAC MODEL CHOICE (looks like this can be deprecated; set to 1 for now)
+##### DAC MODEL CHOICE (TODO: consider deprecating)
 DAC_MODEL_CHOICE = 1
 match DAC_MODEL_CHOICE:
     case 1: dac = dm(dm.STATIC)  # use static non-linear quantiser model to simulate DAC
@@ -121,6 +124,8 @@ match 7:
     case 9: QConfig = qs.w_10bit_2ch_SPICE
 
 Nb, Mq, Vmin, Vmax, Rng, Qstep, YQ, Qtype = quantiser_configurations(QConfig)
+
+print(QConfig)
 
 # Generate time vector
 match 2:
@@ -242,7 +247,10 @@ match SC.lin.method:
         elif QConfig == qs.w_16bit_6t_ARTI: HEADROOM = 1  # 16 bit DAC
         else: sys.exit('NSDCAL: Missing config.')
 
-        X = ((100-HEADROOM)/100)*Xcs  # input
+        Xscale = (100-HEADROOM)/100
+        X = Xscale*Xcs  # input
+
+        SC.ref_scale = Xscale  # save param.
         
         ML = get_measured_levels(QConfig, SC.lin.method) # get_measured_levels(lm.NSDCAL)  # TODO: Redundant re-calling below in this case
 
@@ -253,7 +261,7 @@ match SC.lin.method:
         if QConfig in [qs.w_16bit_SPICE, qs.w_16bit_ARTI, qs.w_16bit_2ch_SPICE, qs.w_16bit_6t_ARTI]:
             ML_err_rng = Qstep  # 16 bit DAC
         elif QConfig in [qs.w_6bit_ARTI, qs.w_6bit_2ch_SPICE, qs.w_10bit_ARTI, qs.w_6bit_ZTC_ARTI, qs.w_10bit_ZTC_ARTI]:
-            ML_err_rng = Qstep/pow(2, 10) # 6 bit DAC
+            ML_err_rng = Qstep/pow(2, 10) # 6 bit DAC (try to emulate 16-bit measurements (add 10 bit))
             #ML_err_rng = 0 # 6 bit DAC
         else:
             sys.exit('NSDCAL: Unknown QConfig for ML error')
@@ -354,6 +362,8 @@ match SC.lin.method:
                 sys.exit('SHPD: Missing config.')
 
         Dscale = 100 - Xscale  # dither to carrier ratio
+
+        SC.ref_scale = Xscale  # save param.
 
         match 3:
             case 1:
@@ -484,9 +494,9 @@ match SC.lin.method:
             else:
                 sys.exit('PHFD: Missing config.')
         elif QConfig == qs.w_6bit_2ch_SPICE:
-            Xscale = 81  # Fs1022976 - 6 bit 2 Ch
+            Xscale = 82  # Fs1022976 - 6 bit 2 Ch
             #Xscale = 50  # Fs1022976 - 6 bit 2 Ch
-            Dfreq = 192e3 # Fs1022976 - 6 bit 2 Ch
+            Dfreq = 200e3 # Fs1022976 - 6 bit 2 Ch
             #Dfreq = 1.0e6 # Fs32735232 - 6 bit 2 Ch
         elif QConfig == qs.w_16bit_2ch_SPICE:
             Xscale = 50  # carrier to dither ratio (between 0% and 100%)
@@ -499,10 +509,12 @@ match SC.lin.method:
         
         Dscale = 100 - Xscale  # dither to carrier ratio
         
+        SC.ref_scale = Xscale  # save param.
+
         Dadf = dither_generation.adf.uniform  # amplitude distr. funct. (ADF)
         # Generate periodic dither
         Dmaxamp = Rng/2  # maximum dither amplitude (volt)
-        dp = 0.99*Dmaxamp*dither_generation.gen_periodic(t, Dfreq, Dadf)
+        dp = 0.975*Dmaxamp*dither_generation.gen_periodic(t, Dfreq, Dadf)
         
         # Opposite polarity for HF dither for pri. and sec. channel
         if Nch == 2:
@@ -549,7 +561,10 @@ match SC.lin.method:
         else:
             sys.exit('Fix qconfig')
 
-        Xcs = ((100-HEADROOM)/100)*Xcs  # input
+        Xscale = (100-HEADROOM)/100
+        Xcs = Xscale*Xcs  # input
+
+        SC.ref_scale = Xscale  # save param.
 
         # Ideal Levels
         YQns = YQ[0]
@@ -627,8 +642,11 @@ match SC.lin.method:
         else:
             sys.exit('Fix qconfig')
 
-        X = ((100-HEADROOM)/100)*Xcs  # input
-        
+        Xscale = (100-HEADROOM)/100
+        X = Xscale*Xcs  # input
+
+        SC.ref_scale = Xscale  # save param.
+
         # Ideal Levels
         YQns = YQ[0]
 
@@ -751,3 +769,6 @@ with open(os.path.join(codes_d, config_f + '.pickle'), 'wb') as fout:  # marshal
 
 codes_f = codes_d + 'codes'
 np.save(codes_f, C)
+
+if (DAC_MODEL_CHOICE == 1):
+    run_static_model_and_post_processing(METHOD_CHOICE, hash_stamp)
