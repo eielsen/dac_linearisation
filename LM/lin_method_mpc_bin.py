@@ -1,7 +1,7 @@
 
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""Run DAC simulations using various linearisation methods
+"""Run MPC method.
 
 @author: Bikash Adhikari
 @date: 22.02.2024
@@ -15,7 +15,6 @@ import random
 import gurobipy as gp
 from gurobipy import GRB
 import tqdm
-
 
 
 class MPC_BIN:
@@ -66,6 +65,8 @@ class MPC_BIN:
 
         # Initial state
         init_state = np.zeros(x_dim).reshape(-1,1)
+
+        
 
         # MPC loop
         for j in tqdm.tqdm(range(len_MPC)):
