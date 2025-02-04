@@ -8,8 +8,8 @@
 """
 
 # %%
-# %reload_ext autoreload
-# %autoreload 2
+%reload_ext autoreload
+%autoreload 2
 
 # Imports
 import sys
@@ -56,7 +56,7 @@ from run_static_model_and_post_processing import run_static_model_and_post_proce
 #%% Configure DAC and test conditions
 
 METHOD_CHOICE = 7
-FS_CHOICE = 6
+FS_CHOICE = 4
 SINAD_COMP = 1
 
 PLOTS = 1
