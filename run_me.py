@@ -55,7 +55,7 @@ from run_static_model_and_post_processing import run_static_model_and_post_proce
 
 #%% Configure DAC and test conditions
 
-METHOD_CHOICE = 4
+METHOD_CHOICE = 7
 FS_CHOICE = 4
 SINAD_COMP = 1
 
@@ -113,7 +113,7 @@ match FS_CHOICE:
 Ts = 1/Fs  # sampling time
 
 ##### Set DAC circuit model
-match 5:
+match 6:
     case 1: QConfig = qs.w_6bit  # "ideal" model (no circuit sim.)
     case 2: QConfig = qs.w_16bit_SPICE
     case 3: QConfig = qs.w_16bit_ARTI
@@ -128,6 +128,8 @@ Nb, Mq, Vmin, Vmax, Rng, Qstep, YQ, Qtype = quantiser_configurations(QConfig)
 
 print(QConfig)
 
+    
+# %%
 # Generate time vector
 match 2:
     case 1:  # specify duration as number of samples and find number of periods
@@ -539,7 +541,7 @@ match SC.lin.method:
 
     case lm.MPC | lm.MHOQ:  # model predictive control (with INL model)
         Nch = 1
-        
+
         # Quantisation dither
         DITHER_ON = 0
         Dq = dither_generation.gen_stochastic(t.size, Nch, Qstep, dither_generation.pdf.triangular_hp)
@@ -565,19 +567,38 @@ match SC.lin.method:
         else:
             sys.exit('Fix qconfig')
 
-        Xscale = (100-HEADROOM)/100
+        # Xscale = (100-HEADROOM)/100
+        Xscale = 100
         # Xcs = Xscale*Xcs  # input
 
         SC.ref_scale = Xscale  # save param.
 
         # Ideal Levels
-        YQns = YQ[0]
+        # YQns = YQ[0]
         
         # Unsigned integers representing the level codes
-        level_codes = np.arange(0, 2**Nb,1) # Levels:  0, 1, 2, .... 2^(Nb)
+        # level_codes = np.arange(0, 2**Nb,1) # Levels:  0, 1, 2, .... 2^(Nb)
 
+        # ML = get_measured_levels(QConfig, SC.lin.method)
+        # MLns = ML[0]
+
+
+        # Scaling for MPC
+        Vmin_mpc = Vmin/np.abs(Vmax)
+        Vmax_mpc = Vmax/np.abs(Vmax)
+        Rng_mpc = Vmax_mpc - Vmin_mpc
+        Mq_mpc = 2**Nb-1
+        Qstep_mpc = Rng_mpc/Mq_mpc
+        YQ_mpc = np.linspace(Vmin_mpc, Vmax_mpc, Mq_mpc+1)
+        YQ_mpc = np.reshape(YQ_mpc, (-1, YQ_mpc.shape[0]))  # generate 2d array with 1 row
+
+        YQns = YQ_mpc[0]
         ML = get_measured_levels(QConfig, SC.lin.method)
         MLns = ML[0]
+        MLns = MLns/np.abs(Vmax)
+        Qstep = Qstep_mpc
+        Xcs = Xcs/np.abs(Vmax)
+
 
         # Adding some "measurement/model error" in the levels
         if QConfig in [qs.w_16bit_SPICE, qs.w_16bit_ARTI, qs.w_16bit_2ch_SPICE, qs.w_6bit_ZTC_ARTI, qs.w_10bit_ZTC_ARTI]:
