@@ -29,7 +29,7 @@ from utils.spice_utils import run_spice_sim, run_spice_sim_parallel, gen_spice_s
 from utils.inl_processing import get_physcal_gain
 
 # choose method
-METHOD_CHOICE = 4
+METHOD_CHOICE = 1
 match METHOD_CHOICE:
     case 1: RUN_LM = lm.BASELINE
     case 2: RUN_LM = lm.PHYSCAL

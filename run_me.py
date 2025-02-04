@@ -55,9 +55,8 @@ from run_static_model_and_post_processing import run_static_model_and_post_proce
 
 #%% Configure DAC and test conditions
 
-METHOD_CHOICE = 3
 METHOD_CHOICE = 7
-FS_CHOICE = 4
+FS_CHOICE = 6
 SINAD_COMP = 1
 
 PLOTS = 1
@@ -178,13 +177,13 @@ match SC.lin.method:
 
         # Add headroom for quantisation dither if needed
         HEADROOM = 0*(Qstep/Rng)
-        Xscale = (100-HEADROOM)/100
+        Xscale = 100 - HEADROOM
         SC.ref_scale = Xscale  # save scale param.
 
         # Repeat reference on all channels
         Xref = matlib.repmat(Xref, Nch, 1)
 
-        X = Xscale*Xref + Dq  # quantiser input
+        X = (Xscale/100)*Xref + Dq  # quantiser input
 
         Q = quantise_signal(X, Qstep, Qtype)  # uniform quantiser
         C = generate_codes(Q, Nb, Qtype)  ##### output codes
@@ -203,10 +202,10 @@ match SC.lin.method:
 
         # Add headroom for quantisation dither if needed
         HEADROOM = 0*(Qstep/Rng)
-        Xscale = (100-HEADROOM)/100
+        Xscale = 100 - HEADROOM
         SC.ref_scale = Xscale  # save scale param.
 
-        X = Xscale*Xref + Dq  # quantiser input
+        X = (Xscale/100)*Xref + Dq  # quantiser input
         
         # Assume look-up table has been generated for a given DAC
         lutfile = os.path.join('generated_physcal_luts', 'LUTcal_' + str(QConfig) + '.npy')
@@ -236,10 +235,10 @@ match SC.lin.method:
 
         # Add headroom for quantisation dither if needed
         HEADROOM = 0*(Qstep/Rng)
-        Xscale = (100-HEADROOM)/100
+        Xscale = 100 - HEADROOM
         SC.ref_scale = Xscale  # save scale param.
 
-        X = Xscale*Xref + Dq  # input
+        X = (Xscale/100)*Xref + Dq  # input
 
         C = dem(X, Rng, Nb)  ##### output codes
             
@@ -274,10 +273,10 @@ match SC.lin.method:
         elif QConfig == qs.w_16bit_6t_ARTI: HEADROOM = 1  # 16 bit DAC
         else: sys.exit('NSDCAL: Missing config.')
 
-        Xscale = (100-HEADROOM)/100
-        X = Xscale*Xref  # input
+        Xscale = 100 - HEADROOM
+        X = (Xscale/100)*Xref  # input
 
-        SC.ref_scale = Xscale  # save param.
+        SC.ref_scale = Xscale  # save scale param.
         
         ML = get_measured_levels(QConfig, SC.lin.method) # get_measured_levels(lm.NSDCAL)  # TODO: Redundant re-calling below in this case
 
@@ -326,6 +325,9 @@ match SC.lin.method:
                 if Fs == 1022976:
                     Xscale = 50
                     Fc_hf = 250e3
+                elif Fs == 32735232:
+                    Xscale = 50
+                    Fc_hf = 1500e3
                 else:
                     sys.exit('SHPD: Missing config.')
             case  qs.w_6bit_ARTI:
@@ -495,7 +497,8 @@ match SC.lin.method:
         # Repeat carrier on all channels
         Xref = matlib.repmat(Xref, Nch, 1)
 
-        # Optimising scale and freq. using grid search (elsewhere; TODO: convert MATLAB code for grid search)
+        # Optimising scale and freq. using grid search
+        # (elsewhere; TODO: convert MATLAB code for grid search)
         # Scale: carrier to dither ratio (between 0% and 100%)
         if QConfig == qs.w_16bit_SPICE:
             Xscale = 50  # carrier to dither ratio (between 0% and 100%)
@@ -524,10 +527,10 @@ match SC.lin.method:
             else:
                 sys.exit('PHFD: Missing config.')
         elif QConfig == qs.w_6bit_2ch_SPICE:
-            Xscale = 82  # Fs1022976 - 6 bit 2 Ch
-            #Xscale = 50  # Fs1022976 - 6 bit 2 Ch
-            Dfreq = 200e3 # Fs1022976 - 6 bit 2 Ch
-            #Dfreq = 1.0e6 # Fs32735232 - 6 bit 2 Ch
+            #Xscale = 82  # Fs1022976 - 6 bit 2 Ch
+            Xscale = 74  # Fs32735232 - 6 bit 2 Ch
+            #Dfreq = 200e3 # Fs1022976 - 6 bit 2 Ch
+            Dfreq = 1.0e6 # Fs32735232 - 6 bit 2 Ch
         elif QConfig == qs.w_16bit_2ch_SPICE:
             Xscale = 50  # carrier to dither ratio (between 0% and 100%)
             Dfreq = 250e3 # Fs1022976 - 16 bit 2 Ch
@@ -572,27 +575,18 @@ match SC.lin.method:
         Dq = DITHER_ON*Dq[0]  # convert to 1d, add/remove dither
 
         # Also need room for re-quantisation dither
-        if QConfig == qs.w_16bit_SPICE:
-            HEADROOM = 10  # 16 bit DAC
-        elif QConfig == qs.w_6bit_ARTI:
-            HEADROOM = 15  # 6 bit DAC
-        elif QConfig == qs.w_6bit_ZTC_ARTI:
-            HEADROOM = 15  # 6 bit DAC
-        elif QConfig == qs.w_16bit_ARTI:
-            HEADROOM = 1  # 16 bit DAC
-        elif QConfig == qs.w_6bit_2ch_SPICE:
-            HEADROOM = 0*10  # 6 bit DAC
-        elif QConfig == qs.w_16bit_2ch_SPICE:
-            HEADROOM = 10  # 16 bit DAC
-        elif QConfig == qs.w_10bit_ARTI:
-            HEADROOM = 10  # 16 bit DAC
-        elif QConfig == qs.w_10bit_ZTC_ARTI:
-            HEADROOM = 10  # 16 bit DAC
-        else:
-            sys.exit('Fix qconfig')
+        if QConfig == qs.w_16bit_SPICE: HEADROOM = 10  # 16 bit DAC
+        elif QConfig == qs.w_6bit_ARTI: HEADROOM = 15  # 6 bit DAC
+        elif QConfig == qs.w_6bit_ZTC_ARTI: HEADROOM = 15  # 6 bit DAC
+        elif QConfig == qs.w_16bit_ARTI: HEADROOM = 1  # 16 bit DAC
+        elif QConfig == qs.w_6bit_2ch_SPICE: HEADROOM = 0*10  # 6 bit DAC
+        elif QConfig == qs.w_16bit_2ch_SPICE: HEADROOM = 10  # 16 bit DAC
+        elif QConfig == qs.w_10bit_ARTI: HEADROOM = 10  # 16 bit DAC
+        elif QConfig == qs.w_10bit_ZTC_ARTI: HEADROOM = 10  # 16 bit DAC
+        else: sys.exit('MPC: Missing config.')
 
-        Xscale = (100-HEADROOM)/100
-        X = Xscale*Xref  # input
+        Xscale = 100 - HEADROOM
+        X = (Xscale/100)*Xref  # input
 
         SC.ref_scale = Xscale  # save param.
 
@@ -620,7 +614,7 @@ match SC.lin.method:
         MLns = ML[0]
         MLns = MLns/np.abs(Vmax)
         Qstep = Qstep_mpc
-        Xref = Xref/np.abs(Vmax)
+        X = X/np.abs(Vmax)
 
 
         # Adding some "measurement/model error" in the levels
@@ -658,7 +652,7 @@ match SC.lin.method:
 
         # Run MPC Binary variables
         MPC = MPC_BIN(Nb, Qstep, QMODEL, A1, B1, C1, D1)
-        C = MPC.get_codes(N_PRED, Xref, YQns, MLns_E)  ##### output codes
+        C = MPC.get_codes(N_PRED, X, YQns, MLns_E)  ##### output codes
 
 
         # Run MPC integer variables Scaled
