@@ -55,7 +55,7 @@ from run_static_model_and_post_processing import run_static_model_and_post_proce
 
 #%% Configure DAC and test conditions
 
-METHOD_CHOICE = 4
+METHOD_CHOICE = 7
 FS_CHOICE = 4
 SINAD_COMP = 1
 
@@ -113,7 +113,7 @@ match FS_CHOICE:
 Ts = 1/Fs  # sampling time
 
 ##### Set DAC circuit model
-match 6:
+match 7:
     case 1: QConfig = qs.w_6bit  # "ideal" model (no circuit sim.)
     case 2: QConfig = qs.w_16bit_SPICE
     case 3: QConfig = qs.w_16bit_ARTI
