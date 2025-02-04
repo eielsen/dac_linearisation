@@ -28,6 +28,11 @@ DAC config  Method  Model   Fs     Fc      X scale  Fx    ENOB
 9           DEM     static  1.02M  100.0k  100.0%   1.0k  4.938
 ----------  ------  ------  -----  ------  -------  ----  -----
 
+----------  ------  ------  -----  ------  -------  ----  -----
+DAC config  Method  Model   Fs     Fc      X scale  Fx    ENOB
+9           MHOQ    static  1.02M  100.0k  100.0%   1.0k  7.936
+----------  ------  ------  -----  ------  -------  ----  -----
+
 
 
 

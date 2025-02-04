@@ -55,6 +55,7 @@ from run_static_model_and_post_processing import run_static_model_and_post_proce
 
 #%% Configure DAC and test conditions
 
+METHOD_CHOICE = 3
 METHOD_CHOICE = 7
 FS_CHOICE = 4
 SINAD_COMP = 1
@@ -62,8 +63,8 @@ SINAD_COMP = 1
 PLOTS = 1
 
 # Test/reference signal spec. (to be recovered on the output)
-Xcs_SCALE = 100  # %
-Xcs_FREQ = 1000  # Hz
+Xref_SCALE = 100  # %
+Xref_FREQ = 1000  # Hz
 
 # Output low-pass filter configuration
 Fc_lp = 100e3  # cut-off frequency in hertz
@@ -134,7 +135,7 @@ print(QConfig)
 match 2:
     case 1:  # specify duration as number of samples and find number of periods
         Nts = 1e6  # no. of time samples
-        Np = np.ceil(Xcs_FREQ*s*Nts).astype(int)  # no. of periods for carrier
+        Np = np.ceil(Xref_FREQ*s*Nts).astype(int)  # no. of periods for carrier
     case 2:  # specify duration as number of periods of carrier
         if SINAD_COMP_SEL == sinad_comp.FFT:
             Np = 200  # no. of periods for carrier
@@ -144,15 +145,18 @@ match 2:
 Npt = 1  # no. of test signal periods to use to account for transients
 Ncyc = Np + 2*Npt
 
-t_end = Ncyc/Xcs_FREQ  # time vector duration
+t_end = Ncyc/Xref_FREQ  # time vector duration
 t = np.arange(0, t_end, Ts)  # time vector
 
-SC = sim_config(QConfig, lin, dac, Fs, t, Fc_lp, N_lp, Xcs_SCALE, Xcs_FREQ, Ncyc)
+# TODO: ref_scale is misleading; should be % of baseline full range possible for a method
+# setting ref_scale=0, to be updated per method
+SC = sim_config(QConfig, lin, dac, Fs, t, Fc_lp, N_lp, 0, Xref_FREQ, Ncyc)
 
 # Generate test/reference signal
 SIGNAL_MAXAMP = Rng/2 - Qstep  # make headroom for noise dither (see below)
 SIGNAL_OFFSET = -Qstep/2  # try to center given quantiser type
-Xcs = test_signal(Xcs_SCALE, SIGNAL_MAXAMP, Xcs_FREQ, SIGNAL_OFFSET, t)
+Xref = test_signal(Xref_SCALE, SIGNAL_MAXAMP, Xref_FREQ, SIGNAL_OFFSET, t)
+Xref = (Xref_SCALE/100)*Xref  # scale reference (TODO: 100% here should be largest possible for each method)
 
 # %% Configure and run linearisation methods
 # Each method should produce a vector of codes 'C'
@@ -168,12 +172,19 @@ match SC.lin.method:
             Nch = 1
         
         # Quantisation dither (eliminate harm. distortion from quantisation)
+        Q_DITHER_ON = 1
         Dq = dither_generation.gen_stochastic(t.size, Nch, Qstep, dither_generation.pdf.triangular_hp)
+        Dq = Q_DITHER_ON*Dq
 
-        # Repeat carrier on all channels
-        Xcs = matlib.repmat(Xcs, Nch, 1)
+        # Add headroom for quantisation dither if needed
+        HEADROOM = 0*(Qstep/Rng)
+        Xscale = (100-HEADROOM)/100
+        SC.ref_scale = Xscale  # save scale param.
 
-        X = Xcs + Dq  # quantiser input
+        # Repeat reference on all channels
+        Xref = matlib.repmat(Xref, Nch, 1)
+
+        X = Xscale*Xref + Dq  # quantiser input
 
         Q = quantise_signal(X, Qstep, Qtype)  # uniform quantiser
         C = generate_codes(Q, Nb, Qtype)  ##### output codes
@@ -185,10 +196,17 @@ match SC.lin.method:
         # Needs INL measurements and a calibration step.
 
         # Quantisation dither
+        Q_DITHER_ON = 1
         Nch_in = 1  # effectively 1 channel input (with 1 DAC pair)
         Dq = dither_generation.gen_stochastic(t.size, Nch_in, Qstep, dither_generation.pdf.triangular_hp)
+        Dq = Q_DITHER_ON*Dq
 
-        X = Xcs + Dq  # quantiser input
+        # Add headroom for quantisation dither if needed
+        HEADROOM = 0*(Qstep/Rng)
+        Xscale = (100-HEADROOM)/100
+        SC.ref_scale = Xscale  # save scale param.
+
+        X = Xscale*Xref + Dq  # quantiser input
         
         # Assume look-up table has been generated for a given DAC
         lutfile = os.path.join('generated_physcal_luts', 'LUTcal_' + str(QConfig) + '.npy')
@@ -212,10 +230,16 @@ match SC.lin.method:
         Nch = 1  # DEM effectively has 1 channel input
 
         # Quantisation dither
+        Q_DITHER_ON = 1
         Dq = dither_generation.gen_stochastic(t.size, Nch, Qstep, dither_generation.pdf.triangular_hp)
-        Dq = Dq[0]  # convert to 1d
+        Dq = Q_DITHER_ON*Dq[0]  # convert to 1d
 
-        X = Xcs + Dq  # input
+        # Add headroom for quantisation dither if needed
+        HEADROOM = 0*(Qstep/Rng)
+        Xscale = (100-HEADROOM)/100
+        SC.ref_scale = Xscale  # save scale param.
+
+        X = Xscale*Xref + Dq  # input
 
         C = dem(X, Rng, Nb)  ##### output codes
             
@@ -232,9 +256,9 @@ match SC.lin.method:
         Nch = 1  # only supports a single channel (at this point)
 
         # Re-quantisation dither
-        DITHER_ON = 1
+        Q_DITHER_ON = 1
         Dq = dither_generation.gen_stochastic(t.size, Nch, Qstep, dither_generation.pdf.triangular_hp)
-        Dq = DITHER_ON*Dq[0]  # convert to 1d, add/remove dither
+        Dq = Q_DITHER_ON*Dq[0]  # convert to 1d, add/remove dither
         
         # The feedback generates an actuation signal that may cause the
         # quantiser to saturate if there is no "headroom"
@@ -251,7 +275,7 @@ match SC.lin.method:
         else: sys.exit('NSDCAL: Missing config.')
 
         Xscale = (100-HEADROOM)/100
-        X = Xscale*Xcs  # input
+        X = Xscale*Xref  # input
 
         SC.ref_scale = Xscale  # save param.
         
@@ -291,7 +315,7 @@ match SC.lin.method:
         Dq = dither_generation.gen_stochastic(t.size, Nch, Qstep, dither_generation.pdf.triangular_hp)
 
         # Repeat carrier on all channels
-        Xcs = matlib.repmat(Xcs, Nch, 1)
+        Xref = matlib.repmat(Xref, Nch, 1)
 
         # Large high-pass dither set-up
         #Xscale = 10  # carrier to dither ratio (between 0% and 100%)
@@ -436,7 +460,7 @@ match SC.lin.method:
         #     dsf = 2.*(dsf - np.min(dsf))/np.ptp(dsf) - 1
         #     Dsf[k,:] = dsf
 
-        X = (Xscale/100)*Xcs + (Dscale/100)*Dsf + Dq
+        X = (Xscale/100)*Xref + (Dscale/100)*Dsf + Dq
 
         print(np.max(X))
         print(Vmax)
@@ -469,7 +493,7 @@ match SC.lin.method:
         Dq = dither_generation.gen_stochastic(t.size, Nch, Qstep, dither_generation.pdf.triangular_hp)
 
         # Repeat carrier on all channels
-        Xcs = matlib.repmat(Xcs, Nch, 1)
+        Xref = matlib.repmat(Xref, Nch, 1)
 
         # Optimising scale and freq. using grid search (elsewhere; TODO: convert MATLAB code for grid search)
         # Scale: carrier to dither ratio (between 0% and 100%)
@@ -531,7 +555,7 @@ match SC.lin.method:
             sys.exit("Invalid channel config. for periodic dithering.")
 
         #X = (Xscale/100)*Xcs + (Dscale/100)*Dp + Dq
-        X = (Xscale/100)*Xcs + (Dscale/100)*Dp
+        X = (Xscale/100)*Xref + (Dscale/100)*Dp
 
         Q = quantise_signal(X, Qstep, Qtype)
         C = generate_codes(Q, Nb, Qtype)  ##### output codes
@@ -557,7 +581,7 @@ match SC.lin.method:
         elif QConfig == qs.w_16bit_ARTI:
             HEADROOM = 1  # 16 bit DAC
         elif QConfig == qs.w_6bit_2ch_SPICE:
-            HEADROOM = 10  # 6 bit DAC
+            HEADROOM = 0*10  # 6 bit DAC
         elif QConfig == qs.w_16bit_2ch_SPICE:
             HEADROOM = 10  # 16 bit DAC
         elif QConfig == qs.w_10bit_ARTI:
@@ -567,9 +591,8 @@ match SC.lin.method:
         else:
             sys.exit('Fix qconfig')
 
-        # Xscale = (100-HEADROOM)/100
-        Xscale = 100
-        # Xcs = Xscale*Xcs  # input
+        Xscale = (100-HEADROOM)/100
+        X = Xscale*Xref  # input
 
         SC.ref_scale = Xscale  # save param.
 
@@ -597,7 +620,7 @@ match SC.lin.method:
         MLns = ML[0]
         MLns = MLns/np.abs(Vmax)
         Qstep = Qstep_mpc
-        Xcs = Xcs/np.abs(Vmax)
+        Xref = Xref/np.abs(Vmax)
 
 
         # Adding some "measurement/model error" in the levels
@@ -635,7 +658,7 @@ match SC.lin.method:
 
         # Run MPC Binary variables
         MPC = MPC_BIN(Nb, Qstep, QMODEL, A1, B1, C1, D1)
-        C= MPC.get_codes(N_PRED, Xcs, YQns, MLns_E)  ##### output codes
+        C = MPC.get_codes(N_PRED, Xref, YQns, MLns_E)  ##### output codes
 
 
         # Run MPC integer variables Scaled
@@ -672,7 +695,7 @@ match SC.lin.method:
             sys.exit('Fix qconfig')
 
         Xscale = (100-HEADROOM)/100
-        X = Xscale*Xcs  # input
+        X = Xscale*Xref  # input
 
         SC.ref_scale = Xscale  # save param.
 
@@ -710,7 +733,7 @@ match SC.lin.method:
                 b1, a1 = signal.butter(N_lp, Wn)
                 l_dlti = signal.dlti(b1, a1, dt=Ts)
         
-        len_X = len(Xcs)
+        len_X = len(Xref)
         ft, fi = signal.dimpulse(l_dlti, n=2*len_X)
         
         # new updated ILC implementation
@@ -744,9 +767,9 @@ match SC.lin.method:
         #Dq = dither_generation.gen_stochastic(t.size, Nch, Qstep, dither_generation.pdf.triangular_hp)
 
         # Repeat carrier on all channels
-        Xcs = matlib.repmat(Xcs, Nch, 1)
+        Xref = matlib.repmat(Xref, Nch, 1)
 
-        X = Xcs #+ Dq  # quantiser input
+        X = Xref #+ Dq  # quantiser input
         x = X.squeeze()
 
         # Plant: Butterworth or Bessel reconstruction filter
