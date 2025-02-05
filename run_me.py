@@ -74,7 +74,7 @@ def test_signal(SCALE, MAXAMP, FREQ, OFFSET, t):
 N_PRED = 1 # prediction horizon
 
 ##### METHOD CHOICE - Choose which linearisation method you want to test
-METHOD_CHOICE = 1
+METHOD_CHOICE = 7
 match METHOD_CHOICE:
     case 1: RUN_LM = lm.BASELINE
     case 2: RUN_LM = lm.PHYSCAL
@@ -129,13 +129,13 @@ Xcs_FREQ = 1000  # Hz
 # QConfig = qws.w_6bit_ARTI
 QConfig = qws.w_6bit_ZTC_ARTI
 # QConfig = qws.w_10bit_ARTI
-# QConfig = qws.w_10bit_ZTC_ARTI
+QConfig = qws.w_10bit_ZTC_ARTI
 # QConfig = qws.w_6bit_2ch_SPICE
 # QConfig = qws.w_16bit_2ch_SPICE
 Nb, Mq, Vmin, Vmax, Rng, Qstep, YQ, Qtype = quantiser_configurations(QConfig)
 
-PLOTS = True
-PLOT_CURVE_FIT = True
+PLOTS = False
+PLOT_CURVE_FIT = False
 SAVE_CODES_TO_FILE_AND_STOP = False
 #SAVE_CODES_TO_FILE_AND_STOP = True
 SAVE_CODES_TO_FILE = True
@@ -283,7 +283,7 @@ match SC.lin.method:
             ML_err_rng = Qstep  # 16 bit DAC
         elif QConfig in [qws.w_6bit_ARTI, qws.w_6bit_2ch_SPICE, qws.w_10bit_ARTI, qws.w_6bit_ZTC_ARTI, qws.w_10bit_ZTC_ARTI]:
             ML_err_rng = Qstep/1024 # 6 bit DAC
-            ML_err_rng = Qstep/pow(2, 0) # 6 bit DAC
+            # ML_err_rng = Qstep/pow(2, 0) # 6 bit DAC
         else:
             sys.exit('NSDCAL: Unknown QConfig for ML error')
         
@@ -350,8 +350,8 @@ match SC.lin.method:
                 Xscale = 20
                 Fc_hf = 200e3
             elif Fs in [209715200, 226719135.13513514400]:
-                Xscale = 30
-                Fc_hf = 30.0e6
+                Xscale = 90
+                Fc_hf = 200e3
             elif Fs == 261881856:
                 Xscale = 10
                 Fc_hf = 0.20e6
