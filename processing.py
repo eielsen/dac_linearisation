@@ -1,5 +1,5 @@
-from utils.inl_processing import gen_physcal_lut, plot_inl
-from utils.quantiser_configurations import qws
+from utils.inl_processing import generate_physcal_lut, plot_inl
+from utils.quantiser_configurations import qs
 from utils.results import JSON_results
 from LM.lin_method_util import lm, dm
 
@@ -7,7 +7,7 @@ from LM.lin_method_util import lm, dm
 def update_JSON():
     JR = JSON_results()
 
-    DC = qws.w_10bit_ARTI
+    DC = qs.w_10bit_ARTI
     DM = dm.SPICE
     LM = lm.SHPD
     fs = 226719135.13513514400

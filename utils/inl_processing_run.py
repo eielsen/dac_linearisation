@@ -1,31 +1,31 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""Run INL processing
+"""Run INL processing for generating the look-up table (LUT) to be used with the physical calibration method.
 
 @author: Arnfinn Eielsen
 @date: 28.02.2024
 @license: BSD 3-Clause
 """
 
-# %reload_ext autoreload
-# %autoreload 2
+%reload_ext autoreload
+%autoreload 2
 
 import csv
-
 import numpy as np
-
 from matplotlib import pyplot as plt
 
-from inl_processing import gen_physcal_lut, plot_inl
-from utils.quantiser_configurations import qws
+import sys
+sys.path.append('../')
 
+from utils.inl_processing import generate_physcal_lut, plot_inl
+from utils.quantiser_configurations import qs
 from utils.spice_utils import run_spice_sim, read_spice_bin_file_with_most_recent_timestamp
 
 #gen_physcal_lut(QConfig=5, FConfig=3, SAVE_LUT=1) # Trond 16bit
 #gen_physcal_lut(QConfig=4, FConfig=2, SAVE_LUT=1)
 #gen_physcal_lut(QConfig=qws.w_6bit_ARTI, SAVE_LUT=1) # ARTI 6bit
 #gen_physcal_lut(QConfig=qws.w_16bit_ARTI, SAVE_LUT=1) # ARTI 6bit
-gen_physcal_lut(QConfig=qws.w_6bit_2ch_SPICE, SAVE_LUT=True) # Trond 2ch 6bit
+generate_physcal_lut(QConfig=qs.w_6bit_2ch_SPICE, SAVE_LUT=True) # Trond 2ch 6bit
 #gen_physcal_lut(QConfig=qws.w_16bit_2ch_SPICE, SAVE_LUT=True) # Trond 2ch 16bit
 #gen_physcal_lut(QConfig=qws.w_16bit_6t_ARTI, SAVE_LUT=True) # ARTI 16bit
 

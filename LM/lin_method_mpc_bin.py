@@ -1,7 +1,7 @@
 
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""Run DAC simulations using various linearisation methods
+"""Run MPC method.
 
 @author: Bikash Adhikari
 @date: 22.02.2024
@@ -15,7 +15,6 @@ import random
 import gurobipy as gp
 from gurobipy import GRB
 import tqdm
-
 
 
 class MPC_BIN:
@@ -67,10 +66,14 @@ class MPC_BIN:
         # Initial state
         init_state = np.zeros(x_dim).reshape(-1,1)
 
+        
+
         # MPC loop
         for j in tqdm.tqdm(range(len_MPC)):
-
-            m = gp.Model("MPC- INL")
+            env = gp.Env(empty=True)
+            env.setParam("OutputFlag",0)
+            env.start()
+            m = gp.Model("MPC- INL", env = env)
             u = m.addMVar((2**self.Nb, N_PRED), vtype=GRB.BINARY, name= "u") # control variable
             x = m.addMVar((x_dim*(N_PRED+1),1), vtype= GRB.CONTINUOUS, lb = -GRB.INFINITY, ub = GRB.INFINITY, name = "x")  # State varible 
 
@@ -107,7 +110,7 @@ class MPC_BIN:
             m.setObjective(Obj, GRB.MINIMIZE)
 
             # 0 - Supress log output, 1- Print log outputs
-            m.Params.LogToConsole = 0
+            # m.Params.LogToConsole = 0
 
             # Gurobi setting for precision  
             m.Params.IntFeasTol = 1e-9

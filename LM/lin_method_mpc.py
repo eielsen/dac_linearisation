@@ -96,6 +96,9 @@ class MPC:
         # MPC loop
         for j in tqdm.tqdm(range(len_MPC)):
 
+            env = gp.Env(empty=True)
+            env.setParam("OutputFlag",0)
+            env.start()
             m = gp.Model("MPC- INL")
             u = m.addMVar(N_PRED, vtype=GRB.INTEGER, name= "u", lb = 0, ub =  2**self.Nb-1) # control variable
             x = m.addMVar((x_dim*(N_PRED+1),1), vtype= GRB.CONTINUOUS, lb = -GRB.INFINITY, ub = GRB.INFINITY, name = "x")  # State varible 
@@ -127,7 +130,7 @@ class MPC:
             m.setObjective(Obj, GRB.MINIMIZE)
 
             # 0 - Supress log output, 1- Print log outputs
-            m.Params.LogToConsole = 0
+            # m.Params.LogToConsole = 0
 
             # Gurobi setting for precision  
             # m.Params.IntFeasTol = 1e-9

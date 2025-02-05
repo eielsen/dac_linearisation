@@ -26,44 +26,31 @@ def gen_shaped_noise(Nsamp, Nch, W, pdf_type):
     """
     Stochastic dither signal generation
 
-    Parameters
-    ----------
-    Nsamp
-        number of samples
-    Nch
-        number of channels (independent dithers)
-    W
-        dither amplitude
-    pdf_type
-        chose the dither pdf (probability distribution function)
+    Arguments
+        Nsamp - number of samples
+        Nch - number of channels (independent dithers)
+        W - dither amplitude
+        pdf_type - chose the dither pdf (probability distribution function)
 
     Returns
-    -------
-    dn
-        the dither signal
+        dn - the dither signal
     """
 
-    # load from mat file and return
+    # TODO: load from mat file and return
+
 
 def gen_stochastic(Nsamp, Nch, W, pdf_type):
     """
     Stochastic dither signal generation
 
-    Parameters
-    ----------
-    Nsamp
-        number of samples
-    Nch
-        number of channels (independent dithers)
-    W
-        dither amplitude
-    pdf_type
-        chose the dither pdf (probability distribution function)
+    Arguments
+        Nsamp - number of samples
+        Nch - number of channels (independent dithers)
+        W - dither amplitude
+        pdf_type - chose the dither pdf (probability distribution function)
 
     Returns
-    -------
-    dn
-        the dither signal
+        dn - the dither signal
     """
 
     Na = -W/2
@@ -87,19 +74,13 @@ def gen_periodic(t, freq=49e3, adf_type=adf.uniform):
     """
     Periodic dither signal generation
 
-    Parameters
-    ----------
-    t
-        time vector
-    freq
-        dither signal frequency
-    d
-        chose the dither type (amplitude distribution function)
+    Arguments
+        t - time vector
+        freq - dither signal frequency
+        d - chose the dither type (amplitude distribution function)
 
     Returns
-    -------
-    dp
-        the dither signal
+        dp - the dither signal
     """
 
     # Generate triangle wave (can be transformed to other dither signal shapes)

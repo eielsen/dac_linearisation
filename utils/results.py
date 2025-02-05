@@ -6,6 +6,7 @@ import datetime
 import json
 import os
 
+
 def handle_results(SC, ENOB):
     JR = JSON_results()
 
@@ -21,6 +22,7 @@ def handle_results(SC, ENOB):
     JR.print(SC.qconfig, SC.dac.model, SC.lin.method)
     JR.save()
     JR.save_to_html()
+
 
 class JSON_results():
     def __init__(self, **kwargs) -> None:
@@ -195,6 +197,7 @@ class JSON_results():
         f = open(results_file_path, "w")
         f.write(html_string)
         f.close()
+
 
 if __name__ == '__main__':
     JR = JSON_results()

@@ -12,7 +12,7 @@ import numpy as np
 from matplotlib import pyplot as plt
 import fileinput
 import subprocess
-import datetime
+#import datetime
 from scipy import signal
 from scipy import interpolate
 import pickle
@@ -22,40 +22,10 @@ from tabulate import tabulate
 import sys
 sys.path.append('../')
 
+from utils.test_util import sinad_comp
 from LM.lin_method_util import lm, dm
 from utils.figures_of_merit import FFT_SINAD, TS_SINAD
-from utils.quantiser_configurations import qws
-
-
-class sinad_comp:
-    FFT = 1  # FFT based
-    CFIT = 2  # curve fit
-
-
-class sim_config:
-    def __init__(self, qconfig, lin, dac, fs, t, fc, nf, carrier_scale, carrier_freq, Ncyc):
-        self.qconfig = qconfig
-        self.lin = lin
-        self.dac = dac
-        self.fs = fs
-        self.t = t
-        self.fc = fc
-        self.nf = nf
-        self.carrier_scale = carrier_scale
-        self.carrier_freq = carrier_freq
-        self.Ncyc = Ncyc # Number of periods/cycles of the fundamental/carrier
-    
-    def __str__(self):
-        s = str(self.qconfig) + '\n'
-        s = s + str(self.lin) + '\n'
-        s = s + str(self.dac) + '\n'
-        s = s + 'Fs=' + f'{Float(self.fs):.0h}' + '\n'
-        s = s + 'Fc=' + f'{Float(self.fc):.0h}' + '\n'
-        s = s + 'Nf=' + f'{Float(self.nf):.0h}' + '\n'
-        s = s + 'Xs=' + f'{Float(self.carrier_scale):.0h}' + '\n'
-        s = s + 'Fx=' + f'{Float(self.carrier_freq):.0h}' + '\n'
-
-        return s + '\n'
+from utils.quantiser_configurations import qs
 
 
 def addtexttofile(filename, text):
@@ -85,6 +55,7 @@ def get_pwl_string(c, Ts, Ns, dnum, vbpc, vdd, trisefall):
     Returns
         rval - PWL string
     """
+
     if get_bit(c[0], dnum) == 0:
         rval = "0," + vdd + " "
     else:
@@ -116,6 +87,7 @@ def get_inverted_pwl_string(c, Ts, Ns, dnum, vbpc, vdd, trisefall):
     Returns
         rval - PWL string
     """
+    
     if get_bit(c[0], dnum) == 0:
         rval = "0," + vbpc + " "
     else:
@@ -134,9 +106,9 @@ def get_inverted_pwl_string(c, Ts, Ns, dnum, vbpc, vdd, trisefall):
     return rval
 
 
-def run_spice_sim(spicef, outputf, outdir='spice_output/', spice_path='ngspice'):
+def run_spice_sim(spicef, outputf, outdir='spice_output/', spice_path='ngspice', run_spice=False):
     """
-    Run SPICE simulaton using provided filenames
+    Run SPICE simulation using provided filenames
 
     Arguments
         spicef - SPICE batch file
@@ -146,18 +118,19 @@ def run_spice_sim(spicef, outputf, outdir='spice_output/', spice_path='ngspice')
     print(spicef)
     print(outputf)
 
-    cmd = [spice_path, '-o', outdir + outputf + '.log',
+    cmd = [spice_path, '-o', os.path.join(outdir, outputf) + '.log',
                     # '-r', outdir + outputf + '.bin',
-                    '-b', outdir + spicef]
+                    '-b', os.path.join(outdir, spicef)]
 
-    print(cmd)
+    print(' '.join(cmd))
 
-    subprocess.run(cmd)
+    if run_spice:
+        subprocess.run(cmd)
 
 
-def run_spice_sim_parallel(spicef_list, outputf_list, outdir='spice_sim/output/', spice_path='ngspice'):
+def run_spice_sim_parallel(spicef_list, outputf_list, out_d='spice_sim/output/', spice_path='ngspice'):
     """
-    Run SPICE simulaton using provided filenames
+    Run SPICE simulation using provided filenames
 
     Arguments
         spicef_list - SPICE batch files
@@ -166,9 +139,9 @@ def run_spice_sim_parallel(spicef_list, outputf_list, outdir='spice_sim/output/'
     
     cmd_list = []
     for k in range(0, len(spicef_list)):
-        cmd = [spice_path, '-o', outdir + outputf_list[k] + '.log',
+        cmd = [spice_path, '-o', out_d + outputf_list[k] + '.log',
             #'-r', outdir + outputf_list[k] + '.bin',
-            '-b', outdir + spicef_list[k]]    
+            '-b', out_d + spicef_list[k]]    
         cmd_list.append(cmd)
     
     print(cmd_list)
@@ -178,6 +151,9 @@ def run_spice_sim_parallel(spicef_list, outputf_list, outdir='spice_sim/output/'
     for proc in procs_list:
         print('Waiting for SPICE to return...')
         proc.wait()
+    
+    print('SPICE returned...')
+    
 
 
 def gen_spice_sim_file(C, Nb, t, Ts, QConfig, outdir, seed=1, seq=0):
@@ -198,9 +174,8 @@ def gen_spice_sim_file(C, Nb, t, Ts, QConfig, outdir, seed=1, seq=0):
     wavf = 'spice_pwl_wav.txt'
     cmdf = 'spice_cmds.txt'
     
-    tempdir = 'spice_sim/temp'
-    circdir = 'spice_sim/circuits'
-    #outdir = os.path.join('spice_output', outdirname)
+    tempdir = os.path.join('spice_sim', 'temp')
+    circdir = os.path.join('spice_sim', 'circuits')
 
     if os.path.exists(outdir):
         print('Putting output files in existing directory: ' + outdir)
@@ -210,7 +185,7 @@ def gen_spice_sim_file(C, Nb, t, Ts, QConfig, outdir, seed=1, seq=0):
     wav_str = ''
     
     match QConfig:
-        case qws.w_06bit:  # 6 bit DAC
+        case qs.w_6bit:  # 6 bit DAC
             c = C.astype(int)
             nsamples = len(c)
 
@@ -230,11 +205,10 @@ def gen_spice_sim_file(C, Nb, t, Ts, QConfig, outdir, seed=1, seq=0):
             circf = 'cs_dac_06bit_ngspice.cir'  # circuit description
             spicef = 'cs_dac_06bit_ngspice_batch.cir'  # complete spice input file
 
-            outputf = 'cs_dac_16bit_ngspice_batch_' + str(seq)
+            outputf = 'cs_dac_06bit_ngspice_batch_' + str(seq)
             
             ctrl_str = '\n' + '.save v(outf)' + '\n' + '.tran 10u ' + str(t[-1]) + '\n'
-
-        case qws.w_16bit_SPICE:  # 16 bit DAC
+        case qs.w_16bit_SPICE:  # 16 bit DAC
             c = C.astype(int)
             nsamples = len(c)
 
@@ -280,7 +254,7 @@ def gen_spice_sim_file(C, Nb, t, Ts, QConfig, outdir, seed=1, seq=0):
                 'tran 10u ' + str(t[-1]) + '\n' + \
                 'write $inputdir/' + outputf + '.bin' + ' v(out)\n' + \
                 '.endc\n'
-        case qws.w_6bit_2ch_SPICE:  # 6 bit DAC, 2 channels
+        case qs.w_6bit_2ch_SPICE:  # 6 bit DAC, 2 channels
             c1 = C[0,:].astype(int)
             c2 = C[1,:].astype(int)
             nsamples1 = len(c1)
@@ -304,19 +278,18 @@ def gen_spice_sim_file(C, Nb, t, Ts, QConfig, outdir, seed=1, seq=0):
                 tvbb2 += 'vbb2' + k_str + ' bb2' + k_str + ' 0 pwl ' + \
                     get_inverted_pwl_string(c2, Ts, nsamples2, k, vbpc, vdd, Tr)
             wav_str = tvb1 + tvbb1 + tvb2 + tvbb2
-
-            circf = 'cs_dac_06bit_2ch_TRAN.cir'  # circuit description
-            spicef = 'cs_dac_06bit_2ch_TRAN_ngspice_batch.cir'  # complete spice input file
-
-            outputf = 'cs_dac_06bit_2ch_TRAN_ngspice_batch'
             
+            circf = 'cs_dac_06bit_2ch_TRAN.cir'  # circuit description
+            outputf = 'cs_dac_06bit_2ch_TRAN_ngspice_batch'
+            spicef = outputf + '.cir'  # complete spice input file
+
             ctrl_str = '\n.option method=trap TRTOL=5 gmin=1e-19 reltol=200u abstol=100f vntol=100n seed=2\n'
             ctrl_str = ctrl_str + \
                 '\n.control\n' + \
                 'tran 10u ' + str(t[-1]) + '\n' + \
                 'write $inputdir/' + outputf + '.bin' + ' v(out1) v(out2)\n' + \
                 '.endc\n'
-        case qws.w_16bit_2ch_SPICE:  # 16 bit DAC, 2 channels
+        case qs.w_16bit_2ch_SPICE:  # 16 bit DAC, 2 channels
             c1 = C[0,:].astype(int)
             c2 = C[1,:].astype(int)
             nsamples1 = len(c1)
@@ -347,6 +320,42 @@ def gen_spice_sim_file(C, Nb, t, Ts, QConfig, outdir, seed=1, seq=0):
             outputf = 'cs_dac_16bit_2ch_TRAN_ngspice_batch'
             
             ctrl_str = '\n.option method=trap TRTOL=5 gmin=1e-19 reltol=200u abstol=100f vntol=100n seed=1\n'
+            ctrl_str = ctrl_str + \
+                '\n.control\n' + \
+                'tran 10u ' + str(t[-1]) + '\n' + \
+                'write $inputdir/' + outputf + '.bin' + ' v(out1) v(out2)\n' + \
+                '.endc\n'
+        case qs.w_10bit_2ch_SPICE:  # 10 bit DAC, 2 channels
+            c1 = C[0,:].astype(int)
+            c2 = C[1,:].astype(int)
+            nsamples1 = len(c1)
+            nsamples2 = len(c2)
+
+            tvb1 = '\n'
+            tvb2 = '\n'
+            tvbb1 = '\n'
+            tvbb2 = '\n'
+            vbpc = '0'
+            vdd = '1.5'
+            Tr = 1e-3  # the rise-time for edges, in µs
+            for k in range(0, Nb):  # generate PWL strings
+                k_str = str(k + 1)
+                tvb1 += 'vb1' + k_str + ' b1' + k_str + ' 0 pwl ' + \
+                    get_pwl_string(c1, Ts, nsamples1, k, vbpc, vdd, Tr)
+                tvbb1 += 'vbb1' + k_str + ' bb1' + k_str + ' 0 pwl ' + \
+                    get_inverted_pwl_string(c1, Ts, nsamples1, k, vbpc, vdd, Tr)
+                tvb2 += 'vb2' + k_str + ' b2' + k_str + ' 0 pwl ' + \
+                    get_pwl_string(c2, Ts, nsamples2, k, vbpc, vdd, Tr)
+                tvbb2 += 'vbb2' + k_str + ' bb2' + k_str + ' 0 pwl ' + \
+                    get_inverted_pwl_string(c2, Ts, nsamples2, k, vbpc, vdd, Tr)
+            wav_str = tvb1 + tvbb1 + tvb2 + tvbb2
+
+            circf = 'cs_dac_10bit_2ch_TRAN.cir'  # circuit description
+            spicef = 'cs_dac_10bit_2ch_TRAN_ngspice_batch.cir'  # complete spice input file
+
+            outputf = 'cs_dac_10bit_2ch_TRAN_ngspice_batch'
+            
+            ctrl_str = '\n.option method=trap TRTOL=5 gmin=1e-19 reltol=200u abstol=100f vntol=100n seed=2\n'
             ctrl_str = ctrl_str + \
                 '\n.control\n' + \
                 'tran 10u ' + str(t[-1]) + '\n' + \
