@@ -35,6 +35,7 @@ from utils.results import handle_results
 from utils.static_dac_model import generate_dac_output, quantise_signal, generate_codes, quantiser_type
 from utils.figures_of_merit import FFT_SINAD, TS_SINAD
 from utils.balreal import balreal_ct, balreal
+from utils.mpc_filter_parameters import mpc_filter_parameters
 
 from LM.lin_method_nsdcal import nsdcal
 from LM.lin_method_dem import dem
@@ -55,8 +56,8 @@ from run_static_model_and_post_processing import run_static_model_and_post_proce
 
 #%% Configure DAC and test conditions
 
-METHOD_CHOICE = 2
-FS_CHOICE = 4
+METHOD_CHOICE = 7
+FS_CHOICE = 7
 #FS_CHOICE = 5
 SINAD_COMP = 1
 
@@ -587,13 +588,13 @@ match SC.lin.method:
 
         # Also need room for re-quantisation dither
         if QConfig == qs.w_16bit_SPICE: HEADROOM = 10  # 16 bit DAC
-        elif QConfig == qs.w_6bit_ARTI: HEADROOM = 15  # 6 bit DAC
+        elif QConfig == qs.w_6bit_ARTI: HEADROOM = 0*15  # 6 bit DAC
         elif QConfig == qs.w_6bit_ZTC_ARTI: HEADROOM = 15  # 6 bit DAC
         elif QConfig == qs.w_16bit_ARTI: HEADROOM = 1  # 16 bit DAC
         elif QConfig == qs.w_6bit_2ch_SPICE: HEADROOM = 0*10  # 6 bit DAC
         elif QConfig == qs.w_16bit_2ch_SPICE: HEADROOM = 10  # 16 bit DAC
-        elif QConfig == qs.w_10bit_ARTI: HEADROOM = 10  # 16 bit DAC
-        elif QConfig == qs.w_10bit_ZTC_ARTI: HEADROOM = 10  # 16 bit DAC
+        elif QConfig == qs.w_10bit_ARTI: HEADROOM = 0* 10  # 10 bit DAC
+        elif QConfig == qs.w_10bit_ZTC_ARTI: HEADROOM = 0*10  # 10 bit DAC
         else: sys.exit('MPC: Missing config.')
 
         Xscale = 100 - HEADROOM
@@ -602,30 +603,12 @@ match SC.lin.method:
         SC.ref_scale = Xscale  # save param.
 
         # Ideal Levels
-        # YQns = YQ[0]
+        YQns = YQ[0]
         
         # Unsigned integers representing the level codes
         # level_codes = np.arange(0, 2**Nb,1) # Levels:  0, 1, 2, .... 2^(Nb)
-
-        # ML = get_measured_levels(QConfig, SC.lin.method)
-        # MLns = ML[0]
-
-
-        # Scaling for MPC
-        Vmin_mpc = Vmin/np.abs(Vmax)
-        Vmax_mpc = Vmax/np.abs(Vmax)
-        Rng_mpc = Vmax_mpc - Vmin_mpc
-        Mq_mpc = 2**Nb-1
-        Qstep_mpc = Rng_mpc/Mq_mpc
-        YQ_mpc = np.linspace(Vmin_mpc, Vmax_mpc, Mq_mpc+1)
-        YQ_mpc = np.reshape(YQ_mpc, (-1, YQ_mpc.shape[0]))  # generate 2d array with 1 row
-
-        YQns = YQ_mpc[0]
         ML = get_measured_levels(QConfig, SC.lin.method)
         MLns = ML[0]
-        MLns = MLns/np.abs(Vmax)
-        Qstep = Qstep_mpc
-        X = X/np.abs(Vmax)
 
 
         # Adding some "measurement/model error" in the levels
@@ -638,25 +621,9 @@ match SC.lin.method:
         
         MLns_err = np.random.uniform(-ML_err_rng, ML_err_rng, MLns.shape)
         MLns_E = MLns + MLns_err
-
-
-        # To fit into optimisaton problem. 
-        # if QConfig == qws.w_6bit_ARTI or QConfig == qws.w_16bit_ARTI:
-        #     MLns = np.flip(MLns)
-        #     YQns = np.flip(YQns)
-    
+ 
         # Reconstruction filter
-        match 2:
-            case 1:
-                Fc = Fc_lp # cutoff frequency
-                Wn = Fc/(Fs/2)
-                b1, a1 = signal.butter(2, Wn)
-                A1, B1, C1, D1 = signal.tf2ss(b1, a1) # Transfer function to StateSpace
-            case 2:
-                b1 = np.array([1.000000000000000,  -0.749062760083214,   0.353567447503785 , -0.050452041460215])
-                a1 = np.array([1.000000000000000,  -1.760042814801001 ,  1.182897276395584 , -0.278062036214375])
-                A1, B1, C1, D1 = signal.tf2ss(b1, a1) # Transfer function to StateSpace
-
+        A1, B1, C1, D1 = mpc_filter_parameters(FS_CHOICE)
 
         # Quantiser model
         QMODEL = 2 #: 1 - no calibration, 2 - Calibration
@@ -665,11 +632,6 @@ match SC.lin.method:
         MPC = MPC_BIN(Nb, Qstep, QMODEL, A1, B1, C1, D1)
         C = MPC.get_codes(N_PRED, X, YQns, MLns_E)  ##### output codes
 
-
-        # Run MPC integer variables Scaled
-        # MPC = MPC(Nb, Qstep, QMODEL, A1, B1, C1, D1)
-        # C= MPC.get_codes(N_PRED, Xcs, YQns, MLns_E)  ##### output codes
-        # Slice time samples based on the size of C
         t = t[0:C.size]
 
         # Zero input to sec. channel for sims with two channels (only need one channel)
