@@ -55,7 +55,7 @@ from run_static_model_and_post_processing import run_static_model_and_post_proce
 
 #%% Configure DAC and test conditions
 
-METHOD_CHOICE = 6
+METHOD_CHOICE = 3
 FS_CHOICE = 4
 SINAD_COMP = 1
 
@@ -75,10 +75,10 @@ N_PRED = 1 # prediction horizon (MPC)
 match METHOD_CHOICE:
     case 1: RUN_LM = lm.BASELINE
     case 2: RUN_LM = lm.PHYSCAL
-    case 3: RUN_LM = lm.DEM
-    case 4: RUN_LM = lm.NSDCAL
+    case 3: RUN_LM = lm.NSDCAL
+    case 4: RUN_LM = lm.PHFD
     case 5: RUN_LM = lm.SHPD
-    case 6: RUN_LM = lm.PHFD
+    case 6: RUN_LM = lm.DEM
     case 7: RUN_LM = lm.MPC # lm.MPC or lm.MHOQ
     case 8: RUN_LM = lm.ILC
     case 9: RUN_LM = lm.ILC_SIMP
@@ -824,4 +824,4 @@ codes_f = codes_d + 'codes'
 np.save(codes_f, C)
 
 if (DAC_MODEL_CHOICE == 1):
-    run_static_model_and_post_processing(METHOD_CHOICE, hash_stamp, MAKE_PLOT=PLOTS)
+    run_static_model_and_post_processing(RUN_LM, hash_stamp, MAKE_PLOT=PLOTS)

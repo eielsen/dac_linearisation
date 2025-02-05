@@ -26,18 +26,7 @@ from utils.test_util import sim_config, sinad_comp, test_signal
 from utils.inl_processing import get_physcal_gain
 
 
-def run_static_model_and_post_processing(METHOD_CHOICE, hash_stamp, MAKE_PLOT=False):
-
-    match METHOD_CHOICE:
-        case 1: RUN_LM = lm.BASELINE
-        case 2: RUN_LM = lm.PHYSCAL
-        case 3: RUN_LM = lm.DEM
-        case 4: RUN_LM = lm.NSDCAL
-        case 5: RUN_LM = lm.SHPD
-        case 6: RUN_LM = lm.PHFD
-        case 7: RUN_LM = lm.MPC # lm.MPC or lm.MHOQ
-        case 8: RUN_LM = lm.ILC
-        case 9: RUN_LM = lm.ILC_SIMP
+def run_static_model_and_post_processing(RUN_LM, hash_stamp, MAKE_PLOT=False):
 
     top_d = 'generated_codes/'  # directory for generated codes and configuration info
     method_d = os.path.join(top_d, str(lm(RUN_LM)))
