@@ -48,7 +48,6 @@ from LM.lin_method_dsm_ilc import DSM_ILC
 from LM.lin_method_util import lm, dm
 
 from utils.test_util import sim_config, sinad_comp, test_signal
-from utils.inl_processing import get_physcal_gain
 
 from utils.spice_utils import run_spice_sim, run_spice_sim_parallel, gen_spice_sim_file, read_spice_bin_file, process_sim_output
 
@@ -91,7 +90,7 @@ match METHOD_CHOICE:
 lin = lm(RUN_LM)
 
 ##### DAC MODEL CHOICE (TODO: consider deprecating)
-DAC_MODEL_CHOICE = 1
+DAC_MODEL_CHOICE = 2
 match DAC_MODEL_CHOICE:
     case 1: dac = dm(dm.STATIC)  # use static non-linear quantiser model to simulate DAC
     case 2: dac = dm(dm.SPICE)  # use SPICE to simulate DAC output
