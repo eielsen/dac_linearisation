@@ -8,8 +8,8 @@
 """
 
 # %%
-%reload_ext autoreload
-%autoreload 2
+# %reload_ext autoreload
+# %autoreload 2
 
 # Imports
 import sys
@@ -55,11 +55,11 @@ from run_static_model_and_post_processing import run_static_model_and_post_proce
 
 #%% Configure DAC and test conditions
 
-METHOD_CHOICE = 7
-FS_CHOICE = 4
+METHOD_CHOICE = 1
+FS_CHOICE = 5
 SINAD_COMP = 1
 
-PLOTS = 1
+PLOTS = 0
 
 # Test/reference signal spec. (to be recovered on the output)
 Xref_SCALE = 100  # %
@@ -102,18 +102,19 @@ match FS_CHOICE:
     case 2: Fs = 25e6
     case 3: Fs = 250e6
     case 4: Fs = 1022976
-    case 5: Fs = 16367616
-    case 6: Fs = 32735232
-    case 7: Fs = 65470464
-    case 8: Fs = 130940928
-    case 9: Fs = 261881856
-    case 10: Fs = 209715200
-    case 11: Fs = 226719135.13513514400
+    case 5: Fs = 1638400                    # Coherent sampling at 5 cycles, 8192 points, and f0 = 1 kHz 
+    case 6: Fs = 16367616
+    case 7: Fs = 32735232
+    case 8: Fs = 65470464
+    case 9: Fs = 130940928
+    case 10: Fs = 261881856
+    case 11: Fs = 209715200                 # Coherent sampling at 5 cycles, 1048576 points, and f0 = 1 kHz 
+    case 12: Fs = 226719135.13513514400
 
 Ts = 1/Fs  # sampling time
 
 ##### Set DAC circuit model
-match 7:
+match 10:
     case 1: QConfig = qs.w_6bit  # "ideal" model (no circuit sim.)
     case 2: QConfig = qs.w_16bit_SPICE
     case 3: QConfig = qs.w_16bit_ARTI
@@ -123,6 +124,8 @@ match 7:
     case 7: QConfig = qs.w_6bit_2ch_SPICE
     case 8: QConfig = qs.w_16bit_2ch_SPICE
     case 9: QConfig = qs.w_10bit_2ch_SPICE
+    case 10: QConfig = qs.w_6bit_ZTC_ARTI
+    case 11: QConfig = qs.w_10bit_ZTC_ARTI
 
 Nb, Mq, Vmin, Vmax, Rng, Qstep, YQ, Qtype = quantiser_configurations(QConfig)
 
@@ -165,7 +168,7 @@ match SC.lin.method:
     case lm.BASELINE:  # baseline, only carrier
         # Generate unmodified DAC output without any corrections.
 
-        if QConfig in [qs.w_6bit_2ch_SPICE, qs.w_16bit_2ch_SPICE, qs.w_10bit_2ch_SPICE]:
+        if QConfig in [qs.w_6bit_2ch_SPICE, qs.w_16bit_2ch_SPICE, qs.w_10bit_2ch_SPICE, qs.w_6bit_ZTC_ARTI, qs.w_10bit_ZTC_ARTI]:
             Nch = 2  # number of channels to use (averaging to reduce noise floor)
         else:
             Nch = 1
@@ -817,4 +820,4 @@ codes_f = codes_d + 'codes'
 np.save(codes_f, C)
 
 if (DAC_MODEL_CHOICE == 1):
-    run_static_model_and_post_processing(METHOD_CHOICE, hash_stamp)
+    run_static_model_and_post_processing(METHOD_CHOICE, hash_stamp, MAKE_PLOT=PLOTS)

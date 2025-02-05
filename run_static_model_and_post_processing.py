@@ -17,6 +17,7 @@ from matplotlib import pyplot as plt
 from prefixed import Float
 from tabulate import tabulate
 
+from utils.results import handle_results
 from utils.static_dac_model import generate_dac_output, quantise_signal, generate_codes, quantiser_type
 from utils.quantiser_configurations import quantiser_configurations, get_measured_levels, qs
 from utils.spice_utils import run_spice_sim, run_spice_sim_parallel, gen_spice_sim_file, read_spice_bin_file, process_sim_output
@@ -25,7 +26,7 @@ from utils.test_util import sim_config, sinad_comp, test_signal
 from utils.inl_processing import get_physcal_gain
 
 
-def run_static_model_and_post_processing(METHOD_CHOICE, hash_stamp):
+def run_static_model_and_post_processing(METHOD_CHOICE, hash_stamp, MAKE_PLOT=False):
 
     match METHOD_CHOICE:
         case 1: RUN_LM = lm.BASELINE
@@ -107,12 +108,14 @@ def run_static_model_and_post_processing(METHOD_CHOICE, hash_stamp):
     Fc = SC.fc
     Nf = SC.nf
 
-    ym_avg, ENOB_M = process_sim_output(t, ym, Fc, Fs, Nf, TRANSOFF, sinad_comp.CFIT, True, 'SPICE')
+    ym_avg, ENOB_M = process_sim_output(t, ym, Fc, Fs, Nf, TRANSOFF, sinad_comp.CFIT, MAKE_PLOT, 'SPICE')
 
-    plt.plot(t[TRANSOFF:-TRANSOFF],ym[TRANSOFF:-TRANSOFF])
-    plt.plot(t[TRANSOFF:-TRANSOFF],ym_avg[TRANSOFF:-TRANSOFF])
+    if (MAKE_PLOT):
+        plt.plot(t[TRANSOFF:-TRANSOFF],ym[TRANSOFF:-TRANSOFF])
+        plt.plot(t[TRANSOFF:-TRANSOFF],ym_avg[TRANSOFF:-TRANSOFF])
 
-    results_tab = [['DAC config', 'Method', 'Model', 'Fs', 'Fc', 'X scale', 'Fx', 'ENOB'],
-    [str(SC.qconfig), str(SC.lin), str(SC.dac), f'{Float(SC.fs):.2h}', f'{Float(SC.fc):.1h}', f'{Float(SC.ref_scale):.1h}%', f'{Float(SC.ref_freq):.1h}', f'{Float(ENOB_M):.3h}']]
-    print(tabulate(results_tab))
+    # results_tab = [['DAC config', 'Method', 'Model', 'Fs', 'Fc', 'X scale', 'Fx', 'ENOB'],
+    # [str(SC.qconfig), str(SC.lin), str(SC.dac), f'{Float(SC.fs):.2h}', f'{Float(SC.fc):.1h}', f'{Float(SC.ref_scale):.1h}%', f'{Float(SC.ref_freq):.1h}', f'{Float(ENOB_M):.3h}']]
+    # print(tabulate(results_tab))
 
+    handle_results(SC, ENOB_M)
