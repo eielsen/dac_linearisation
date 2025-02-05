@@ -78,9 +78,10 @@ def get_physcal_gain(QConfig):
         case qs.w_16bit_SPICE: K_SEC = 1e-2
         case qs.w_6bit_ARTI: K_SEC = 7.5e-2
         case qs.w_16bit_ARTI: K_SEC = 2e-1  # find out
-        case qs.w_6bit_2ch_SPICE: K_SEC = 12.0e-2 #12.5e-2
+        case qs.w_6bit_2ch_SPICE: K_SEC = 0.015 #12.5e-2
         case qs.w_16bit_2ch_SPICE: K_SEC = 1e-2
         case qs.w_16bit_6t_ARTI: K_SEC = 2e-2
+        case qs.w_6bit_ZTC_ARTI: K_SEC = 0.0004
         case _: K_SEC = 1
     return K_SEC
 
@@ -108,15 +109,24 @@ def plot_inl(QConfig=qs.w_16bit_NI_card, Ch_sel=0):
     #rc('font',**{'family':'serif','serif':['Times']})
     #rc('text', usetex=False)
 
+    plt.figure(1)
+    plt.plot(qs, LVLS1/Qstep, label='Channel 1')
+    plt.plot(qs, LVLS2/Qstep, label='Channel 2')
+    plt.legend()
+    plt.xlabel("Input code")
+    plt.ylabel("Output (least significant bits)")
+    plt.grid()
+
+    plt.figure(2)
     plt.plot(qs, signal.detrend(LVLS1)/Qstep, label='Channel 1')
     plt.plot(qs, signal.detrend(LVLS2)/Qstep, label='Channel 2')
     plt.legend()
     plt.xlabel("Input code")
-    plt.ylabel("Least significant bits")
+    plt.ylabel("INL (least significant bits)")
     plt.grid()
 
-    plt.savefig('figures/INL_plot.pdf', format='pdf', bbox_inches='tight')
-    plt.savefig('figures/INL_plot.svg', format='svg', bbox_inches='tight')
+    #plt.savefig('figures/INL_plot.pdf', format='pdf', bbox_inches='tight')
+    #plt.savefig('figures/INL_plot.svg', format='svg', bbox_inches='tight')
     #fig.savefig('Stylized Plots.png', dpi=300, bbox_inches='tight', transparent=True)
 
 
@@ -147,17 +157,10 @@ def generate_physcal_lut(QConfig=qs.w_16bit_NI_card, SAVE_LUT=0):
     qs = np.arange(-2**(Nb-1), 2**(Nb-1), 1) # possible quantisation steps/codes (recall arange() is not inclusive)
     qs = qs.reshape(-1, 1) # ensure column vector for codes
 
-    YQ = YQ.reshape(-1,1) # ensure column vector for ideal levels
+    #YQ = YQ.reshape(-1,1) # ensure column vector for ideal levels
     
-    plt.figure(10)
-    plt.plot(qs, YQ, label='Uniform')
-    plt.plot(qs, PRILVLS, label='Measured')
-    plt.xlabel('Code')
-    plt.ylabel('Ideal output level')
-    plt.legend()
-
     QQ = np.hstack([qs, np.ones(qs.shape)])  # codes matrix for straight line least-squares fit
-    YY = np.hstack([YQ, np.ones(qs.shape)])  # ideal levels matrix
+    #YY = np.hstack([YQ, np.ones(qs.shape)])  # ideal levels matrix
 
     MLm = PRILVLS;  # use channel 1 as main/primary (measured levels)
     MLm = MLm.reshape(-1, 1)  # ensure column vector
@@ -165,7 +168,15 @@ def generate_physcal_lut(QConfig=qs.w_16bit_NI_card, SAVE_LUT=0):
     thetam = np.linalg.lstsq(QQ, MLm, rcond=None)[0]  # straight line fit; theta[0] is slope, theta[1] is offset
 
     ML = MLm - thetam[1]  # remove fitted offset for measured levels
+    YQ = thetam[0]*qs  # ideal levels (given curve-fit)
     INL = (ML - YQ)/Qstep  # find the INL
+
+    plt.figure(10)
+    plt.plot(qs, YQ, label='Uniform')
+    plt.plot(qs, PRILVLS, label='Measured')
+    plt.xlabel('Code')
+    plt.ylabel('Ideal output level')
+    plt.legend()
 
     CLm = SECLVLS  # use channel 2 to calibrate/secondary (measured levels)
     CLm = CLm.reshape(-1, 1)  # ensure column vector
@@ -175,7 +186,7 @@ def generate_physcal_lut(QConfig=qs.w_16bit_NI_card, SAVE_LUT=0):
 
     Qcal = thetacq[0]  # effective quantization step for secondary channel (effective gain/scale)
     CL = Qcal*qs  # resort to using scaled, ideal output for secondary calibration channel
-    # (level measurements for secondary too noisy for monotonic behavior, i.e. does more harm than good)
+    # (level measurements for secondary too noisy for monotonic behaviour, i.e. does more harm than good)
 
     # Generate the look-up table by minimising the primary output deviation from ideal
     # for every code value by adding or subtracting using the secondary

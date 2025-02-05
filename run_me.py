@@ -55,9 +55,13 @@ from run_static_model_and_post_processing import run_static_model_and_post_proce
 
 #%% Configure DAC and test conditions
 
-METHOD_CHOICE = 3
+METHOD_CHOICE = 2
 FS_CHOICE = 4
+#FS_CHOICE = 5
 SINAD_COMP = 1
+
+DAC_CIRCUIT = 7
+#DAC_CIRCUIT = 10
 
 PLOTS = 0
 
@@ -101,10 +105,10 @@ match FS_CHOICE:
     case 1: Fs = 1e6
     case 2: Fs = 25e6
     case 3: Fs = 250e6
-    case 4: Fs = 1022976
+    case 4: Fs = 1022976                    # SPICE DAC 
     case 5: Fs = 1638400                    # Coherent sampling at 5 cycles, 8192 points, and f0 = 1 kHz 
     case 6: Fs = 16367616
-    case 7: Fs = 32735232
+    case 7: Fs = 32735232                   # SPICE DAC 
     case 8: Fs = 65470464
     case 9: Fs = 130940928
     case 10: Fs = 261881856
@@ -114,7 +118,7 @@ match FS_CHOICE:
 Ts = 1/Fs  # sampling time
 
 ##### Set DAC circuit model
-match 7:
+match DAC_CIRCUIT:
     case 1: QConfig = qs.w_6bit  # "ideal" model (no circuit sim.)
     case 2: QConfig = qs.w_16bit_SPICE
     case 3: QConfig = qs.w_16bit_ARTI

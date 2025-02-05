@@ -23,11 +23,12 @@ from utils.spice_utils import run_spice_sim, read_spice_bin_file_with_most_recen
 
 #gen_physcal_lut(QConfig=5, FConfig=3, SAVE_LUT=1) # Trond 16bit
 #gen_physcal_lut(QConfig=4, FConfig=2, SAVE_LUT=1)
-#gen_physcal_lut(QConfig=qws.w_6bit_ARTI, SAVE_LUT=1) # ARTI 6bit
-#gen_physcal_lut(QConfig=qws.w_16bit_ARTI, SAVE_LUT=1) # ARTI 6bit
+#gen_physcal_lut(QConfig=qs.w_6bit_ARTI, SAVE_LUT=1) # ARTI 6bit
+#gen_physcal_lut(QConfig=qs.w_16bit_ARTI, SAVE_LUT=1) # ARTI 6bit
 generate_physcal_lut(QConfig=qs.w_6bit_2ch_SPICE, SAVE_LUT=True) # Trond 2ch 6bit
-#gen_physcal_lut(QConfig=qws.w_16bit_2ch_SPICE, SAVE_LUT=True) # Trond 2ch 16bit
-#gen_physcal_lut(QConfig=qws.w_16bit_6t_ARTI, SAVE_LUT=True) # ARTI 16bit
+#gen_physcal_lut(QConfig=qs.w_16bit_2ch_SPICE, SAVE_LUT=True) # Trond 2ch 16bit
+#gen_physcal_lut(QConfig=qs.w_16bit_6t_ARTI, SAVE_LUT=True) # ARTI 16bit
+#generate_physcal_lut(QConfig=qs.w_6bit_ZTC_ARTI, SAVE_LUT=True) # ZTC ARTI 6bit
 
 #generate_random_output_levels(QConfig=4)
 

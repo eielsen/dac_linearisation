@@ -47,11 +47,11 @@
 </thead>
 <tbody>
 <tr><td>2025-02-05 - 11:51:43</td><td>BASELINE  </td><td>1.02M</td><td>100.0k</td><td style="text-align: right;">   3</td><td>1.0k</td><td>100.0%    </td><td style="text-align: right;">     7</td><td style="text-align: right;"> 6.056</td></tr>
-<tr><td>2025-02-05 - 11:51:49</td><td>PHYSCAL   </td><td>1.02M</td><td>100.0k</td><td style="text-align: right;">   3</td><td>1.0k</td><td>100.0%    </td><td style="text-align: right;">     7</td><td style="text-align: right;"> 6.889</td></tr>
-<tr><td>2025-02-05 - 11:46:05</td><td>DEM       </td><td>1.02M</td><td>100.0k</td><td style="text-align: right;">   3</td><td>1.0k</td><td>100.0%    </td><td style="text-align: right;">     7</td><td style="text-align: right;"> 4.846</td></tr>
+<tr><td>2025-02-05 - 12:41:44</td><td>PHYSCAL   </td><td>1.02M</td><td>100.0k</td><td style="text-align: right;">   3</td><td>1.0k</td><td>100.0%    </td><td style="text-align: right;">     7</td><td style="text-align: right;"> 3.563</td></tr>
+<tr><td>2025-02-05 - 11:54:04</td><td>DEM       </td><td>1.02M</td><td>100.0k</td><td style="text-align: right;">   3</td><td>1.0k</td><td>100.0%    </td><td style="text-align: right;">     7</td><td style="text-align: right;"> 4.853</td></tr>
 <tr><td>2025-02-05 - 11:52:58</td><td>NSDCAL    </td><td>1.02M</td><td>100.0k</td><td style="text-align: right;">   3</td><td>1.0k</td><td>90.0%     </td><td style="text-align: right;">     7</td><td style="text-align: right;"> 8.023</td></tr>
-<tr><td>2025-02-05 - 11:46:25</td><td>SHPD      </td><td>1.02M</td><td>100.0k</td><td style="text-align: right;">   3</td><td>1.0k</td><td>50.0%     </td><td style="text-align: right;">     7</td><td style="text-align: right;"> 5.794</td></tr>
-<tr><td>2025-02-05 - 11:47:49</td><td>PHFD      </td><td>1.02M</td><td>100.0k</td><td style="text-align: right;">   3</td><td>1.0k</td><td>82.0%     </td><td style="text-align: right;">     7</td><td style="text-align: right;"> 7.095</td></tr>
+<tr><td>2025-02-05 - 11:53:49</td><td>SHPD      </td><td>1.02M</td><td>100.0k</td><td style="text-align: right;">   3</td><td>1.0k</td><td>50.0%     </td><td style="text-align: right;">     7</td><td style="text-align: right;"> 5.842</td></tr>
+<tr><td>2025-02-05 - 11:53:35</td><td>PHFD      </td><td>1.02M</td><td>100.0k</td><td style="text-align: right;">   3</td><td>1.0k</td><td>82.0%     </td><td style="text-align: right;">     7</td><td style="text-align: right;"> 7.095</td></tr>
 <tr><td>2024-12-23 - 08:27:32</td><td>MHOQ      </td><td>1.02M</td><td>100.0k</td><td style="text-align: right;">  -1</td><td>1.0k</td><td>-1.0%     </td><td style="text-align: right;">     7</td><td style="text-align: right;"> 5.206</td></tr>
 <tr><td>Never                </td><td>ILC       </td><td>0.00 </td><td>0.0   </td><td style="text-align: right;">  -1</td><td>0.0 </td><td>-1.0%     </td><td style="text-align: right;">     0</td><td style="text-align: right;"> 0    </td></tr>
 <tr><td>Never                </td><td>ILC simple</td><td>0.00 </td><td>0.0   </td><td style="text-align: right;">  -1</td><td>0.0 </td><td>-1.0%     </td><td style="text-align: right;">     0</td><td style="text-align: right;"> 0    </td></tr>
@@ -128,7 +128,7 @@
 <tr><th>Time (UTC+00:00)     </th><th>Method    </th><th>Fs     </th><th>Fc    </th><th style="text-align: right;">  Nf</th><th>Fx  </th><th>Fx scale  </th><th style="text-align: right;">  Ncyc</th><th style="text-align: right;">  ENOB</th></tr>
 </thead>
 <tbody>
-<tr><td>2025-02-05 - 11:43:05</td><td>BASELINE  </td><td>1.02M  </td><td>100.0k</td><td style="text-align: right;">   3</td><td>1.0k</td><td>100.0%    </td><td style="text-align: right;">     7</td><td style="text-align: right;"> 6.977</td></tr>
+<tr><td>2025-02-05 - 11:57:21</td><td>BASELINE  </td><td>1.64M  </td><td>100.0k</td><td style="text-align: right;">   3</td><td>1.0k</td><td>100.0%    </td><td style="text-align: right;">     7</td><td style="text-align: right;"> 7.347</td></tr>
 <tr><td>Never                </td><td>PHYSCAL   </td><td>0.00   </td><td>0.0   </td><td style="text-align: right;">  -1</td><td>0.0 </td><td>-1.0%     </td><td style="text-align: right;">     0</td><td style="text-align: right;"> 0    </td></tr>
 <tr><td>2025-01-28 - 23:56:55</td><td>DEM       </td><td>209.72M</td><td>100.0k</td><td style="text-align: right;">  -1</td><td>1.0k</td><td>-1.0%     </td><td style="text-align: right;">     5</td><td style="text-align: right;">10.869</td></tr>
 <tr><td>2025-01-29 - 21:37:41</td><td>NSDCAL    </td><td>209.72M</td><td>100.0k</td><td style="text-align: right;">  -1</td><td>1.0k</td><td>-1.0%     </td><td style="text-align: right;">     5</td><td style="text-align: right;">16.187</td></tr>
