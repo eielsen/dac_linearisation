@@ -51,7 +51,6 @@ def run_static_model_and_post_processing(RUN_LM, hash_stamp, MAKE_PLOT=False):
         os.makedirs(static_case_d)
 
     # Read some config. params.
-
     QConfig = SC.qconfig
     Nch = SC.nch
     Fs = SC.fs
