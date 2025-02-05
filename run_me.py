@@ -55,8 +55,8 @@ from run_static_model_and_post_processing import run_static_model_and_post_proce
 
 #%% Configure DAC and test conditions
 
-METHOD_CHOICE = 1
-FS_CHOICE = 5
+METHOD_CHOICE = 6
+FS_CHOICE = 4
 SINAD_COMP = 1
 
 PLOTS = 0
@@ -114,7 +114,7 @@ match FS_CHOICE:
 Ts = 1/Fs  # sampling time
 
 ##### Set DAC circuit model
-match 10:
+match 7:
     case 1: QConfig = qs.w_6bit  # "ideal" model (no circuit sim.)
     case 2: QConfig = qs.w_16bit_SPICE
     case 3: QConfig = qs.w_16bit_ARTI
@@ -530,10 +530,14 @@ match SC.lin.method:
             else:
                 sys.exit('PHFD: Missing config.')
         elif QConfig == qs.w_6bit_2ch_SPICE:
-            #Xscale = 82  # Fs1022976 - 6 bit 2 Ch
-            Xscale = 74  # Fs32735232 - 6 bit 2 Ch
-            #Dfreq = 200e3 # Fs1022976 - 6 bit 2 Ch
-            Dfreq = 1.0e6 # Fs32735232 - 6 bit 2 Ch
+            if Fs == 1022976:
+                Xscale = 82
+                Dfreq = 200e3
+            elif Fs == 32735232:
+                Xscale = 74
+                Dfreq = 1.0e6
+            else:
+                sys.exit('PHFD: Missing config.')
         elif QConfig == qs.w_16bit_2ch_SPICE:
             Xscale = 50  # carrier to dither ratio (between 0% and 100%)
             Dfreq = 250e3 # Fs1022976 - 16 bit 2 Ch
