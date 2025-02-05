@@ -90,6 +90,8 @@ def quantiser_configurations(QConfig):
             Mq = 2**Nb - 1; # max. code
             Vmin = -0.01990203 # Ampere
             Vmax = 0.019906069024198073 # Ampere
+            #Vmin = -0.020022468 # ch1
+            #Vmax = 0.020040675315428486 # ch1
             Qtype = quantiser_type.midtread
         case qs.w_10bit_ARTI:
             # 6-bit DAC. All bits are binary-weighted

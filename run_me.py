@@ -55,12 +55,21 @@ from run_static_model_and_post_processing import run_static_model_and_post_proce
 
 #%% Configure DAC and test conditions
 
-METHOD_CHOICE = 3
-FS_CHOICE = 10
-SINAD_COMP = 1
-DAC_CIRCUIT = 11
+METHOD_CHOICE = 6
+match 3:
+    case 1:
+        FS_CHOICE = 4
+        DAC_CIRCUIT = 7
+    case 2:
+        FS_CHOICE = 5
+        DAC_CIRCUIT = 10
+    case 3:
+        FS_CHOICE = 5
+        DAC_CIRCUIT = 11
 
-PLOTS = 0
+SINAD_COMP = 1
+
+PLOTS = 1
 
 # Test/reference signal spec. (to be recovered on the output)
 Xref_SCALE = 100  # %
@@ -268,9 +277,9 @@ match SC.lin.method:
         # Also need room for re-quantisation dither
         if QConfig == qs.w_16bit_SPICE: HEADROOM = 10  # 16 bit DAC
         elif QConfig == qs.w_6bit_ARTI: HEADROOM = 15  # 6 bit DAC
-        elif QConfig == qs.w_6bit_ZTC_ARTI: HEADROOM = 15  # 6 bit DAC
+        elif QConfig == qs.w_6bit_ZTC_ARTI: HEADROOM = 10#15  # 6 bit DAC
         elif QConfig == qs.w_10bit_ARTI: HEADROOM = 15  # 10 bit DAC
-        elif QConfig == qs.w_10bit_ZTC_ARTI: HEADROOM = 15  # 10 bit DAC
+        elif QConfig == qs.w_10bit_ZTC_ARTI: HEADROOM = 5#15  # 10 bit DAC
         elif QConfig == qs.w_16bit_ARTI: HEADROOM = 10  # 16 bit DAC
         elif QConfig == qs.w_6bit_2ch_SPICE: HEADROOM = 10  # 6 bit DAC
         elif QConfig == qs.w_16bit_2ch_SPICE: HEADROOM = 1  # 16 bit DAC
@@ -361,6 +370,9 @@ match SC.lin.method:
                 elif Fs in [209715200, 226719135.13513514400, 261881856]:
                     Xscale = 90
                     Fc_hf = 20e6
+                elif Fs == 1638400:
+                    Xscale = 50
+                    Fc_hf = 275e3
                 else:
                     sys.exit('SHPD: Missing config.')
             case qs.w_10bit_ARTI:
@@ -385,6 +397,9 @@ match SC.lin.method:
                 elif Fs == 261881856:
                     Xscale = 10
                     Fc_hf = 0.20e6
+                elif Fs == 1638400:
+                    Xscale = 50
+                    Fc_hf = 275e3
                 else:
                     sys.exit('SHPD: Missing config.')
             case qs.w_16bit_6t_ARTI:
@@ -515,8 +530,14 @@ match SC.lin.method:
         if QConfig == qs.w_16bit_SPICE:
             Xscale = 50  # carrier to dither ratio (between 0% and 100%)
         elif QConfig == qs.w_6bit_ZTC_ARTI:
-            Xscale = 50  # carrier to dither ratio (between 0% and 100%)
-            Dfreq = 5.0e6 # Fs262Mhz - 6 bit ARTI
+            if Fs == 1638400:
+                Xscale = 83 #64*100*Qstep/Rng
+                Dfreq = 275e3
+            elif Fs == 32735232:
+                Xscale = 74
+                Dfreq = 1.0e6
+            else:
+                sys.exit('PHFD: Missing config.')
         elif QConfig == qs.w_6bit_ARTI:
             Xscale = 80  # carrier to dither ratio (between 0% and 100%)
             Dfreq = 15.0e6 # Fs262Mhz - 6 bit ARTI
@@ -524,8 +545,14 @@ match SC.lin.method:
             Xscale = 50  # carrier to dither ratio (between 0% and 100%)
             Dfreq = 5.0e6
         elif QConfig == qs.w_10bit_ZTC_ARTI:
-            Xscale = 50  # carrier to dither ratio (between 0% and 100%)
-            Dfreq = 5.0e6
+            if Fs == 1638400:
+                Xscale = 66
+                Dfreq = 275e3
+            elif Fs == 32735232:
+                Xscale = 74
+                Dfreq = 1.0e6
+            else:
+                sys.exit('PHFD: Missing config.')
         elif QConfig == qs.w_16bit_ARTI:
             Xscale = 50  # carrier to dither ratio (between 0% and 100%)
             Dfreq = 5.0e6 #10.0e6 # Fs262Mhz - 16 bit ARTI
@@ -563,7 +590,7 @@ match SC.lin.method:
         Dadf = dither_generation.adf.uniform  # amplitude distr. funct. (ADF)
         # Generate periodic dither
         Dmaxamp = Rng/2  # maximum dither amplitude (volt)
-        dp = 0.975*Dmaxamp*dither_generation.gen_periodic(t, Dfreq, Dadf)
+        dp = 0.99*Dmaxamp*dither_generation.gen_periodic(t, Dfreq, Dadf)
         
         # Opposite polarity for HF dither for pri. and sec. channel
         if Nch == 2:
@@ -573,8 +600,8 @@ match SC.lin.method:
         else:
             sys.exit("Invalid channel config. for periodic dithering.")
 
-        #X = (Xscale/100)*Xcs + (Dscale/100)*Dp + Dq
-        X = (Xscale/100)*Xref + (Dscale/100)*Dp
+        X = (Xscale/100)*Xref + (Dscale/100)*Dp + Dq
+        #X = (Xscale/100)*Xref + (Dscale/100)*Dp
 
         Q = quantise_signal(X, Qstep, Qtype)
         C = generate_codes(Q, Nb, Qtype)  ##### output codes

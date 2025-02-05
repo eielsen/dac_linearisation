@@ -78,10 +78,11 @@ def get_physcal_gain(QConfig):
         case qs.w_16bit_SPICE: K_SEC = 1e-2
         case qs.w_6bit_ARTI: K_SEC = 7.5e-2
         case qs.w_16bit_ARTI: K_SEC = 2e-1  # find out
-        case qs.w_6bit_2ch_SPICE: K_SEC = 0.015 #12.5e-2
+        case qs.w_6bit_2ch_SPICE: K_SEC = 0.1 #12.5e-2
         case qs.w_16bit_2ch_SPICE: K_SEC = 1e-2
         case qs.w_16bit_6t_ARTI: K_SEC = 2e-2
-        case qs.w_6bit_ZTC_ARTI: K_SEC = 0.0004
+        case qs.w_6bit_ZTC_ARTI: K_SEC = 0.007
+        case qs.w_10bit_ZTC_ARTI: K_SEC = 0.005
         case _: K_SEC = 1
     return K_SEC
 
@@ -104,33 +105,38 @@ def plot_inl(QConfig=qs.w_16bit_NI_card, Ch_sel=0):
     qs = np.arange(-2**(Nb-1), 2**(Nb-1), 1) # possible quantisation steps/codes (recall arange() is not inclusive)
     qs = qs.reshape(-1, 1) # ensure column vector for codes
 
+    print(np.max(LVLS1))
+    print(np.min(LVLS1))
+    
     #from matplotlib import rc
     #rc('font',**{'family':'sans-serif'})
     #rc('font',**{'family':'serif','serif':['Times']})
     #rc('text', usetex=False)
 
-    plt.figure(1)
+    plt.figure(10)
     plt.plot(qs, LVLS1/Qstep, label='Channel 1')
     plt.plot(qs, LVLS2/Qstep, label='Channel 2')
     plt.legend()
     plt.xlabel("Input code")
     plt.ylabel("Output (least significant bits)")
     plt.grid()
+    plt.show()
 
-    plt.figure(2)
+    plt.figure(20)
     plt.plot(qs, signal.detrend(LVLS1)/Qstep, label='Channel 1')
     plt.plot(qs, signal.detrend(LVLS2)/Qstep, label='Channel 2')
     plt.legend()
     plt.xlabel("Input code")
     plt.ylabel("INL (least significant bits)")
     plt.grid()
+    plt.show()
 
     #plt.savefig('figures/INL_plot.pdf', format='pdf', bbox_inches='tight')
     #plt.savefig('figures/INL_plot.svg', format='svg', bbox_inches='tight')
     #fig.savefig('Stylized Plots.png', dpi=300, bbox_inches='tight', transparent=True)
 
 
-def generate_physcal_lut(QConfig=qs.w_16bit_NI_card, SAVE_LUT=0):
+def generate_physcal_lut(QConfig=qs.w_16bit_NI_card, UNIFORM_SEC=1, SAVE_LUT=0):
     """
     Generate physical level calibration look up table.
 
@@ -157,18 +163,29 @@ def generate_physcal_lut(QConfig=qs.w_16bit_NI_card, SAVE_LUT=0):
     qs = np.arange(-2**(Nb-1), 2**(Nb-1), 1) # possible quantisation steps/codes (recall arange() is not inclusive)
     qs = qs.reshape(-1, 1) # ensure column vector for codes
 
-    #YQ = YQ.reshape(-1,1) # ensure column vector for ideal levels
-    
+    YQ = YQ.reshape(-1,1) # ensure column vector for ideal levels
+    YQ = YQ - np.mean(YQ)
+
     QQ = np.hstack([qs, np.ones(qs.shape)])  # codes matrix for straight line least-squares fit
     #YY = np.hstack([YQ, np.ones(qs.shape)])  # ideal levels matrix
 
     MLm = PRILVLS;  # use channel 1 as main/primary (measured levels)
     MLm = MLm.reshape(-1, 1)  # ensure column vector
 
-    thetam = np.linalg.lstsq(QQ, MLm, rcond=None)[0]  # straight line fit; theta[0] is slope, theta[1] is offset
-
-    ML = MLm - thetam[1]  # remove fitted offset for measured levels
-    YQ = thetam[0]*qs  # ideal levels (given curve-fit)
+    match 3:
+        case 1:
+            thetam = np.linalg.lstsq(QQ, MLm, rcond=None)[0]  # straight line fit; theta[0] is slope, theta[1] is offset
+            ML = MLm - thetam[1]  # remove fitted offset for measured levels
+        case 2:
+            MLmmax = np.max(MLm)
+            MLmmin = np.min(MLm)
+            ML = MLm - (MLmmax + MLmmin)/2
+        case 3:
+            ML = MLm - np.mean(MLm)
+        case 4:
+            ML = MLm
+    
+    #YQ = thetam[0]*qs  # ideal levels (given curve-fit)
     INL = (ML - YQ)/Qstep  # find the INL
 
     plt.figure(10)
@@ -181,13 +198,16 @@ def generate_physcal_lut(QConfig=qs.w_16bit_NI_card, SAVE_LUT=0):
     CLm = SECLVLS  # use channel 2 to calibrate/secondary (measured levels)
     CLm = CLm.reshape(-1, 1)  # ensure column vector
 
-    thetacq = np.linalg.lstsq(QQ, CLm, rcond=None)[0]  # straight line fit
-    print(thetacq)
+    if UNIFORM_SEC:
+        thetacq = np.linalg.lstsq(QQ, CLm, rcond=None)[0]  # straight line fit
+        print(thetacq)
 
-    Qcal = thetacq[0]  # effective quantization step for secondary channel (effective gain/scale)
-    CL = Qcal*qs  # resort to using scaled, ideal output for secondary calibration channel
-    # (level measurements for secondary too noisy for monotonic behaviour, i.e. does more harm than good)
-
+        Qcal = thetacq[0]  # effective quantization step for secondary channel (effective gain/scale)
+        CL = Qcal*qs  # resort to using scaled, ideal output for secondary calibration channel
+        # (level measurements for secondary too noisy for monotonic behaviour, i.e. does more harm than good)
+    else:
+        CL = CLm
+    
     # Generate the look-up table by minimising the primary output deviation from ideal
     # for every code value by adding or subtracting using the secondary
     Nl = Mq + 1  # number of output levels
@@ -210,19 +230,20 @@ def generate_physcal_lut(QConfig=qs.w_16bit_NI_card, SAVE_LUT=0):
     plt.ylabel('Calibrated Code')
     plt.legend()
 
-    plt.figure(2)
-    plt.plot(YQ, CL[LUTcal], label='Scaled ideal levels as secondary\n(error from INL is tiny for secondary due to small gain)')
-    plt.plot(YQ, CLm[LUTcal], label='Measured levels as secondary\n(ostensibly better with good enough measurements)')
-    plt.plot(YQ, INL*Qstep, label=r"$INL \cdot Q$")
-    plt.xlabel('Ideal output level')
-    plt.ylabel('Secondary voltage output')
-    plt.legend()
+    if UNIFORM_SEC:
+        plt.figure(2)
+        plt.plot(YQ, CL[LUTcal], label='Scaled ideal levels as secondary\n(error from INL is tiny for secondary due to small gain)')
+        plt.plot(YQ, CLm[LUTcal], label='Measured levels as secondary\n(ostensibly better with good enough measurements)')
+        plt.plot(YQ, INL*Qstep, label=r"$INL \cdot Q$")
+        plt.xlabel('Ideal output level')
+        plt.ylabel('Secondary voltage output')
+        plt.legend()
 
-    plt.figure(3)
-    plt.plot(YQ, CL[LUTcal]-CLm[LUTcal], label='Error using ideal secondary levels vs measured')
-    plt.xlabel('Ideal output level')
-    plt.ylabel('Difference, secondary voltage output')
-    plt.legend()
+        plt.figure(3)
+        plt.plot(YQ, CL[LUTcal]-CLm[LUTcal], label='Error using ideal secondary levels vs measured')
+        plt.xlabel('Ideal output level')
+        plt.ylabel('Difference, secondary voltage output')
+        plt.legend()
 
     plt.figure(4)
     plt.plot(YQ, CL[LUTcal] + INL*Qstep, label=r"INL calibration results (residual: $INL \cdot Q + Y_{C}$)")
