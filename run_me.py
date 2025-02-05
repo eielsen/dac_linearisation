@@ -55,13 +55,10 @@ from run_static_model_and_post_processing import run_static_model_and_post_proce
 
 #%% Configure DAC and test conditions
 
-METHOD_CHOICE = 7
-FS_CHOICE = 7
-#FS_CHOICE = 5
+METHOD_CHOICE = 3
+FS_CHOICE = 10
 SINAD_COMP = 1
-
-DAC_CIRCUIT = 7
-#DAC_CIRCUIT = 10
+DAC_CIRCUIT = 11
 
 PLOTS = 0
 
@@ -90,7 +87,7 @@ match METHOD_CHOICE:
 lin = lm(RUN_LM)
 
 ##### DAC MODEL CHOICE (TODO: consider deprecating)
-DAC_MODEL_CHOICE = 2
+DAC_MODEL_CHOICE = 1
 match DAC_MODEL_CHOICE:
     case 1: dac = dm(dm.STATIC)  # use static non-linear quantiser model to simulate DAC
     case 2: dac = dm(dm.SPICE)  # use SPICE to simulate DAC output
@@ -111,8 +108,8 @@ match FS_CHOICE:
     case 7: Fs = 32735232                   # SPICE DAC 
     case 8: Fs = 65470464
     case 9: Fs = 130940928
-    case 10: Fs = 261881856
-    case 11: Fs = 209715200                 # Coherent sampling at 5 cycles, 1048576 points, and f0 = 1 kHz 
+    case 10: Fs = 209715200                 # Coherent sampling at 5 cycles, 1048576 points, and f0 = 1 kHz 
+    case 11: Fs = 261881856
     case 12: Fs = 226719135.13513514400
 
 Ts = 1/Fs  # sampling time
@@ -291,11 +288,19 @@ match SC.lin.method:
         MLns = ML[0]  # measured output levels (convert from 2d to 1d)
 
         # Adding some "measurement/model error" in the levels
-        if QConfig in [qs.w_16bit_SPICE, qs.w_16bit_ARTI, qs.w_16bit_2ch_SPICE, qs.w_16bit_6t_ARTI]:
-            ML_err_rng = Qstep  # 16 bit DAC
-        elif QConfig in [qs.w_6bit_ARTI, qs.w_6bit_2ch_SPICE, qs.w_10bit_ARTI, qs.w_6bit_ZTC_ARTI, qs.w_10bit_ZTC_ARTI]:
-            ML_err_rng = Qstep/pow(2, 10) # 6 bit DAC (try to emulate 16-bit measurements (add 10 bit))
-            #ML_err_rng = 0 # 6 bit DAC
+        
+        # 6-bit DAC
+        if QConfig in [qs.w_6bit_ARTI, qs.w_6bit_2ch_SPICE, qs.w_6bit_ZTC_ARTI]:
+            ML_err_rng = Qstep/pow(2, 12) # (try to emulate 18-bit measurements (add 12 bit))
+            
+        # 10-bit DAC
+        elif QConfig in [qs.w_10bit_ARTI, qs.w_10bit_ZTC_ARTI]:
+            ML_err_rng = Qstep/pow(2, 8) # (try to emulate 18-bit measurements (add 8 bit))
+
+        # 16-bit DAC
+        elif QConfig in [qs.w_16bit_SPICE, qs.w_16bit_ARTI, qs.w_16bit_2ch_SPICE, qs.w_16bit_6t_ARTI]:
+            ML_err_rng = Qstep/pow(2, 2) # (try to emulate 18-bit measurements (add 2 bit))
+        
         else:
             sys.exit('NSDCAL: Unknown QConfig for ML error')
         
