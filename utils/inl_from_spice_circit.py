@@ -27,7 +27,7 @@ def addtexttofile(filename, text):
     f.close()
 
 
-def generate_dc_input(Nb, v, tempdir='utils/spice_temp', geninputfile='input_for_spice_sim.txt'):
+def generate_dc_input(Nb, v, tempdir='spice_temp', geninputfile='input_for_spice_sim.txt'):
     """
     Generate all the required inputs for the SPICE simulation.
     Defining voltage sources for the input pattern with the required voltage levels
@@ -61,14 +61,14 @@ def generate_dc_input(Nb, v, tempdir='utils/spice_temp', geninputfile='input_for
     addtexttofile(os.path.join(tempdir, geninputfile), tvb1 + tvbb1 + tvb2 + tvbb2)
 
 
-def generate_and_run_dc_spice_batch_file(timestamp, circname, tempdir='utils/spice_temp', geninputfile='input_for_spice_sim.txt'):
+def generate_and_run_dc_spice_batch_file(timestamp, circname, tempdir='spice_temp', geninputfile='input_for_spice_sim.txt'):
     """
     Run operating point analysis for a given bit pattern input stored in a file.
     """
     
-    circdir = 'spice_circuits'  # location of the SPICE circuit files
+    circdir = '../spice_sim/circuits'  # location of the SPICE circuit files
     
-    outdir = os.path.join('utils/spice_output_dc', circname + '_' + timestamp)  # desintation
+    outdir = os.path.join('spice_output_dc', circname + '_' + timestamp)  # desintation
 
     if os.path.exists(outdir):
         print('Putting output files in existing directory: ' + outdir)
@@ -102,7 +102,7 @@ def read_spice_output_and_save_to_npy(circname, timestamp):
     actual_1 = []
     actual_2 = []
     
-    outdir = os.path.join('utils/spice_output_dc', circname + '_' + timestamp)
+    outdir = os.path.join('spice_output_dc', circname + '_' + timestamp)
     lvlsfile = circname + '_levels.txt'
 
     with open(os.path.join(outdir, lvlsfile), newline='') as in_file:
@@ -124,7 +124,7 @@ def read_spice_output_and_save_to_npy(circname, timestamp):
 
     ML = np.array([actual_1, actual_2])
 
-    outfile = os.path.join('measurements_and_data', circname + '_levels')
+    outfile = os.path.join('../measurements_and_data', circname + '_levels')
 
     np.save(outfile, ML)
 
@@ -161,4 +161,5 @@ if 0:
 if 1:
     timestamp = '20250126T131543'
     timestamp = '20250126T141847'
+    timestamp = '20250206T144059'
     read_spice_output_and_save_to_npy(circname, timestamp)

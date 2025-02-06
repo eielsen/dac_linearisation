@@ -137,7 +137,7 @@ def quantiser_configurations(QConfig):
             Nb = 10 # word-size
             Mq = 2**Nb - 1; # max. code
             Vmin = -0.00528967841 # volt
-            Vmax = 0.0052897254 # volt
+            Vmax = 0.00528972540 # volt
             Qtype = quantiser_type.midtread
         case _:
             sys.exit("Invalid quantiser configuration selected.")

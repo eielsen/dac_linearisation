@@ -23,7 +23,7 @@ from utils.spice_utils import run_spice_sim, read_spice_bin_file_with_most_recen
 
 match 2:
     case 1: generate_physcal_lut(QConfig=qs.w_6bit_2ch_SPICE, UNIFORM_SEC=0, SAVE_LUT=True) # Trond 2ch 6bit
-    case 2: generate_physcal_lut(QConfig=qs.w_10bit_2ch_SPICE, UNIFORM_SEC=0, SAVE_LUT=True) # Trond 2ch 10bit
+    case 2: generate_physcal_lut(QConfig=qs.w_10bit_2ch_SPICE, UNIFORM_SEC=1, SAVE_LUT=True) # Trond 2ch 10bit
     case 3: generate_physcal_lut(QConfig=qs.w_6bit_ZTC_ARTI, UNIFORM_SEC=0, SAVE_LUT=True) # ZTC ARTI 6bit
     case 4: generate_physcal_lut(QConfig=qs.w_10bit_ZTC_ARTI, UNIFORM_SEC=0, SAVE_LUT=True) # ZTC ARTI 6bit
 

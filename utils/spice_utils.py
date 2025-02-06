@@ -283,6 +283,7 @@ def gen_spice_sim_file(C, Nb, t, Ts, QConfig, outdir, seed=1, seq=0):
             outputf = 'cs_dac_06bit_2ch_TRAN_ngspice_batch'
             spicef = outputf + '.cir'  # complete spice input file
 
+            # NOTE: Make sure seed corresponds to DC analysis
             ctrl_str = '\n.option method=trap TRTOL=5 gmin=1e-19 reltol=200u abstol=100f vntol=100n seed=2\n'
             ctrl_str = ctrl_str + \
                 '\n.control\n' + \
@@ -319,6 +320,7 @@ def gen_spice_sim_file(C, Nb, t, Ts, QConfig, outdir, seed=1, seq=0):
 
             outputf = 'cs_dac_16bit_2ch_TRAN_ngspice_batch'
             
+            # NOTE: Make sure seed corresponds to DC analysis
             ctrl_str = '\n.option method=trap TRTOL=5 gmin=1e-19 reltol=200u abstol=100f vntol=100n seed=1\n'
             ctrl_str = ctrl_str + \
                 '\n.control\n' + \
@@ -355,7 +357,8 @@ def gen_spice_sim_file(C, Nb, t, Ts, QConfig, outdir, seed=1, seq=0):
 
             outputf = 'cs_dac_10bit_2ch_TRAN_ngspice_batch'
             
-            ctrl_str = '\n.option method=trap TRTOL=5 gmin=1e-19 reltol=200u abstol=100f vntol=100n seed=2\n'
+            # NOTE: Make sure seed corresponds to DC analysis
+            ctrl_str = '\n.option method=trap TRTOL=5 gmin=1e-19 reltol=200u abstol=100f vntol=100n seed=1\n'
             ctrl_str = ctrl_str + \
                 '\n.control\n' + \
                 'tran 10u ' + str(t[-1]) + '\n' + \

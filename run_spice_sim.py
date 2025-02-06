@@ -29,14 +29,14 @@ from utils.spice_utils import run_spice_sim, run_spice_sim_parallel, gen_spice_s
 from utils.inl_processing import get_physcal_gain
 
 # choose method
-METHOD_CHOICE = 1
+METHOD_CHOICE = 2
 match METHOD_CHOICE:
     case 1: RUN_LM = lm.BASELINE
     case 2: RUN_LM = lm.PHYSCAL
-    case 3: RUN_LM = lm.DEM
-    case 4: RUN_LM = lm.NSDCAL
+    case 3: RUN_LM = lm.NSDCAL
+    case 4: RUN_LM = lm.PHFD
     case 5: RUN_LM = lm.SHPD
-    case 6: RUN_LM = lm.PHFD
+    case 6: RUN_LM = lm.DEM
     case 7: RUN_LM = lm.MPC # lm.MPC or lm.MHOQ
     case 8: RUN_LM = lm.ILC
     case 9: RUN_LM = lm.ILC_SIMP
@@ -49,7 +49,7 @@ codes_dirs = os.listdir(method_d)
 if not codes_dirs:  # list empty?
     raise SystemExit('No codes found.')
 
-codes_d = codes_dirs[1]  ###################### pick run
+codes_d = codes_dirs[0]  ###################### pick run
 
 # read pickled (marshalled) state/config object
 with open(os.path.join(method_d, codes_d, 'sim_config.pickle'), 'rb') as fin:
@@ -84,7 +84,7 @@ t = SC.t
 
 Nb, Mq, Vmin, Vmax, Rng, Qstep, YQ, Qtype = quantiser_configurations(QConfig)
 
-if QConfig == qs.w_6bit_2ch_SPICE or QConfig == qs.w_16bit_2ch_SPICE or QConfig == qs.w_10bit_2ch_SPICE:
+if QConfig in [qs.w_6bit_2ch_SPICE, qs.w_16bit_2ch_SPICE, qs.w_10bit_2ch_SPICE]:
     SEPARATE_FILE_PER_CHANNEL = False
 else:
     SEPARATE_FILE_PER_CHANNEL = True
@@ -116,9 +116,9 @@ spice_path = 'ngspice'  #
 if True:  # run ngspice sequentially for ech channel
     if SEPARATE_FILE_PER_CHANNEL:
         for k in range(0,Nch):
-            run_spice_sim(spicef_list[k], outputf_list[k], spice_case_d, spice_path, run_spice=False)
+            run_spice_sim(spicef_list[k], outputf_list[k], spice_case_d, spice_path, run_spice=True)
     else:
-        run_spice_sim(spicef_list[0], outputf_list[0], spice_case_d, spice_path, run_spice=False)
+        run_spice_sim(spicef_list[0], outputf_list[0], spice_case_d, spice_path, run_spice=True)
 else:  # use shell escape interface to run ngspice as parallel processes
     run_spice_sim_parallel(spicef_list, outputf_list, out_d, spice_path)
     

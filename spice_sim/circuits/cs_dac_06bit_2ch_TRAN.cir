@@ -1,4 +1,4 @@
-current-steering dac inl test
+current-steering dac 6-bit
 
 *.option gmin=1e-19 reltol=200u abstol=100f vntol=100n seed=2
 
