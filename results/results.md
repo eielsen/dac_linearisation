@@ -43,18 +43,18 @@
 ### Model: static 
 <table>
 <thead>
-<tr><th>Time (UTC+00:00)     </th><th>Method    </th><th>Fs    </th><th>Fc    </th><th style="text-align: right;">  Nf</th><th>Fx  </th><th>Fx scale  </th><th style="text-align: right;">  Ncyc</th><th style="text-align: right;">  ENOB</th></tr>
+<tr><th>Time (UTC+00:00)     </th><th>Method    </th><th>Fs   </th><th>Fc    </th><th style="text-align: right;">  Nf</th><th>Fx  </th><th>Fx scale  </th><th style="text-align: right;">  Ncyc</th><th style="text-align: right;">  ENOB</th></tr>
 </thead>
 <tbody>
-<tr><td>2025-02-05 - 19:38:57</td><td>BASELINE  </td><td>1.02M </td><td>100.0k</td><td style="text-align: right;">   3</td><td>1.0k</td><td>100.0%    </td><td style="text-align: right;">     7</td><td style="text-align: right;"> 6.128</td></tr>
-<tr><td>2025-02-05 - 19:38:48</td><td>PHYSCAL   </td><td>1.02M </td><td>100.0k</td><td style="text-align: right;">   3</td><td>1.0k</td><td>100.0%    </td><td style="text-align: right;">     7</td><td style="text-align: right;"> 6.896</td></tr>
-<tr><td>2025-02-05 - 11:54:04</td><td>DEM       </td><td>1.02M </td><td>100.0k</td><td style="text-align: right;">   3</td><td>1.0k</td><td>100.0%    </td><td style="text-align: right;">     7</td><td style="text-align: right;"> 4.853</td></tr>
-<tr><td>2025-02-05 - 13:44:16</td><td>NSDCAL    </td><td>32.74M</td><td>100.0k</td><td style="text-align: right;">   3</td><td>1.0k</td><td>90.0%     </td><td style="text-align: right;">     7</td><td style="text-align: right;">16.322</td></tr>
-<tr><td>2025-02-05 - 11:53:49</td><td>SHPD      </td><td>1.02M </td><td>100.0k</td><td style="text-align: right;">   3</td><td>1.0k</td><td>50.0%     </td><td style="text-align: right;">     7</td><td style="text-align: right;"> 5.842</td></tr>
-<tr><td>2025-02-05 - 13:39:53</td><td>PHFD      </td><td>1.02M </td><td>100.0k</td><td style="text-align: right;">   3</td><td>1.0k</td><td>82.0%     </td><td style="text-align: right;">     7</td><td style="text-align: right;"> 7.095</td></tr>
-<tr><td>2025-02-05 - 13:43:08</td><td>MHOQ      </td><td>1.02M </td><td>100.0k</td><td style="text-align: right;">   3</td><td>1.0k</td><td>100.0%    </td><td style="text-align: right;">     7</td><td style="text-align: right;"> 5.428</td></tr>
-<tr><td>Never                </td><td>ILC       </td><td>0.00  </td><td>0.0   </td><td style="text-align: right;">  -1</td><td>0.0 </td><td>-1.0%     </td><td style="text-align: right;">     0</td><td style="text-align: right;"> 0    </td></tr>
-<tr><td>Never                </td><td>ILC simple</td><td>0.00  </td><td>0.0   </td><td style="text-align: right;">  -1</td><td>0.0 </td><td>-1.0%     </td><td style="text-align: right;">     0</td><td style="text-align: right;"> 0    </td></tr>
+<tr><td>2025-02-06 - 10:23:34</td><td>BASELINE  </td><td>1.02M</td><td>100.0k</td><td style="text-align: right;">   3</td><td>1.0k</td><td>100.0%    </td><td style="text-align: right;">     7</td><td style="text-align: right;"> 6.095</td></tr>
+<tr><td>2025-02-06 - 10:31:43</td><td>PHYSCAL   </td><td>1.02M</td><td>100.0k</td><td style="text-align: right;">   3</td><td>1.0k</td><td>100.0%    </td><td style="text-align: right;">     7</td><td style="text-align: right;"> 6.959</td></tr>
+<tr><td>2025-02-06 - 10:48:49</td><td>DEM       </td><td>1.02M</td><td>100.0k</td><td style="text-align: right;">   3</td><td>1.0k</td><td>100.0%    </td><td style="text-align: right;">     7</td><td style="text-align: right;"> 4.903</td></tr>
+<tr><td>2025-02-06 - 10:32:57</td><td>NSDCAL    </td><td>1.02M</td><td>100.0k</td><td style="text-align: right;">   3</td><td>1.0k</td><td>95.0%     </td><td style="text-align: right;">     7</td><td style="text-align: right;"> 8.106</td></tr>
+<tr><td>2025-02-06 - 10:48:33</td><td>SHPD      </td><td>1.02M</td><td>100.0k</td><td style="text-align: right;">   3</td><td>1.0k</td><td>50.0%     </td><td style="text-align: right;">     7</td><td style="text-align: right;"> 5.846</td></tr>
+<tr><td>2025-02-06 - 10:48:13</td><td>PHFD      </td><td>1.02M</td><td>100.0k</td><td style="text-align: right;">   3</td><td>1.0k</td><td>75.0%     </td><td style="text-align: right;">     7</td><td style="text-align: right;"> 6.819</td></tr>
+<tr><td>2025-02-06 - 10:55:17</td><td>MHOQ      </td><td>1.02M</td><td>100.0k</td><td style="text-align: right;">   3</td><td>1.0k</td><td>100.0%    </td><td style="text-align: right;">     7</td><td style="text-align: right;"> 5.374</td></tr>
+<tr><td>Never                </td><td>ILC       </td><td>0.00 </td><td>0.0   </td><td style="text-align: right;">  -1</td><td>0.0 </td><td>-1.0%     </td><td style="text-align: right;">     0</td><td style="text-align: right;"> 0    </td></tr>
+<tr><td>Never                </td><td>ILC simple</td><td>0.00 </td><td>0.0   </td><td style="text-align: right;">  -1</td><td>0.0 </td><td>-1.0%     </td><td style="text-align: right;">     0</td><td style="text-align: right;"> 0    </td></tr>
 </tbody>
 </table>
 
@@ -134,7 +134,7 @@
 <tr><td>2025-02-05 - 17:01:28</td><td>NSDCAL    </td><td>1.64M  </td><td>100.0k</td><td style="text-align: right;">   3</td><td>1.0k</td><td>90.0%     </td><td style="text-align: right;">     7</td><td style="text-align: right;"> 9.923</td></tr>
 <tr><td>2025-02-05 - 17:04:33</td><td>SHPD      </td><td>1.64M  </td><td>100.0k</td><td style="text-align: right;">   3</td><td>1.0k</td><td>50.0%     </td><td style="text-align: right;">     7</td><td style="text-align: right;"> 6.884</td></tr>
 <tr><td>2025-02-05 - 17:00:02</td><td>PHFD      </td><td>1.64M  </td><td>100.0k</td><td style="text-align: right;">   3</td><td>1.0k</td><td>83.0%     </td><td style="text-align: right;">     7</td><td style="text-align: right;"> 7.577</td></tr>
-<tr><td>2025-01-30 - 03:58:44</td><td>MHOQ      </td><td>209.72M</td><td>100.0k</td><td style="text-align: right;">  -1</td><td>1.0k</td><td>-1.0%     </td><td style="text-align: right;">     5</td><td style="text-align: right;"> 5.76 </td></tr>
+<tr><td>2025-02-05 - 22:50:40</td><td>MHOQ      </td><td>209.72M</td><td>100.0k</td><td style="text-align: right;">   3</td><td>1.0k</td><td>85.0%     </td><td style="text-align: right;">     7</td><td style="text-align: right;">12.441</td></tr>
 <tr><td>Never                </td><td>ILC       </td><td>0.00   </td><td>0.0   </td><td style="text-align: right;">  -1</td><td>0.0 </td><td>-1.0%     </td><td style="text-align: right;">     0</td><td style="text-align: right;"> 0    </td></tr>
 <tr><td>Never                </td><td>ILC simple</td><td>0.00   </td><td>0.0   </td><td style="text-align: right;">  -1</td><td>0.0 </td><td>-1.0%     </td><td style="text-align: right;">     0</td><td style="text-align: right;"> 0    </td></tr>
 </tbody>
@@ -166,18 +166,18 @@
 ### Model: static 
 <table>
 <thead>
-<tr><th>Time (UTC+00:00)     </th><th>Method    </th><th>Fs     </th><th>Fc    </th><th style="text-align: right;">  Nf</th><th>Fx  </th><th>Fx scale  </th><th style="text-align: right;">  Ncyc</th><th style="text-align: right;">  ENOB</th></tr>
+<tr><th>Time (UTC+00:00)     </th><th>Method    </th><th>Fs   </th><th>Fc    </th><th style="text-align: right;">  Nf</th><th>Fx  </th><th>Fx scale  </th><th style="text-align: right;">  Ncyc</th><th style="text-align: right;">  ENOB</th></tr>
 </thead>
 <tbody>
-<tr><td>2025-02-05 - 20:19:13</td><td>BASELINE  </td><td>1.64M  </td><td>100.0k</td><td style="text-align: right;">   3</td><td>1.0k</td><td>100.0%    </td><td style="text-align: right;">     7</td><td style="text-align: right;"> 8.031</td></tr>
-<tr><td>2025-02-05 - 20:12:41</td><td>PHYSCAL   </td><td>1.64M  </td><td>100.0k</td><td style="text-align: right;">   3</td><td>1.0k</td><td>100.0%    </td><td style="text-align: right;">     7</td><td style="text-align: right;">11.445</td></tr>
-<tr><td>2025-02-05 - 20:25:50</td><td>DEM       </td><td>1.64M  </td><td>100.0k</td><td style="text-align: right;">   3</td><td>1.0k</td><td>100.0%    </td><td style="text-align: right;">     7</td><td style="text-align: right;"> 8.839</td></tr>
-<tr><td>2025-02-05 - 20:14:30</td><td>NSDCAL    </td><td>1.64M  </td><td>100.0k</td><td style="text-align: right;">   3</td><td>1.0k</td><td>95.0%     </td><td style="text-align: right;">     7</td><td style="text-align: right;">13.556</td></tr>
-<tr><td>2025-02-05 - 20:25:28</td><td>SHPD      </td><td>1.64M  </td><td>100.0k</td><td style="text-align: right;">   3</td><td>1.0k</td><td>50.0%     </td><td style="text-align: right;">     7</td><td style="text-align: right;"> 9.028</td></tr>
-<tr><td>2025-02-05 - 20:24:05</td><td>PHFD      </td><td>1.64M  </td><td>100.0k</td><td style="text-align: right;">   3</td><td>1.0k</td><td>66.0%     </td><td style="text-align: right;">     7</td><td style="text-align: right;">10.755</td></tr>
-<tr><td>2025-01-30 - 00:17:27</td><td>MHOQ      </td><td>255.74k</td><td>100.0k</td><td style="text-align: right;">  -1</td><td>1.0k</td><td>-1.0%     </td><td style="text-align: right;">     5</td><td style="text-align: right;"> 8.618</td></tr>
-<tr><td>Never                </td><td>ILC       </td><td>0.00   </td><td>0.0   </td><td style="text-align: right;">  -1</td><td>0.0 </td><td>-1.0%     </td><td style="text-align: right;">     0</td><td style="text-align: right;"> 0    </td></tr>
-<tr><td>Never                </td><td>ILC simple</td><td>0.00   </td><td>0.0   </td><td style="text-align: right;">  -1</td><td>0.0 </td><td>-1.0%     </td><td style="text-align: right;">     0</td><td style="text-align: right;"> 0    </td></tr>
+<tr><td>2025-02-05 - 20:19:13</td><td>BASELINE  </td><td>1.64M</td><td>100.0k</td><td style="text-align: right;">   3</td><td>1.0k</td><td>100.0%    </td><td style="text-align: right;">     7</td><td style="text-align: right;"> 8.031</td></tr>
+<tr><td>2025-02-05 - 20:12:41</td><td>PHYSCAL   </td><td>1.64M</td><td>100.0k</td><td style="text-align: right;">   3</td><td>1.0k</td><td>100.0%    </td><td style="text-align: right;">     7</td><td style="text-align: right;">11.445</td></tr>
+<tr><td>2025-02-05 - 20:25:50</td><td>DEM       </td><td>1.64M</td><td>100.0k</td><td style="text-align: right;">   3</td><td>1.0k</td><td>100.0%    </td><td style="text-align: right;">     7</td><td style="text-align: right;"> 8.839</td></tr>
+<tr><td>2025-02-05 - 20:14:30</td><td>NSDCAL    </td><td>1.64M</td><td>100.0k</td><td style="text-align: right;">   3</td><td>1.0k</td><td>95.0%     </td><td style="text-align: right;">     7</td><td style="text-align: right;">13.556</td></tr>
+<tr><td>2025-02-05 - 20:25:28</td><td>SHPD      </td><td>1.64M</td><td>100.0k</td><td style="text-align: right;">   3</td><td>1.0k</td><td>50.0%     </td><td style="text-align: right;">     7</td><td style="text-align: right;"> 9.028</td></tr>
+<tr><td>2025-02-05 - 20:24:05</td><td>PHFD      </td><td>1.64M</td><td>100.0k</td><td style="text-align: right;">   3</td><td>1.0k</td><td>66.0%     </td><td style="text-align: right;">     7</td><td style="text-align: right;">10.755</td></tr>
+<tr><td>2025-02-05 - 23:30:47</td><td>MHOQ      </td><td>1.02M</td><td>100.0k</td><td style="text-align: right;">   3</td><td>1.0k</td><td>100.0%    </td><td style="text-align: right;">     7</td><td style="text-align: right;"> 9.994</td></tr>
+<tr><td>Never                </td><td>ILC       </td><td>0.00 </td><td>0.0   </td><td style="text-align: right;">  -1</td><td>0.0 </td><td>-1.0%     </td><td style="text-align: right;">     0</td><td style="text-align: right;"> 0    </td></tr>
+<tr><td>Never                </td><td>ILC simple</td><td>0.00 </td><td>0.0   </td><td style="text-align: right;">  -1</td><td>0.0 </td><td>-1.0%     </td><td style="text-align: right;">     0</td><td style="text-align: right;"> 0    </td></tr>
 </tbody>
 </table>
 

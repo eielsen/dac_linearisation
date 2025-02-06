@@ -21,17 +21,11 @@ from utils.inl_processing import generate_physcal_lut, plot_inl
 from utils.quantiser_configurations import qs
 from utils.spice_utils import run_spice_sim, read_spice_bin_file_with_most_recent_timestamp
 
-#gen_physcal_lut(QConfig=5, FConfig=3, SAVE_LUT=1) # Trond 16bit
-#gen_physcal_lut(QConfig=4, FConfig=2, SAVE_LUT=1)
-#gen_physcal_lut(QConfig=qs.w_6bit_ARTI, SAVE_LUT=1) # ARTI 6bit
-#gen_physcal_lut(QConfig=qs.w_16bit_ARTI, SAVE_LUT=1) # ARTI 6bit
-#gen_physcal_lut(QConfig=qs.w_16bit_2ch_SPICE, SAVE_LUT=True) # Trond 2ch 16bit
-#gen_physcal_lut(QConfig=qs.w_16bit_6t_ARTI, SAVE_LUT=True) # ARTI 16bit
-
-match 3:
-    case 1: generate_physcal_lut(QConfig=qs.w_6bit_2ch_SPICE, UNIFORM_SEC=1, SAVE_LUT=True) # Trond 2ch 6bit
-    case 2: generate_physcal_lut(QConfig=qs.w_6bit_ZTC_ARTI, UNIFORM_SEC=0, SAVE_LUT=True) # ZTC ARTI 6bit
-    case 3: generate_physcal_lut(QConfig=qs.w_10bit_ZTC_ARTI, UNIFORM_SEC=0, SAVE_LUT=True) # ZTC ARTI 6bit
+match 2:
+    case 1: generate_physcal_lut(QConfig=qs.w_6bit_2ch_SPICE, UNIFORM_SEC=0, SAVE_LUT=True) # Trond 2ch 6bit
+    case 2: generate_physcal_lut(QConfig=qs.w_10bit_2ch_SPICE, UNIFORM_SEC=0, SAVE_LUT=True) # Trond 2ch 10bit
+    case 3: generate_physcal_lut(QConfig=qs.w_6bit_ZTC_ARTI, UNIFORM_SEC=0, SAVE_LUT=True) # ZTC ARTI 6bit
+    case 4: generate_physcal_lut(QConfig=qs.w_10bit_ZTC_ARTI, UNIFORM_SEC=0, SAVE_LUT=True) # ZTC ARTI 6bit
 
 #generate_random_output_levels(QConfig=4)
 
@@ -42,8 +36,9 @@ match 3:
 #plot_inl(QConfig=qws.w_16bit_6t_ARTI, Ch_sel=0)
 match 0:
     case 1: plot_inl(QConfig=qs.w_6bit_2ch_SPICE, Ch_sel=0)
-    case 2: plot_inl(QConfig=qs.w_6bit_ZTC_ARTI, Ch_sel=0)
-    case 3: plot_inl(QConfig=qs.w_10bit_ZTC_ARTI, Ch_sel=0)
+    case 2: plot_inl(QConfig=qs.w_10bit_2ch_SPICE, Ch_sel=0)
+    case 3: plot_inl(QConfig=qs.w_6bit_ZTC_ARTI, Ch_sel=0)
+    case 4: plot_inl(QConfig=qs.w_10bit_ZTC_ARTI, Ch_sel=0)
 
 #plot_inl(QConfig=qws.w_16bit_2ch_SPICE, Ch_sel=0)
 

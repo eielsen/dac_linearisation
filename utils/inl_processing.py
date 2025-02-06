@@ -78,8 +78,9 @@ def get_physcal_gain(QConfig):
         case qs.w_16bit_SPICE: K_SEC = 1e-2
         case qs.w_6bit_ARTI: K_SEC = 7.5e-2
         case qs.w_16bit_ARTI: K_SEC = 2e-1  # find out
-        case qs.w_6bit_2ch_SPICE: K_SEC = 0.1 #12.5e-2
+        case qs.w_6bit_2ch_SPICE: K_SEC = 0.125
         case qs.w_16bit_2ch_SPICE: K_SEC = 1e-2
+        case qs.w_10bit_2ch_SPICE: K_SEC = 0.007
         case qs.w_16bit_6t_ARTI: K_SEC = 2e-2
         case qs.w_6bit_ZTC_ARTI: K_SEC = 0.007
         case qs.w_10bit_ZTC_ARTI: K_SEC = 0.005
@@ -105,8 +106,10 @@ def plot_inl(QConfig=qs.w_16bit_NI_card, Ch_sel=0):
     qs = np.arange(-2**(Nb-1), 2**(Nb-1), 1) # possible quantisation steps/codes (recall arange() is not inclusive)
     qs = qs.reshape(-1, 1) # ensure column vector for codes
 
-    print(np.max(LVLS1))
-    print(np.min(LVLS1))
+    print('Min. Ch1: ' + str(np.min(LVLS1)))
+    print('Max. Ch1: ' + str(np.max(LVLS1)))
+    print('Min. Ch2: ' + str(np.min(LVLS2)))
+    print('Max. Ch2: ' + str(np.max(LVLS2)))
     
     #from matplotlib import rc
     #rc('font',**{'family':'sans-serif'})
