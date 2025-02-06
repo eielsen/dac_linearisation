@@ -49,7 +49,7 @@ codes_dirs = os.listdir(method_d)
 if not codes_dirs:  # list empty?
     raise SystemExit('No codes found.')
 
-codes_d = codes_dirs[0]  ###################### pick run
+codes_d = codes_dirs[1]  ###################### pick run
 
 # read pickled (marshalled) state/config object
 with open(os.path.join(method_d, codes_d, 'sim_config.pickle'), 'rb') as fin:

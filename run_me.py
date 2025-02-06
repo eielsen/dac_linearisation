@@ -48,7 +48,6 @@ from LM.lin_method_dsm_ilc import DSM_ILC
 from LM.lin_method_util import lm, dm
 
 from utils.test_util import sim_config, sinad_comp, test_signal
-from utils.inl_processing import get_physcal_gain
 
 from utils.spice_utils import run_spice_sim, run_spice_sim_parallel, gen_spice_sim_file, read_spice_bin_file, process_sim_output
 
@@ -56,12 +55,21 @@ from run_static_model_and_post_processing import run_static_model_and_post_proce
 
 #%% Configure DAC and test conditions
 
-METHOD_CHOICE = 7
-FS_CHOICE = 7
-#FS_CHOICE = 5
+METHOD_CHOICE = 6
+match 3:
+    case 1:
+        FS_CHOICE = 4
+        DAC_CIRCUIT = 7
+    case 2:
+        FS_CHOICE = 5
+        DAC_CIRCUIT = 10
+    case 3:
+        FS_CHOICE = 5
+        DAC_CIRCUIT = 11
+
 SINAD_COMP = 1
 
-DAC_CIRCUIT = 5
+DAC_CIRCUIT = 7
 #DAC_CIRCUIT = 10
 
 PLOTS = 0
@@ -112,8 +120,8 @@ match FS_CHOICE:
     case 7: Fs = 32735232                   # SPICE DAC 
     case 8: Fs = 65470464
     case 9: Fs = 130940928
-    case 10: Fs = 261881856
-    case 11: Fs = 209715200                 # Coherent sampling at 5 cycles, 1048576 points, and f0 = 1 kHz 
+    case 10: Fs = 209715200                 # Coherent sampling at 5 cycles, 1048576 points, and f0 = 1 kHz 
+    case 11: Fs = 261881856
     case 12: Fs = 226719135.13513514400
 
 Ts = 1/Fs  # sampling time
@@ -272,9 +280,9 @@ match SC.lin.method:
         # Also need room for re-quantisation dither
         if QConfig == qs.w_16bit_SPICE: HEADROOM = 10  # 16 bit DAC
         elif QConfig == qs.w_6bit_ARTI: HEADROOM = 15  # 6 bit DAC
-        elif QConfig == qs.w_6bit_ZTC_ARTI: HEADROOM = 15  # 6 bit DAC
+        elif QConfig == qs.w_6bit_ZTC_ARTI: HEADROOM = 10#15  # 6 bit DAC
         elif QConfig == qs.w_10bit_ARTI: HEADROOM = 15  # 10 bit DAC
-        elif QConfig == qs.w_10bit_ZTC_ARTI: HEADROOM = 15  # 10 bit DAC
+        elif QConfig == qs.w_10bit_ZTC_ARTI: HEADROOM = 5#15  # 10 bit DAC
         elif QConfig == qs.w_16bit_ARTI: HEADROOM = 10  # 16 bit DAC
         elif QConfig == qs.w_6bit_2ch_SPICE: HEADROOM = 10  # 6 bit DAC
         elif QConfig == qs.w_16bit_2ch_SPICE: HEADROOM = 1  # 16 bit DAC
@@ -292,11 +300,19 @@ match SC.lin.method:
         MLns = ML[0]  # measured output levels (convert from 2d to 1d)
 
         # Adding some "measurement/model error" in the levels
-        if QConfig in [qs.w_16bit_SPICE, qs.w_16bit_ARTI, qs.w_16bit_2ch_SPICE, qs.w_16bit_6t_ARTI]:
-            ML_err_rng = Qstep  # 16 bit DAC
-        elif QConfig in [qs.w_6bit_ARTI, qs.w_6bit_2ch_SPICE, qs.w_10bit_ARTI, qs.w_6bit_ZTC_ARTI, qs.w_10bit_ZTC_ARTI]:
-            ML_err_rng = Qstep/pow(2, 10) # 6 bit DAC (try to emulate 16-bit measurements (add 10 bit))
-            #ML_err_rng = 0 # 6 bit DAC
+        
+        # 6-bit DAC
+        if QConfig in [qs.w_6bit_ARTI, qs.w_6bit_2ch_SPICE, qs.w_6bit_ZTC_ARTI]:
+            ML_err_rng = Qstep/pow(2, 12) # (try to emulate 18-bit measurements (add 12 bit))
+            
+        # 10-bit DAC
+        elif QConfig in [qs.w_10bit_ARTI, qs.w_10bit_ZTC_ARTI]:
+            ML_err_rng = Qstep/pow(2, 8) # (try to emulate 18-bit measurements (add 8 bit))
+
+        # 16-bit DAC
+        elif QConfig in [qs.w_16bit_SPICE, qs.w_16bit_ARTI, qs.w_16bit_2ch_SPICE, qs.w_16bit_6t_ARTI]:
+            ML_err_rng = Qstep/pow(2, 2) # (try to emulate 18-bit measurements (add 2 bit))
+        
         else:
             sys.exit('NSDCAL: Unknown QConfig for ML error')
         
@@ -357,6 +373,9 @@ match SC.lin.method:
                 elif Fs in [209715200, 226719135.13513514400, 261881856]:
                     Xscale = 90
                     Fc_hf = 20e6
+                elif Fs == 1638400:
+                    Xscale = 50
+                    Fc_hf = 275e3
                 else:
                     sys.exit('SHPD: Missing config.')
             case qs.w_10bit_ARTI:
@@ -381,6 +400,9 @@ match SC.lin.method:
                 elif Fs == 261881856:
                     Xscale = 10
                     Fc_hf = 0.20e6
+                elif Fs == 1638400:
+                    Xscale = 50
+                    Fc_hf = 275e3
                 else:
                     sys.exit('SHPD: Missing config.')
             case qs.w_16bit_6t_ARTI:
@@ -511,8 +533,14 @@ match SC.lin.method:
         if QConfig == qs.w_16bit_SPICE:
             Xscale = 50  # carrier to dither ratio (between 0% and 100%)
         elif QConfig == qs.w_6bit_ZTC_ARTI:
-            Xscale = 50  # carrier to dither ratio (between 0% and 100%)
-            Dfreq = 5.0e6 # Fs262Mhz - 6 bit ARTI
+            if Fs == 1638400:
+                Xscale = 83 #64*100*Qstep/Rng
+                Dfreq = 275e3
+            elif Fs == 32735232:
+                Xscale = 74
+                Dfreq = 1.0e6
+            else:
+                sys.exit('PHFD: Missing config.')
         elif QConfig == qs.w_6bit_ARTI:
             Xscale = 80  # carrier to dither ratio (between 0% and 100%)
             Dfreq = 15.0e6 # Fs262Mhz - 6 bit ARTI
@@ -520,8 +548,14 @@ match SC.lin.method:
             Xscale = 50  # carrier to dither ratio (between 0% and 100%)
             Dfreq = 5.0e6
         elif QConfig == qs.w_10bit_ZTC_ARTI:
-            Xscale = 50  # carrier to dither ratio (between 0% and 100%)
-            Dfreq = 5.0e6
+            if Fs == 1638400:
+                Xscale = 66
+                Dfreq = 275e3
+            elif Fs == 32735232:
+                Xscale = 74
+                Dfreq = 1.0e6
+            else:
+                sys.exit('PHFD: Missing config.')
         elif QConfig == qs.w_16bit_ARTI:
             Xscale = 50  # carrier to dither ratio (between 0% and 100%)
             Dfreq = 5.0e6 #10.0e6 # Fs262Mhz - 16 bit ARTI
@@ -559,7 +593,7 @@ match SC.lin.method:
         Dadf = dither_generation.adf.uniform  # amplitude distr. funct. (ADF)
         # Generate periodic dither
         Dmaxamp = Rng/2  # maximum dither amplitude (volt)
-        dp = 0.975*Dmaxamp*dither_generation.gen_periodic(t, Dfreq, Dadf)
+        dp = 0.99*Dmaxamp*dither_generation.gen_periodic(t, Dfreq, Dadf)
         
         # Opposite polarity for HF dither for pri. and sec. channel
         if Nch == 2:
@@ -569,8 +603,8 @@ match SC.lin.method:
         else:
             sys.exit("Invalid channel config. for periodic dithering.")
 
-        #X = (Xscale/100)*Xcs + (Dscale/100)*Dp + Dq
-        X = (Xscale/100)*Xref + (Dscale/100)*Dp
+        X = (Xscale/100)*Xref + (Dscale/100)*Dp + Dq
+        #X = (Xscale/100)*Xref + (Dscale/100)*Dp
 
         Q = quantise_signal(X, Qstep, Qtype)
         C = generate_codes(Q, Nb, Qtype)  ##### output codes
