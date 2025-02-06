@@ -8,8 +8,8 @@
 """
 
 # %%
-# %reload_ext autoreload
-# %autoreload 2
+%reload_ext autoreload
+%autoreload 2
 
 # Imports
 import sys
@@ -55,7 +55,7 @@ from run_static_model_and_post_processing import run_static_model_and_post_proce
 
 #%% Configure DAC and test conditions
 
-METHOD_CHOICE = 1
+METHOD_CHOICE = 6
 DAC_MODEL_CHOICE = 1  # 1 - static, 2 - spice
 match 2:
     case 1:
@@ -264,9 +264,9 @@ match SC.lin.method:
         X = (Xscale/100)*Xref + Dq  # input
 
         C = dem(X, Rng, Nb)  ##### output codes
-            
+
+        Nch = 2  # number of physical channels  
         # two identical, ideal channels
-        # Nch = 2  # number of physical channels
         # YQ = matlib.repmat(YQ, 2, 1)
 
     case lm.NSDCAL:  # noise shaping with digital calibration
@@ -291,7 +291,7 @@ match SC.lin.method:
         elif QConfig == qs.w_10bit_ARTI: HEADROOM = 15  # 10 bit DAC
         elif QConfig == qs.w_10bit_ZTC_ARTI: HEADROOM = 5#15  # 10 bit DAC
         elif QConfig == qs.w_16bit_ARTI: HEADROOM = 10  # 16 bit DAC
-        elif QConfig == qs.w_6bit_2ch_SPICE: HEADROOM = 5  # 6 bit DAC
+        elif QConfig == qs.w_6bit_2ch_SPICE: HEADROOM = 10  # 6 bit DAC
         elif QConfig == qs.w_16bit_2ch_SPICE: HEADROOM = 1  # 16 bit DAC
         elif QConfig == qs.w_10bit_2ch_SPICE: HEADROOM = 5  # 10 bit DAC
         elif QConfig == qs.w_16bit_6t_ARTI: HEADROOM = 1  # 16 bit DAC
@@ -359,7 +359,7 @@ match SC.lin.method:
                     Fc_hf = 250e3
                 elif Fs == 32735232:
                     Xscale = 50
-                    Fc_hf = 1500e3
+                    Fc_hf = 250e3
                 else:
                     sys.exit('SHPD: Missing config.')
             case qs.w_10bit_2ch_SPICE:
@@ -597,7 +597,7 @@ match SC.lin.method:
                 Dfreq = 300e3
             elif Fs == 32735232:
                 Xscale = 74
-                Dfreq = 1.0e6
+                Dfreq = 900e3
             else:
                 sys.exit('PHFD: Missing config.')
         elif QConfig == qs.w_16bit_2ch_SPICE:
