@@ -55,15 +55,18 @@ from run_static_model_and_post_processing import run_static_model_and_post_proce
 
 #%% Configure DAC and test conditions
 
-METHOD_CHOICE = 6
+METHOD_CHOICE = 1
 match 3:
     case 1:
         FS_CHOICE = 4
-        DAC_CIRCUIT = 7
+        DAC_CIRCUIT = 7  # 6 bit spice
     case 2:
+        FS_CHOICE = 7
+        DAC_CIRCUIT = 7  # 6 bit spice
+    case 3:
         FS_CHOICE = 5
         DAC_CIRCUIT = 10
-    case 3:
+    case 4:
         FS_CHOICE = 5
         DAC_CIRCUIT = 11
 
