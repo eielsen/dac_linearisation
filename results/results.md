@@ -46,7 +46,7 @@
 <tr><th>Time (UTC+00:00)     </th><th>Method    </th><th>Fs   </th><th>Fc    </th><th style="text-align: right;">  Nf</th><th>Fx  </th><th>Fx scale  </th><th style="text-align: right;">  Ncyc</th><th style="text-align: right;">  ENOB</th></tr>
 </thead>
 <tbody>
-<tr><td>2025-02-06 - 10:23:34</td><td>BASELINE  </td><td>1.02M</td><td>100.0k</td><td style="text-align: right;">   3</td><td>1.0k</td><td>100.0%    </td><td style="text-align: right;">     7</td><td style="text-align: right;"> 6.095</td></tr>
+<tr><td>2025-02-06 - 11:41:02</td><td>BASELINE  </td><td>1.02M</td><td>100.0k</td><td style="text-align: right;">   3</td><td>1.0k</td><td>100.0%    </td><td style="text-align: right;">     7</td><td style="text-align: right;"> 6.066</td></tr>
 <tr><td>2025-02-06 - 10:31:43</td><td>PHYSCAL   </td><td>1.02M</td><td>100.0k</td><td style="text-align: right;">   3</td><td>1.0k</td><td>100.0%    </td><td style="text-align: right;">     7</td><td style="text-align: right;"> 6.959</td></tr>
 <tr><td>2025-02-06 - 10:48:49</td><td>DEM       </td><td>1.02M</td><td>100.0k</td><td style="text-align: right;">   3</td><td>1.0k</td><td>100.0%    </td><td style="text-align: right;">     7</td><td style="text-align: right;"> 4.903</td></tr>
 <tr><td>2025-02-06 - 10:32:57</td><td>NSDCAL    </td><td>1.02M</td><td>100.0k</td><td style="text-align: right;">   3</td><td>1.0k</td><td>95.0%     </td><td style="text-align: right;">     7</td><td style="text-align: right;"> 8.106</td></tr>

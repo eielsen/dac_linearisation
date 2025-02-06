@@ -55,7 +55,7 @@ from run_static_model_and_post_processing import run_static_model_and_post_proce
 
 #%% Configure DAC and test conditions
 
-METHOD_CHOICE = 7
+METHOD_CHOICE = 1
 DAC_MODEL_CHOICE = 1  # 1 - static, 2 - spice
 match 1:
     case 1:
