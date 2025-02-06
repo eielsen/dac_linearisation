@@ -7,21 +7,25 @@ from LM.lin_method_util import lm, dm
 def update_JSON():
     JR = JSON_results()
 
-    DC = qs.w_10bit_ARTI
+    DC = qs.w_6bit_ZTC_ARTI
     DM = dm.SPICE
     LM = lm.SHPD
-    fs = 226719135.13513514400
+    fs = 209715200
     fc = 100000
+    nf = 3
     f0 = 1000
+    s  = 90
     Ncyc = 7
-    ENOB = 7.19
+    ENOB = 9.96
 
     JR.add( DC=DC,      # DAC configuration
             DM=DM,      # STATIC, SPICE
             LM=LM,      # Linearisation method
             fs=fs,      # SAMPLING FREQUENCY
             fc=fc,      # FILTER CORNER FREQUENCY
+            nf=nf,      # FILTER ORDER
             f0=f0,      # CARRIER / FUNDAMENTAL
+            f0_scale=s, # Scale of f0
             Ncyc=Ncyc,  # Periods / cycles of carrier
             ENOB=ENOB)  # Resulting ENOB
 

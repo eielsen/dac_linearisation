@@ -61,15 +61,15 @@ match 3:
         FS_CHOICE = 4
         DAC_CIRCUIT = 7
     case 2:
-        FS_CHOICE = 5
+        FS_CHOICE = 10
         DAC_CIRCUIT = 10
     case 3:
-        FS_CHOICE = 5
+        FS_CHOICE = 10
         DAC_CIRCUIT = 11
 
 SINAD_COMP = 1
 
-PLOTS = 1
+PLOTS = 0
 
 # Test/reference signal spec. (to be recovered on the output)
 Xref_SCALE = 100  # %
@@ -536,6 +536,9 @@ match SC.lin.method:
             elif Fs == 32735232:
                 Xscale = 74
                 Dfreq = 1.0e6
+            elif Fs == 209715200:
+                Xscale = 50
+                Dfreq = 5.0e6
             else:
                 sys.exit('PHFD: Missing config.')
         elif QConfig == qs.w_6bit_ARTI:
@@ -551,6 +554,9 @@ match SC.lin.method:
             elif Fs == 32735232:
                 Xscale = 74
                 Dfreq = 1.0e6
+            elif Fs == 209715200:
+                Xscale = 50
+                Dfreq = 5.0e6
             else:
                 sys.exit('PHFD: Missing config.')
         elif QConfig == qs.w_16bit_ARTI:

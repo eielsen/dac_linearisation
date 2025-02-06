@@ -82,7 +82,7 @@ def run_static_model_and_post_processing(RUN_LM, hash_stamp, MAKE_PLOT=False):
         K = np.ones((Nch,1))
         K[1] = get_physcal_gain(QConfig)
         print(K)
-    elif: SC.lin.method == lm.ILC:
+    elif SC.lin.method == lm.ILC:
         K = np.ones((Nch,1))
         K[1] = 0.0  # null one channel (want single channel resp.)
     else:
