@@ -24,7 +24,7 @@ from utils.test_util import sim_config, sinad_comp, test_signal
 from utils.inl_processing import get_physcal_gain
 
 # choose method
-METHOD_CHOICE = 2
+METHOD_CHOICE = 6
 match METHOD_CHOICE:
     case 1: RUN_LM = lm.BASELINE
     case 2: RUN_LM = lm.PHYSCAL
@@ -81,7 +81,7 @@ if Nbf == 1:  # may contain several channels in ngspice bin file
     print(Nch)
 
     # Summation stage
-    if SC.lin.method == lm.BASELINE or SC.lin.method == lm.ILC:
+    if SC.lin.method == lm.BASELINE:
         K = np.ones((Nch,1))
         K[1] = 0.0  # null one channel (want single channel resp.)
     elif SC.lin.method == lm.DEM:
@@ -92,15 +92,21 @@ if Nbf == 1:  # may contain several channels in ngspice bin file
     elif SC.lin.method == lm.NSDCAL:
         K = np.ones((Nch,1))
         K[1] = 0.0  # null one channel (want single channel resp.)
+    elif SC.lin.method == lm.ILC:
+        K = np.ones((Nch,1))
+        K[1] = 0.0  # null one channel (want single channel resp.)
     else:
         K = 1/Nch
+        
+    print('Summing gain:')
+    print(K)
     
     print('Summing gain:')
     print(K)
 
     t_end = t_spice[-1] #7/Fx  # time vector duration
-    #Fs_ = Fs*72  # semi-optimal factor for most sims with different non-uniform sampling per file
-    Fs_ = Fs
+    Fs_ = Fs*72  # semi-optimal factor for most sims with different non-uniform sampling per file
+    #Fs_ = Fs
     #Fs_ = 1/np.mean(np.diff(t_spice))
 
     print(f'Fs: {Float(Fs):.0h}')

@@ -55,9 +55,9 @@ from run_static_model_and_post_processing import run_static_model_and_post_proce
 
 #%% Configure DAC and test conditions
 
-METHOD_CHOICE = 3
+METHOD_CHOICE = 6
 DAC_MODEL_CHOICE = 1  # 1 - static, 2 - spice
-match 3:
+match 1:
     case 1:
         FS_CHOICE = 4
         DAC_CIRCUIT = 7  # 6 bit spice
@@ -625,7 +625,7 @@ match SC.lin.method:
         Dadf = dither_generation.adf.uniform  # amplitude distr. funct. (ADF)
         # Generate periodic dither
         Dmaxamp = Rng/2  # maximum dither amplitude (volt)
-        dp = Dmaxamp*dither_generation.gen_periodic(t, Dfreq, Dadf)
+        dp = 0.975*Dmaxamp*dither_generation.gen_periodic(t, Dfreq, Dadf)
         
         # Opposite polarity for HF dither for pri. and sec. channel
         if Nch == 2:
