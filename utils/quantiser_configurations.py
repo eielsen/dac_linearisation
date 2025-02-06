@@ -136,8 +136,8 @@ def quantiser_configurations(QConfig):
         case qs.w_10bit_2ch_SPICE:
             Nb = 10 # word-size
             Mq = 2**Nb - 1; # max. code
-            Vmin = -10e-05 # volt
-            Vmax = 10e-05 # volt
+            Vmin = -0.00528967841 # volt
+            Vmax = 0.0052897254 # volt
             Qtype = quantiser_type.midtread
         case _:
             sys.exit("Invalid quantiser configuration selected.")

@@ -76,6 +76,7 @@ def run_static_model_and_post_processing(RUN_LM, hash_stamp, MAKE_PLOT=False):
     # Summation stage
     if SC.lin.method == lm.BASELINE:
         K = np.ones((Nch,1))
+        K[1] = 0.0  # null one channel (want single channel resp.)
     elif SC.lin.method == lm.DEM:
         K = np.ones((Nch,1))
     elif SC.lin.method == lm.PHYSCAL:
