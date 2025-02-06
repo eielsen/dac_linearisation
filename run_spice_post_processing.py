@@ -85,7 +85,8 @@ if Nbf == 1:  # may contain several channels in ngspice bin file
         K = np.ones((Nch,1))
         K[1] = 0.0  # null one channel (want single channel resp.)
     elif SC.lin.method == lm.DEM:
-        K = np.ones((Nch,1))
+        #K = np.ones((Nch,1))
+        K = 1/Nch
     elif SC.lin.method == lm.PHYSCAL:
         K = np.ones((Nch,1))
         K[1] = get_physcal_gain(QConfig)
@@ -98,9 +99,6 @@ if Nbf == 1:  # may contain several channels in ngspice bin file
     else:
         K = 1/Nch
         
-    print('Summing gain:')
-    print(K)
-    
     print('Summing gain:')
     print(K)
 
