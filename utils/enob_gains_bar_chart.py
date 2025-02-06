@@ -20,7 +20,7 @@ DAC_6bit_PRO_Fs_209MHz = 5
 DAC_10bit_PRO_Fs_209MHz = 6
 
 # %%
-match 5:
+match 6:
     case 1: # 6 bit SkyWater at 1.02 Mhz 
         tech = 'SkyWater'
         # node = 'SKY130'
@@ -163,12 +163,12 @@ match 5:
         lin_methods =  ['PHYSCAL', 'NSDCAL', 'PHFD', 'SHPD', 'DEM', 'MHOQ']
     
     case 5: ## 6 bit ZTC ARTI
-        tech = 'ZTC ARTI (Proprietary)'
+        tech = 'ZTCARTI'
         # node = 'SKY130'
         method0 = 'static'
         method1 = 'spectre'
 
-        methods = f'{method0}-{method1}'
+        methods = f'{method0}_{method1}'
 
         Nb = 6
         Fs = 209.72 
@@ -200,7 +200,7 @@ match 5:
         lin_methods =  ['PHYSCAL', 'NSDCAL', 'PHFD', 'SHPD', 'DEM','MHOQ']
     
     case 6: # 10 bit ZTC ARTI
-        tech = 'ZTC ARTI (Proprietary)'
+        tech = 'ZTCARTI '
         # node = 'SKY130'
         method0 = 'static'
         method1 = 'sprectre'
@@ -315,8 +315,8 @@ if not os.path.isdir(results_dir):
 
 # plt.plot([1,2,3,4])
 # plt.ylabel('some numbers')
-plt.savefig(results_dir + fname, format ='svg', bbox_inches ='tight')
-plt.savefig(results_dir + fname, format ='pdf', bbox_inches ='tight')
+fig.savefig(results_dir + fname + ".svg", format ='svg', bbox_inches ='tight')
+fig.savefig(results_dir + fname + ".pdf", format ='pdf', bbox_inches ='tight')
 
 # fig.savefig(fname + ".svg", format='svg', bbox_inches='tight') # Practical for PowerPoint and other applications
 # fig.savefig(fname + ".pdf", format='pdf', bbox_inches='tight') # Best for LaTeX
