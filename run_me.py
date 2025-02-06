@@ -56,7 +56,7 @@ from run_static_model_and_post_processing import run_static_model_and_post_proce
 #%% Configure DAC and test conditions
 
 METHOD_CHOICE = 1
-match 3:
+match 1:
     case 1:
         FS_CHOICE = 4
         DAC_CIRCUIT = 7  # 6 bit spice
@@ -64,11 +64,17 @@ match 3:
         FS_CHOICE = 7
         DAC_CIRCUIT = 7  # 6 bit spice
     case 3:
-        FS_CHOICE = 5
-        DAC_CIRCUIT = 10
+        FS_CHOICE = 4
+        DAC_CIRCUIT = 9  # 10 bit spice
     case 4:
+        FS_CHOICE = 7
+        DAC_CIRCUIT = 9  # 10 bit spice
+    case 5:
         FS_CHOICE = 5
-        DAC_CIRCUIT = 11
+        DAC_CIRCUIT = 10  # 6 bit spectre
+    case 6:
+        FS_CHOICE = 5
+        DAC_CIRCUIT = 11  # 10 bit spectre
 
 SINAD_COMP = 1
 
